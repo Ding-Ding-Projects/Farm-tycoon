@@ -2,6 +2,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
+const ICON_PATH = path.join(__dirname, '..', 'build', 'icon.ico');
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -11,6 +13,7 @@ function createWindow() {
     title: 'Farm Tycoon',
     backgroundColor: '#aee3ff',
     autoHideMenuBar: true,
+    icon: ICON_PATH,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

@@ -8,11 +8,12 @@
     "start": "electron .",
     "serve": "python3 -m http.server 8123",
     "test": "node tools/validate-data.mjs",
-    "dist": "electron-builder --win nsis"
+    "dist": "electron-builder --win squirrel"
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "electron-builder-squirrel-windows": "^26.0.0"
   },
   "build": {
     "appId": "com.farmtycoon.game",
@@ -24,11 +25,18 @@
       "electron/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "squirrel",
+      "icon": "build/icon.ico"
     },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false
-    }
+    "squirrelWindows": {
+      "iconUrl": "https://raw.githubusercontent.com/Ding-Ding-Projects/Farm-tycoon/main/build/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "forceCodeSigning": false
+  },
+  "author": "Farm Tycoon Contributors",
+  "allowScripts": {
+    "electron@33.4.11": true,
+    "electron-winstaller@5.4.0": true
   }
 }

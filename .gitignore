@@ -139,7 +139,9 @@ dist
 
 # ──── Desktop Material: Build artifacts ────  (dm-template:build-artifacts)
 dist/
-build/
+build/*
+!build/icon.ico
+!build/icon.png
 .next/
 out/
 coverage/

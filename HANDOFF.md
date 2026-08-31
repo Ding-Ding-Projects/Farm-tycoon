@@ -70,21 +70,43 @@ Three balance conclusions in this session were wrong, each because the metric wa
 Commit `ceed28b` still carries the wrong 20x figure. A commit message cannot be fixed without
 rewriting history, so it stays wrong and this document is the correction.
 
+## Packaging and fonts — done since the first draft of this file
+
+- **The Windows installer is Squirrel.Windows**, not NSIS, and it is a *proven* build rather
+  than a validated config: `dist/squirrel-windows/` holds a 119 MB `Setup.exe`, `RELEASES` and
+  the full `.nupkg`. Verified `NotSigned` with no signer certificate, which is the permanent
+  policy, and the unknown-publisher warning that follows from it is expected.
+- **There is a real application icon.** `tools/make-icon.mjs` generates it in pure code — no
+  downloaded art, consistent with the project's vector-art convention — and emits a genuine
+  multi-size `.ico` (magic `00 00 01 00`, five images at 16/32/48/128/256) plus a 512 px master.
+  Note `build/` is globally ignored, so the two icon files are explicit `!` exceptions in
+  `.gitignore`; without that the icon reference breaks on a fresh checkout.
+- **The two design fonts are vendored locally**, 27 faces / 947 KiB, via `tools/vendor-fonts.mjs`.
+  It is a script rather than a manual download because one family query returns 27 `@font-face`
+  blocks across weights and `unicode-range` subsets; hand-vendoring "two fonts" would ship two
+  files and silently drop every non-latin subset.
+- **`index.html` no longer loads Google Fonts over the network.** It had done so since the
+  scaffold, against this project's own no-CDN rule — a pre-existing defect found while verifying
+  the vendoring.
+
+Two verification lessons from that work, recorded because both produce false confidence:
+`document.fonts.check()` returned `true` for all eight weights while **zero** faces were
+registered, so it cannot be trusted alone; and a `FontFace` probe reported a network error only
+because the filename had been guessed rather than read off disk.
+
 ## Not done — the honest list
 
-- **The visual overhaul is not integrated.** `design/` holds the checked-in output: four HUD
-  directions, a screen board, a reference renderer, and `handoff/SPRITE-NOTES.md`. None of it has
-  been applied.
-- **Fonts are unvendored.** `design/handoff/styles.css` names `Baloo 2` and `Nunito` while
-  shipping neither font files nor a single `@font-face`. It silently falls back to `system-ui`
-  with no error and every layout intact, so the interface is merely slightly wrong everywhere.
+- **The visual overhaul is only partly integrated.** Fonts and the icon are done. The palette,
+  outlines, golden-hour lighting, depth sorting and the eight new structure sprites from
+  `design/handoff/SPRITE-NOTES.md` are not.
 - **Camera clamping is a live gap, not a future risk.** `FARM.gridSize` is 40 and a canvas at the
-  shipped tile size shows about twelve tiles. Without the pan-and-clamp contract in
-  `renderer.js` being implemented, roughly **half the farm exists in data and cannot be looked
-  at**. This is the first thing to fix.
+  shipped tile size shows about twelve tiles. The contract is written in `renderer.js` but not
+  implemented, so roughly **half the farm exists in data and cannot be looked at**. This is the
+  first thing to fix.
 - **No CI.** There is no `.github/workflows` directory, so no remote verdict exists for any
   commit.
-- **No release has ever been published**, and none should be until the game runs.
+- **No release has ever been published**, and none should be until the game runs. An installer
+  now builds, but it would install a program that draws a placeholder splash.
 - Regatta league reward tables, Township community buildings past level 70, and per-expansion
   cost numbers were never verified — they are image-only on the wiki.
 

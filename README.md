@@ -7,9 +7,16 @@ full game design and `DESIGN_BRIEF.md` for the UI design contract before making 
 
 ## Current status: content-complete scaffold, not yet playable
 
-This is honest, so read it before opening an issue about a blank screen: **the game does
-not play yet.** `src/main.js` currently draws a static placeholder splash scene, not the
-real world.
+This is honest, so read it before opening an issue: **the game does not play yet.**
+
+You will not see a blank screen. The build launches and draws a complete static scene — a
+meadow, a road, a tree, fencing, a wheat field, a barn, a market stall, a HUD and a dock — and
+labels itself *"Scaffold build — gameplay arrives in Phase B"*. But none of it is live:
+`main.js` draws that scene and never initialises the renderer, the UI or the input layer,
+because those are still stubs. No listeners are attached, so **the dock is art**, and the HUD
+is static markup showing 0 coins when a new game actually starts with 150.
+
+It is a picture of the game, drawn by the game, and it is labelled as such.
 
 - **`src/data.js` is complete, final content**, validated by `npm test`. Running the
   validator against this checkout reports:
@@ -26,9 +33,10 @@ real world.
 - `index.html` and `styles.css` carry the real DOM structure and a Hay Day-style
   wood/parchment/gloss theme, but the canvas itself only ever shows a placeholder vista
   drawn directly in `main.js`.
-- There are **no screenshots or recordings in this README**, and there won't be any until
-  the renderer stops being a stub — a picture of the placeholder splash would misrepresent
-  what the project is.
+- There are **no screenshots or recordings in this README** yet. The scaffold scene does
+  render and could be captured, but a picture of a static scene with a decorative dock would
+  read as a working game and misrepresent the project. Captures land when the renderer and the
+  systems behind it are real.
 
 Implementation of the real systems (Phase B) has not started. See `CLAUDE.md` for the
 exact handoff state and the sequencing plan for that work.

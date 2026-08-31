@@ -7,7 +7,20 @@ this up next, so it records what is *not* done as carefully as what is.
 
 **Phase A is complete and then some. Phase B has not started.** `src/data.js` is real, final,
 validated content. Everything else in `src/` is a documented contract with `/* Phase B */` stub
-bodies — 238 of them. `src/main.js` paints a placeholder splash. **The game does not play yet.**
+bodies — 238 of them. **The game does not play yet.**
+
+**What the built application actually does, verified by launching it** (earlier drafts of this
+file understated this and were wrong). The packaged Windows build launches, calls
+`state.load()`, and renders a complete static scene: meadow ground with mottling and tufts, a
+road, a tree, fencing, a four-plot wheat field, a barn, a market stall, a HUD with a level badge
+and four counters, and a seven-icon dock. It labels itself on screen: *"Scaffold build —
+gameplay arrives in Phase B"*.
+
+None of it is live. `main.js` calls `drawSplash(canvas)` and never calls `renderer.init`,
+`ui.init` or `input.init` — those are stubs, so **no listeners are attached and the dock is
+art**. The HUD is static markup: it reads 0 coins while `NEW_GAME.coins` is 150. That is a
+decorative interface, which this project's own rules only permit because it is labelled as a
+preview rather than presented as working.
 
 That distinction matters more than any other line in this document: the content is finished, the
 game is not.

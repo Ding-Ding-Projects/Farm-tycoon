@@ -10,7 +10,7 @@ import * as state from '../src/state.js';
 import * as economy from '../src/economy.js';
 import * as farm from '../src/farm.js';
 import * as production from '../src/production.js';
-import { NEW_GAME, CROPS, LEVELS, FARM, BUILDINGS, ANIMALS, MERGE } from '../src/data.js';
+import { NEW_GAME, CROPS, LEVELS, FARM, BUILDINGS, ANIMALS, MERGE, TOWN } from '../src/data.js';
 
 let passed = 0;
 const failures = [];
@@ -52,11 +52,33 @@ test('newGameState has the documented keys and NEW_GAME values', () => {
   assert.deepEqual(s.farm.unlockedZones, ['start']);
   for (const key of [
     'workshop', 'minigames', 'expeditions', 'museum', 'lab', 'helicopter',
-    'islands', 'mine', 'merge', 'trains', 'airport', 'foraging', 'newspaper',
-    'collections', 'decorate', 'photo',
+    'islands', 'mine', 'town', 'zoo', 'merge', 'trains', 'airport', 'foraging',
+    'newspaper', 'collections', 'decorate', 'photo', 'market',
   ]) {
     assert.ok(key in s, `missing expansion key: ${key}`);
   }
+});
+
+test('newGameState seeds state.town/state.zoo/state.market with the shapes town.js/zoo.js/shop.js expect', () => {
+  const s = freshState();
+
+  // town.js's own ensureState(): { buildings: [], population: 0, capacity: TOWN.basePopulationCap, claimedMilestones: [] }
+  assert.ok(s.town, 'state.town must be present, not lazily absent');
+  assert.deepEqual(s.town, {
+    buildings: [], population: 0, capacity: TOWN.basePopulationCap, claimedMilestones: [],
+  });
+
+  // zoo.js's own ensureState(): { enclosures: {}, lastIncomeAt: Date.now(), orders: [] }
+  assert.ok(s.zoo, 'state.zoo must be present, not lazily absent');
+  assert.deepEqual(s.zoo.enclosures, {});
+  assert.equal(typeof s.zoo.lastIncomeAt, 'number');
+  assert.deepEqual(s.zoo.orders, []);
+
+  // shop.js's own ensureMarketState() fallback sentinel: { dayNum: -1, offers: [], bought: [] }
+  // (dayNum: -1 deliberately never matches a real market day number, so the first real call
+  // to ensureMarketState() sees it as stale and generates that day's offers.)
+  assert.ok(s.market, 'state.market must be present, not lazily absent');
+  assert.deepEqual(s.market, { dayNum: -1, offers: [], bought: [] });
 });
 
 test('newGameState seeds state.merge/state.trains/state.airport with the shapes merge.js/trains.js expect', () => {
@@ -111,7 +133,7 @@ test('a save from an unknown future version is rejected', () => {
   assert.equal(state.state.coins, 42);
 });
 
-test('a v1 save without merge/trains/airport migrates to v2 with them defaulted, preserving every other key exactly', () => {
+test('a v1 save missing every key from both migrations walks 1->2->3 and comes out complete, preserving every other key exactly', () => {
   const s = freshState();
   // Give the save some real, distinguishing content so "preserved byte-for-byte" is actually
   // being tested, not just a fresh-game object that happens to survive by coincidence.
@@ -121,22 +143,26 @@ test('a v1 save without merge/trains/airport migrates to v2 with them defaulted,
   const fieldId = s.farm.objects[0].id;
   production.plant(fieldId, 'wheat');
 
-  // Build a synthetic v1 save: today's (v2) state minus the three keys the v1->v2 migration
+  // Build a synthetic v1 save: today's (v3) state minus every key either migration step
   // adds, with version rolled back to 1 — exactly the shape a save written by an earlier
-  // build (v0.1.0-build2..build11 all shipped v1 saves) would have on disk.
+  // build (v0.1.0-build2..build11 all shipped v1 saves) would have on disk. It must walk
+  // MIGRATIONS[1] (merge/trains/airport) *and* MIGRATIONS[2] (town/zoo/market) in sequence,
+  // which is the chained path most likely to break if the two steps interact badly.
   const v1 = JSON.parse(JSON.stringify(state.state));
   v1.version = 1;
-  delete v1.merge;
-  delete v1.trains;
-  delete v1.airport;
-  assert.ok(!('merge' in v1) && !('trains' in v1) && !('airport' in v1), 'synthetic v1 save must actually lack the three keys');
+  for (const key of ['merge', 'trains', 'airport', 'town', 'zoo', 'market']) delete v1[key];
+  assert.ok(
+    ['merge', 'trains', 'airport', 'town', 'zoo', 'market'].every((key) => !(key in v1)),
+    'synthetic v1 save must actually lack all six keys',
+  );
   const preMigration = JSON.parse(JSON.stringify(v1));
 
   const ok = state.importSave(JSON.stringify(v1));
   assert.equal(ok, true, 'a migrated v1 save must still pass isValidSave and import cleanly');
   assert.equal(state.state.version, state.SAVE_VERSION, 'migration must land exactly on the current version');
+  assert.equal(state.state.version, 3, 'sanity: the current version really is 3');
 
-  // The three new keys are present and match the documented/newGameState shape.
+  // The v1->v2 keys are present and match the documented/newGameState shape.
   assert.ok(state.state.merge, 'merge must be defaulted by the migration');
   assert.equal(state.state.merge.cells.length, MERGE.board.cols * MERGE.board.rows);
   assert.ok(state.state.merge.cells.every((c) => c === null));
@@ -144,16 +170,77 @@ test('a v1 save without merge/trains/airport migrates to v2 with them defaulted,
   assert.deepEqual(state.state.trains, { current: null, returningAt: 0, pendingMaterials: null });
   assert.deepEqual(state.state.airport, { current: null, returningAt: 0, pendingMaterials: null, pendingBonus: 0 });
 
-  // Every key that existed before migration is untouched (version is the one legitimate
-  // exception — bumping it from 1 to 2 is the whole point of migrating).
+  // The v2->v3 keys are present and match the documented/newGameState shape too.
+  assert.deepEqual(state.state.town, {
+    buildings: [], population: 0, capacity: TOWN.basePopulationCap, claimedMilestones: [],
+  });
+  assert.deepEqual(state.state.zoo.enclosures, {});
+  assert.equal(typeof state.state.zoo.lastIncomeAt, 'number');
+  assert.deepEqual(state.state.zoo.orders, []);
+  assert.deepEqual(state.state.market, { dayNum: -1, offers: [], bought: [] });
+
+  // Every key that existed before migration is untouched. version and lastSaved are the two
+  // legitimate exceptions: version changing is the whole point of migrating, and lastSaved is
+  // always re-stamped to Date.now() by the save() call inside importSave() itself, regardless
+  // of migration — asserting it byte-for-byte would make this test flaky on whichever
+  // millisecond boundary the run happens to straddle. Swept via Object.keys + deepEqual rather
+  // than spot-checked, so nothing else silently drifts unnoticed.
   for (const key of Object.keys(preMigration)) {
-    if (key === 'version') continue;
+    if (key === 'version' || key === 'lastSaved') continue;
     assert.deepEqual(state.state[key], preMigration[key], `key '${key}' must survive migration byte-for-byte`);
   }
 
   // The migrated, imported state round-trips through save/load with no further drift. Snapshot
   // AFTER save() (which stamps a fresh lastSaved), matching the existing save->load round-trip
   // test's pattern — snapshotting first would race Date.now() against the save() call below.
+  state.save();
+  const beforeReload = JSON.parse(JSON.stringify(state.state));
+  state.load();
+  assert.deepEqual(state.state, beforeReload, 'a migrated save must round-trip through save/load unchanged');
+});
+
+test('a v2 save without town/zoo/market migrates to v3 with them defaulted, preserving every other key exactly', () => {
+  const s = freshState();
+  s.coins = 1313;
+  s.barn.items.egg = 4;
+  s.stats.ordersFulfilled = 2;
+
+  // Build a synthetic v2 save: today's (v3) state minus only the three keys the v2->v3
+  // migration adds, with version rolled back to 2 — the shape a save written by
+  // v0.1.0-build12..build15 (which all shipped v2 saves, per the previous pass's own
+  // SAVE_VERSION bump) would have on disk. merge/trains/airport are deliberately left
+  // present, since a real v2 save already has them.
+  const v2 = JSON.parse(JSON.stringify(state.state));
+  v2.version = 2;
+  for (const key of ['town', 'zoo', 'market']) delete v2[key];
+  assert.ok(
+    ['town', 'zoo', 'market'].every((key) => !(key in v2)),
+    'synthetic v2 save must actually lack the three keys',
+  );
+  assert.ok('merge' in v2 && 'trains' in v2 && 'airport' in v2, 'synthetic v2 save must still carry the v1->v2 keys');
+  const preMigration = JSON.parse(JSON.stringify(v2));
+
+  const ok = state.importSave(JSON.stringify(v2));
+  assert.equal(ok, true, 'a migrated v2 save must still pass isValidSave and import cleanly');
+  assert.equal(state.state.version, state.SAVE_VERSION, 'migration must land exactly on the current version');
+  assert.equal(state.state.version, 3, 'sanity: the current version really is 3');
+
+  assert.deepEqual(state.state.town, {
+    buildings: [], population: 0, capacity: TOWN.basePopulationCap, claimedMilestones: [],
+  });
+  assert.deepEqual(state.state.zoo.enclosures, {});
+  assert.equal(typeof state.state.zoo.lastIncomeAt, 'number');
+  assert.deepEqual(state.state.zoo.orders, []);
+  assert.deepEqual(state.state.market, { dayNum: -1, offers: [], bought: [] });
+
+  // Every key that existed before migration is untouched (version and lastSaved aside, for
+  // the same reason as the v1->v3 test above — lastSaved is always re-stamped by the save()
+  // call inside importSave() itself). Swept via Object.keys + deepEqual.
+  for (const key of Object.keys(preMigration)) {
+    if (key === 'version' || key === 'lastSaved') continue;
+    assert.deepEqual(state.state[key], preMigration[key], `key '${key}' must survive migration byte-for-byte`);
+  }
+
   state.save();
   const beforeReload = JSON.parse(JSON.stringify(state.state));
   state.load();

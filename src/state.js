@@ -2,15 +2,18 @@
 // Save format: one JSON blob in localStorage under KEY, with a `version` field for migrations.
 // All timers are stored as absolute wall-clock timestamps (ms) so progress continues offline.
 
-import { NEW_GAME, FARM, MERGE } from './data.js';
+import { NEW_GAME, FARM, MERGE, TOWN } from './data.js';
 
 export const SAVE_KEY = 'farm-tycoon-save';
-// Bumped 1 -> 2 when merge/trains/airport joined the documented shape below (builds
-// v0.1.0-build2 through build11 shipped v1 saves, so a real save missing those three keys can
-// exist on a machine). Any future key added to the shape means bumping this again and adding a
-// migration in MIGRATIONS — otherwise an existing save loads with the new key undefined and
-// every consumer starts branching on absence.
-export const SAVE_VERSION = 2;
+// v1 -> v2: merge/trains/airport joined the documented shape below (builds v0.1.0-build2
+// through build11 shipped v1 saves, so a real save missing those three keys can exist on a
+// machine). v2 -> v3: town/zoo/market joined it too (builds through v0.1.0-build15 shipped v2
+// saves without them — town.js/zoo.js/shop.js built those slices lazily on first use instead
+// of newGameState() seeding them, so a v2 save on disk can genuinely lack all three). Any
+// future key added to the shape means bumping this again and adding a migration in
+// MIGRATIONS — otherwise an existing save loads with the new key undefined and every consumer
+// starts branching on absence.
+export const SAVE_VERSION = 3;
 
 // localStorage is a browser/Electron-renderer global. The game itself never runs anywhere
 // else, but tools/test-core.mjs exercises this module under plain Node, which has no such
@@ -37,6 +40,7 @@ const storage = (() => {
  *   production: [{objectId, recipeId, readyAt}], // active queue entries
  *   orders: { board: [...], truck: {...}, boat: {...} },
  *   shop: { listings: [{item, qty, price, soldAt}] },
+ *   market: { dayNum, offers: [{item, qty, price}], bought: [bool...] }, // daily rotating market
  *   pets: { dog: {owned, lastFedAt}, cat: {...} },
  *   fishing: { cast: null|{readyAt} },
  *   achievements: { unlocked: [id...] },
@@ -57,6 +61,8 @@ const storage = (() => {
  *   helicopter: { current, fuel, fuelUpdatedAt, returningAt },
  *   islands: { voyage: {islandId, readyAt}|null, unlocked },
  *   mine: { depthUnlocked, currentDepth, digs },
+ *   town: { buildings: [{id, type, ...}], population, capacity, claimedMilestones },
+ *   zoo: { enclosures: {enclosureId: {...}}, lastIncomeAt, orders },
  *   merge: { cells: [{chain, tier}|{generator}|null, ...], energy, energyUpdatedAt },
  *   trains: { current: {wagons, filledAt, ...}|null, returningAt, pendingMaterials },
  *   airport: { current: {...}|null, returningAt, pendingMaterials, pendingBonus },
@@ -115,6 +121,24 @@ function makeEmptyAirport() {
   return { current: null, returningAt: 0, pendingMaterials: null, pendingBonus: 0 };
 }
 
+// Shared shape builders for town.js / zoo.js / shop.js's own state slices — mirrors each
+// module's own ensureState()/ensureMarketState() default exactly, used by both
+// newGameState() below and the v2 -> v3 migration, so the two can never drift apart.
+function makeEmptyTown() {
+  return { buildings: [], population: 0, capacity: TOWN.basePopulationCap, claimedMilestones: [] };
+}
+function makeEmptyZoo() {
+  return { enclosures: {}, lastIncomeAt: Date.now(), orders: [] };
+}
+function makeEmptyMarket() {
+  // Matches shop.js's own ensureMarketState() fallback shape exactly: dayNum: -1 is not a
+  // real market day number (marketDayNumber() only ever returns a large non-negative
+  // integer), so the very first call to ensureMarketState() sees it as stale and generates
+  // that day's real offers — this is deliberately the "not yet generated" sentinel, not a
+  // shortcut that skips generation.
+  return { dayNum: -1, offers: [], bought: [] };
+}
+
 /** Create a fresh new-game state object (does not persist it). */
 export function newGameState() {
   return {
@@ -132,6 +156,7 @@ export function newGameState() {
     production: [],
     orders: { board: [], truck: null, boat: null },
     shop: { listings: [] },
+    market: makeEmptyMarket(),
     pets: {},
     fishing: { cast: null },
     achievements: { unlocked: [] },
@@ -153,6 +178,8 @@ export function newGameState() {
     helicopter: { current: null, fuel: 5, fuelUpdatedAt: 0, returningAt: 0 },
     islands: { voyage: null, unlocked: [] },
     mine: { depthUnlocked: ['mine_depth_1'], currentDepth: 'mine_depth_1', digs: 0 },
+    town: makeEmptyTown(),
+    zoo: makeEmptyZoo(),
     merge: makeEmptyMergeBoard(),
     trains: makeEmptyTrains(),
     airport: makeEmptyAirport(),
@@ -180,6 +207,17 @@ const MIGRATIONS = {
     if (!obj.merge) obj.merge = makeEmptyMergeBoard();
     if (!obj.trains) obj.trains = makeEmptyTrains();
     if (!obj.airport) obj.airport = makeEmptyAirport();
+    return obj;
+  },
+  // v2 -> v3: town.js/zoo.js/shop.js gained their own state.town/state.zoo/state.market
+  // slices, seeded lazily by each module's own ensureState()/ensureMarketState() rather than
+  // by newGameState(). A v2 save predates all three, so default them exactly as a fresh game
+  // would (and exactly as those lazy helpers already would on first use); everything else on
+  // the object is left exactly as it was.
+  2: (obj) => {
+    if (!obj.town) obj.town = makeEmptyTown();
+    if (!obj.zoo) obj.zoo = makeEmptyZoo();
+    if (!obj.market) obj.market = makeEmptyMarket();
     return obj;
   },
 };

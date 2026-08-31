@@ -116,7 +116,8 @@ jobs:
             --workflow-start "${{ steps.started.outputs.start_iso }}" \
             --workflow-end "${{ steps.finished.outputs.end_iso }}" \
             --out "RELEASE_NOTES.md" \
-            --json-out "release-notes.json"
+            --json-out "release-notes.json" \
+            --token "$GH_TOKEN"
 
       - name: Commit updated release code-name ledger
         shell: bash
@@ -144,10 +145,15 @@ jobs:
           TAG="${{ steps.tagver.outputs.tag }}"
           IMG_FILE="$(node -p "JSON.parse(require('fs').readFileSync('release-notes.json','utf8')).codename?.localImagePath || ''")"
           ASSETS=(dist/squirrel-windows/*Setup*.exe dist/squirrel-windows/RELEASES dist/squirrel-windows/*.nupkg)
+          # The "Generate release notes" step already fails the job when no
+          # dim sum photo could be resolved, so reaching here with none is a
+          # bug in that guard, not an acceptable release state. Fail loudly
+          # rather than silently publishing an incomplete release.
           if [ -n "$IMG_FILE" ] && [ -f "$IMG_FILE" ]; then
             ASSETS+=("$IMG_FILE")
           else
-            echo "::warning::No dim sum code-name photo asset available for this release; publishing without one."
+            echo "::error::No dim sum code-name photo asset available for this release. A photo asset is mandatory; refusing to publish without one."
+            exit 1
           fi
           gh release create "$TAG" \
             "${ASSETS[@]}" \

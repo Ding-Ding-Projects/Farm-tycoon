@@ -87,47 +87,97 @@ function isoDuration(startIso, endIso) {
   return `${hh}:${mm}:${ss}`;
 }
 
-async function fetchJson(url) {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'farm-tycoon-release-notes' },
-  });
-  if (!res.ok) {
-    throw new Error(`fetch ${url} failed: HTTP ${res.status}`);
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// GitHub's REST API is rate-limited per source IP for unauthenticated
+// requests (60/hour), which GitHub-hosted runners share heavily -- so a
+// single unauthenticated pass across several release lookups is exactly the
+// kind of thing that works on one build and silently fails on the next.
+// Always send the workflow's own token when we have one, and retry a
+// transient failure (network hiccup, secondary rate limit, 5xx) a few times
+// before giving up, so "the photo repository was briefly unreachable" does
+// not read the same as "there is no photo for this dish".
+async function fetchWithRetry(url, { headers = {}, token, attempts = 3, baseDelayMs = 750 } = {}) {
+  const finalHeaders = { 'User-Agent': 'farm-tycoon-release-notes', ...headers };
+  if (token) finalHeaders.Authorization = `Bearer ${token}`;
+  let lastErr;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(url, { headers: finalHeaders });
+      if (res.ok) return res;
+      const transient = res.status === 403 || res.status === 429 || res.status >= 500;
+      lastErr = new Error(`HTTP ${res.status} fetching ${url}`);
+      if (!transient || attempt === attempts) {
+        throw lastErr;
+      }
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+      if (attempt === attempts) throw lastErr;
+    }
+    await sleep(baseDelayMs * attempt);
   }
+  throw lastErr;
+}
+
+async function fetchJson(url, opts) {
+  const res = await fetchWithRetry(url, opts);
   return res.json();
 }
 
 const CATALOG_URL =
   'https://raw.githubusercontent.com/Ding-Ding-Projects/dim-sum-photos/main/catalog/index.json';
 const CODENAMES_FILE = path.join(REPO_ROOT, 'RELEASE-CODENAMES.md');
-// Published photo assets for the dim sum catalog live only on these GitHub
-// Releases of the catalog repository (never in its raw Git tree), per the
-// project's photo-source contract. Look up the real asset filename across
-// each one and use the release's own browser_download_url.
-const CATALOG_RELEASE_TAGS = ['catalog-v1', 'catalog-v1-part-002', 'catalog-v1-part-003'];
+const CATALOG_REPO = 'Ding-Ding-Projects/dim-sum-photos';
 let _assetUrlMapPromise = null;
 
-async function loadCatalogAssetUrlMap() {
-  if (_assetUrlMapPromise) return _assetUrlMapPromise;
-  _assetUrlMapPromise = (async () => {
-    const map = new Map();
-    for (const tag of CATALOG_RELEASE_TAGS) {
-      try {
-        const res = await fetch(
-          `https://api.github.com/repos/Ding-Ding-Projects/dim-sum-photos/releases/tags/${tag}`,
-          { headers: { 'User-Agent': 'farm-tycoon-release-notes', Accept: 'application/vnd.github+json' } }
-        );
-        if (!res.ok) continue;
-        const data = await res.json();
-        for (const asset of data.assets || []) {
-          map.set(asset.name, asset.browser_download_url);
-        }
-      } catch {
-        // A single unreachable release page just leaves those dishes without
-        // a resolvable photo; pickCodename() reports that honestly.
+// Published photo assets for the dim sum catalog live only on GitHub
+// Releases of the catalog repository (never in its raw Git tree), split
+// across an unbounded and growing number of "catalog-v1*" part releases --
+// a single dish's photo lives in exactly ONE of those parts, so hard-coding
+// a fixed list of tags is exactly how a resolvable dish stops resolving the
+// moment a new part is published and this list is not updated to match.
+// Enumerate every release once, keep the ones whose tag starts with
+// "catalog-v1", and build the whole asset-name -> download-URL map from
+// their own embedded `assets` array (the list endpoint already returns it,
+// so this needs no further per-tag lookups at all).
+async function listCatalogReleases(token) {
+  const headers = { Accept: 'application/vnd.github+json' };
+  const releases = [];
+  let page = 1;
+  for (;;) {
+    const res = await fetchWithRetry(
+      `https://api.github.com/repos/${CATALOG_REPO}/releases?per_page=100&page=${page}`,
+      { headers, token }
+    );
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    for (const rel of batch) {
+      if (rel && typeof rel.tag_name === 'string' && rel.tag_name.startsWith('catalog-v1')) {
+        releases.push(rel);
       }
     }
-    return map;
+    if (batch.length < 100) break;
+    page++;
+  }
+  return releases;
+}
+
+async function loadCatalogAssetUrlMap(token) {
+  if (_assetUrlMapPromise) return _assetUrlMapPromise;
+  _assetUrlMapPromise = (async () => {
+    const releases = await listCatalogReleases(token);
+    if (releases.length === 0) {
+      throw new Error(`no "catalog-v1*" releases were found on ${CATALOG_REPO}`);
+    }
+    const map = new Map();
+    for (const rel of releases) {
+      for (const asset of rel.assets || []) {
+        map.set(asset.name, asset.browser_download_url);
+      }
+    }
+    return { map, tags: releases.map((r) => r.tag_name) };
   })();
   return _assetUrlMapPromise;
 }
@@ -173,30 +223,40 @@ function candidateImageFilename(candidate) {
   return imagePath.split('/').pop();
 }
 
-async function pickCodename({ version, sha, downloadDir }) {
+async function pickCodename({ version, sha, downloadDir, token }) {
   const used = readUsedSlugs();
   let catalog;
   try {
-    catalog = await fetchJson(CATALOG_URL);
+    catalog = await fetchJson(CATALOG_URL, { token });
   } catch (err) {
     return {
       dish: null,
-      error: `Could not reach the public dim sum catalog (${err.message}); release shipped without a code name.`,
+      error: `Could not reach the public dim sum catalog at ${CATALOG_URL} (${err.message}); a code name is required and none could be assigned.`,
     };
   }
   const entries = Array.isArray(catalog) ? catalog : catalog.dishes || catalog.items || [];
   const unused = entries.filter((d) => d && d.slug && !used.has(d.slug));
   if (unused.length === 0) {
-    return { dish: null, error: 'Every catalog dish has already been used as a code name for this project.' };
+    return {
+      dish: null,
+      error: 'Every catalog dish has already been used as a code name for this project; a code name is required and none could be assigned.',
+    };
   }
 
-  const assetMap = await loadCatalogAssetUrlMap();
+  let assetMapResult;
+  try {
+    assetMapResult = await loadCatalogAssetUrlMap(token);
+  } catch (err) {
+    return {
+      dish: null,
+      error: `Could not enumerate the "catalog-v1*" photo releases on ${CATALOG_REPO} (${err.message}); a code name is required and none could be assigned.`,
+    };
+  }
+  const { map: assetMap, tags: releaseTags } = assetMapResult;
   if (assetMap.size === 0) {
     return {
       dish: null,
-      error:
-        'Could not reach the dim sum catalog photo releases (catalog-v1, catalog-v1-part-002, ' +
-        'catalog-v1-part-003) on the photo repository; release shipped without a code name photo.',
+      error: `Found "catalog-v1*" releases (${releaseTags.join(', ')}) on ${CATALOG_REPO} but none carried any assets; a code name is required and none could be assigned.`,
     };
   }
 
@@ -206,8 +266,10 @@ async function pickCodename({ version, sha, downloadDir }) {
   let candidate = null;
   let filename = null;
   let downloadUrl = null;
+  const searched = [];
   for (const d of unused) {
     const fn = candidateImageFilename(d);
+    searched.push(d.slug);
     if (!fn) continue;
     const url = assetMap.get(fn);
     if (url) {
@@ -221,22 +283,22 @@ async function pickCodename({ version, sha, downloadDir }) {
     return {
       dish: null,
       error:
-        'No unused catalog dish has a published photo asset across the checked catalog-v1* releases; ' +
-        'release shipped without a code name photo.',
+        `Checked ${searched.length} unused catalog dish(es) against the ${assetMap.size} asset(s) published ` +
+        `across ${releaseTags.join(', ')} on ${CATALOG_REPO}, and none matched a published photo filename; ` +
+        'a code name is required and none could be assigned.',
     };
   }
 
   let localImagePath = null;
   try {
-    const res = await fetch(downloadUrl, { headers: { 'User-Agent': 'farm-tycoon-release-notes' } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetchWithRetry(downloadUrl, { token });
     const buf = Buffer.from(await res.arrayBuffer());
     localImagePath = path.join(downloadDir, filename);
     writeFileSync(localImagePath, buf);
   } catch (err) {
     return {
       dish: null,
-      error: `Found the photo asset '${filename}' but could not download it (${err.message}); release shipped without a code name photo.`,
+      error: `Found the photo asset '${filename}' at ${downloadUrl} but could not download it (${err.message}); a code name is required and none could be assigned.`,
     };
   }
 
@@ -270,10 +332,13 @@ async function main() {
   const outFile = args.out;
   const jsonOutFile = args['json-out'];
   const codenameImageDir = path.resolve(REPO_ROOT, args['codename-image-dir'] || artifactDir);
+  const token =
+    args.token || process.env.GH_TOKEN || process.env.GITHUB_TOKEN || undefined;
+  const requireCodename = args['allow-missing-codename'] !== 'true';
 
   const artifacts = collectArtifacts(path.resolve(REPO_ROOT, artifactDir));
   const lineCounts = getLineCounts();
-  const codename = await pickCodename({ version, sha, downloadDir: codenameImageDir });
+  const codename = await pickCodename({ version, sha, downloadDir: codenameImageDir, token });
 
   const duration =
     workflowStart && workflowEnd ? isoDuration(workflowStart, workflowEnd) : null;
@@ -396,6 +461,7 @@ async function main() {
                 sourceUrl: codename.dish.imageUrl,
               }
             : null,
+          codenameError: codename.dish ? null : codename.error,
           workflowStart: workflowStart || null,
           workflowEnd: workflowEnd || null,
           duration,
@@ -405,6 +471,18 @@ async function main() {
       ),
       'utf8'
     );
+  }
+
+  // A dim sum photo asset is a mandatory part of every release, not a
+  // best-effort extra. Warning and quietly publishing without one (as an
+  // earlier build did) let a resolution bug ship silently; failing here
+  // fails the workflow step outright, before the release is ever created,
+  // so a broken lookup is a red run someone actually sees.
+  if (!codename.dish && requireCodename) {
+    console.error(
+      `release-notes.mjs: no dim sum code-name photo could be resolved for this release: ${codename.error}`
+    );
+    process.exitCode = 1;
   }
 }
 

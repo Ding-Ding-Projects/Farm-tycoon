@@ -1,0 +1,112 @@
+# Handoff
+
+State of the repository as of commit `14d067f` on `main`. Written to be read by whoever picks
+this up next, so it records what is *not* done as carefully as what is.
+
+## Where the project actually is
+
+**Phase A is complete and then some. Phase B has not started.** `src/data.js` is real, final,
+validated content. Everything else in `src/` is a documented contract with `/* Phase B */` stub
+bodies — 238 of them. `src/main.js` paints a placeholder splash. **The game does not play yet.**
+
+That distinction matters more than any other line in this document: the content is finished, the
+game is not.
+
+## What landed in the content expansion
+
+Nine commits, sourced from the Hay Day and Township community wikis.
+
+| | Before | Now |
+|---|---|---|
+| Crops / animals | 14 / 7 | 22 / 12 |
+| Buildings / recipes | 15 / 52 | 26 / 128 |
+| Goods / materials | 85 / 9 | 192 / 23 (four purpose-scoped sets) |
+| Town houses / community | 10 / 6 | 16 / 10 |
+| Zoo enclosures / islands | 8 / 4 | 14 / 8 |
+| Levels / achievements | 50 / 21 | 95 / 39 |
+
+New systems, all data-complete with module contracts: Building Workshop and kits, per-factory
+minigames, simulated neighbours, co-op with a request board, weekly regatta, expeditions,
+artifacts and museum, permanent research laboratory, helicopter, tiered mine depths, foraging,
+newspaper, collection books, building mastery, decorating and photo mode, plus 22 placed world
+structures.
+
+### The two mechanics that make this not a clone
+
+1. **Buildings are crafted, not bought.** Materials → components → a building kit → the factory.
+   Both source games sell factories for coins, which leaves their material economies shallow.
+2. **Every production building has its own minigame**, with an effect only that factory has.
+   Optional bonus layer, never a gate — gating a recipe on hand-eye skill would break the idle
+   contract and punish offline play.
+
+Plus one interaction rule: **systems open by clicking their structure in the world**, never from
+the HUD or dock. Locked structures are derelict but still clickable from level 1, so the map is
+the roadmap.
+
+## Verification state
+
+`npm test` (`tools/validate-data.mjs`) is green and now enforces roughly thirty rule families.
+**Every rule was broken on purpose and watched go red before being trusted.** Several found real
+defects the moment they first ran: four materials being spent on nothing, a co-op perk using an
+effect key outside the shared set, the laboratory placed on top of the museum, and a newspaper
+"bargain" band topping out at exactly the ordinary price floor.
+
+The game was loaded in a browser at the verified commit: canvas present, zero console errors, all
+192 goods and 28 research nodes resolving at runtime.
+
+## Corrections on the record
+
+Three balance conclusions in this session were wrong, each because the metric was wrong:
+
+1. A claimed **20x mid-game grind wall** — an artefact of weighting one crop field like one
+   building slot. Corrected: 129 h / 721 h / 1883 h across the three bands, an ordinary curve.
+2. The **piecewise XP curve** was justified as making the endgame reachable. It saves 5%. The
+   number of levels dominates, not the exponent. The curve stays because it is harmless, but it
+   is not the fix it was sold as.
+3. **"Wheat-spam breaks late crops"** — true only for a player tapping every two minutes. At any
+   real check-in cadence late crops win by 4–14x. No values were changed; the reasoning is
+   recorded above `CROPS` in `data.js` so it is not re-derived wrongly a fourth time.
+
+Commit `ceed28b` still carries the wrong 20x figure. A commit message cannot be fixed without
+rewriting history, so it stays wrong and this document is the correction.
+
+## Not done — the honest list
+
+- **The visual overhaul is not integrated.** `design/` holds the checked-in output: four HUD
+  directions, a screen board, a reference renderer, and `handoff/SPRITE-NOTES.md`. None of it has
+  been applied.
+- **Fonts are unvendored.** `design/handoff/styles.css` names `Baloo 2` and `Nunito` while
+  shipping neither font files nor a single `@font-face`. It silently falls back to `system-ui`
+  with no error and every layout intact, so the interface is merely slightly wrong everywhere.
+- **Camera clamping is a live gap, not a future risk.** `FARM.gridSize` is 40 and a canvas at the
+  shipped tile size shows about twelve tiles. Without the pan-and-clamp contract in
+  `renderer.js` being implemented, roughly **half the farm exists in data and cannot be looked
+  at**. This is the first thing to fix.
+- **No CI.** There is no `.github/workflows` directory, so no remote verdict exists for any
+  commit.
+- **No release has ever been published**, and none should be until the game runs.
+- Regatta league reward tables, Township community buildings past level 70, and per-expansion
+  cost numbers were never verified — they are image-only on the wiki.
+
+## Why a release-grade shutdown could not complete
+
+A `yum tong` pass was attempted and stopped at the gates rather than being weakened to fit. The
+blocking evidence, all verified rather than assumed:
+
+- No CI exists, so no green remote verdict is obtainable.
+- No release and no tag has ever been published.
+- The gate requires driving the complete built UI with a capture after every click. With 238 stub
+  bodies there is no UI to drive.
+- The gate requires a per-surface capture matrix in the README. There was no README at all.
+
+Cleanup, by contrast, was already complete before the pass began: one branch (`main`, level with
+the remote), one working tree, no stashes, no tags. There was nothing to delete.
+
+## Suggested order for the next session
+
+1. Camera pan + clamp — the live gap above.
+2. Vendor the two fonts properly, then verify with `document.fonts.check` against the running
+   page rather than by reading the CSS.
+3. Depth sorting, then the palette, outlines and golden-hour pass from `SPRITE-NOTES.md`.
+4. The eight new structure sprites, each with its derelict variant.
+5. Only then Phase B proper: the system modules, in the dependency order their contracts imply.

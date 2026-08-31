@@ -187,6 +187,26 @@ being built to match, not something the running game currently loads** — nothi
 its recorded known gaps (missing vendored fonts, a network-loaded font link in the design
 tool's own preview wrapper that must not be copied into the game).
 
+## Repository guide
+
+| Path | What it is |
+|---|---|
+| `PLAN.md` | The full game design document — read this first |
+| `CLAUDE.md` | Architecture map and conventions for agents working on this codebase |
+| `HANDOFF.md` | Current state, what is deliberately not done, and the suggested next steps |
+| `DESIGN_BRIEF.md` | The UI design contract: tokens, components, screens |
+| `design/` | Checked-in visual overhaul and its implementation handoff |
+| `src/data.js` | Every crop, animal, recipe, structure, level and tuning number |
+| `src/` | Game modules — documented API contracts, bodies still stubbed |
+| `electron/` | The Windows wrapper |
+| `tools/validate-data.mjs` | The content validator that `npm test` runs |
+| `.claude/skills/` | Agent skills: `run-game`, `add-content`, `playtest` |
+
+Progress is intended to save automatically to `localStorage` and continue while the game is
+closed — crops keep growing, because every timer is an absolute timestamp rather than a
+countdown. That behaviour is specified and contracted but, like the rest of the systems, not
+yet implemented.
+
 ## Conventions worth knowing before contributing
 
 - No runtime dependencies and no build step for the game itself — only Electron and

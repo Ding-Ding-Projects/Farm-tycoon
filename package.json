@@ -8,7 +8,8 @@
     "start": "electron .",
     "serve": "python3 -m http.server 8123",
     "test": "node tools/validate-data.mjs && node tools/test-camera.mjs",
-    "dist": "electron-builder --win squirrel"
+    "dist": "electron-builder --win squirrel",
+    "count": "node tools/count-lines.mjs"
   },
   "devDependencies": {
     "electron": "^33.0.0",

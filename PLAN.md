@@ -96,6 +96,35 @@ Applies to **Phase B**: the game is implemented **fully, start to finish, in a s
 
 ### Content (`data.js`) — big content set
 
+> **Superseded by the wiki expansion.** The section below describes the original scaffold
+> targets and is kept for the design reasoning, but the shipped numbers are now larger and
+> `src/data.js` is the authority. Current: **22 crops, 12 animals, 26 buildings / 128 recipes,
+> 192 goods, 23 materials in four purpose-scoped sets, 16 town houses + 10 community buildings,
+> 14 zoo enclosures, 8 islands, 39 achievements, 95 levels.**
+>
+> Three things were added that this section predates, and they are the parts that make the game
+> not a clone of its sources:
+>
+> - **Buildings are crafted, not bought.** The Building Workshop turns materials into
+>   components, components into a building kit, and the kit places the factory. Both source
+>   games sell factories for coins, which leaves their material economies shallow; this makes
+>   materials the spine of progression and gives trains, the airport and the helicopter a
+>   reason to exist.
+> - **Every production building has its own minigame**, with an effect only that factory would
+>   have. Optional bonus layer, never a gate — gating a recipe on hand-eye skill would break
+>   the idle contract and punish offline play.
+> - **Systems open by clicking their structure in the world**, never from the HUD or dock, and
+>   locked structures are derelict but still clickable from level 1 so the map doubles as the
+>   roadmap.
+>
+> Also added: mine depths, artifacts and a museum, expeditions, a permanent research
+> laboratory, a helicopter, a co-op with a request board, a weekly regatta against simulated
+> neighbours, and four dead-time systems (foraging, the newspaper, collection books, mastery).
+>
+> One balance note worth not re-deriving: crop XP looks inverted (wheat out-earns late crops
+> per hour) but only for a player tapping every two minutes. At any real check-in cadence the
+> late crops win by 4-14x. See the note above `CROPS` in `data.js`.
+
 - **Crops — 14** (grow on field plots; harvesting returns 2x seeds like Hay Day), unlock by level with staggered timers: wheat 2 min, corn 5 min, carrot 10 min, soybean 20 min, sugarcane 30 min, cotton 45 min, tomato 1 h, potato 1.5 h, strawberry 2 h, pumpkin 3 h, indigo 4 h, chili pepper 6 h, coffee bean 8 h, grapes 12 h.
 - **Animals — 7 pen types** (feed → wait → collect): chickens→eggs, cows→milk, pigs→bacon, sheep→wool, goats→goat milk, bees (beehive)→honey, ducks→feathers. Each pen holds 3–5 animals; feed is made in the **Feed Mill** from crops (chicken feed = 2 wheat + 1 corn, cow feed = 2 corn + 1 soybean, etc.), exactly like Hay Day.
 - **Production buildings — 12, ~45 recipes total** (queue up to 3, more slots via upgrades):

@@ -26,9 +26,9 @@ So the user can hand UI design to Claude Design with zero friction, the brief wi
 
 - **Screens to design (artboards):** 1) main game HUD over a farm illustration placeholder, 2) orders board panel, 3) roadside shop panel, 4) build menu carousel, 5) barn/silo inventory, 6) fishing view, 7) mine view, 8) daily-wheel popup, 9) level-up popup, 10) settings, 11) tutorial overlay state.
 - **Canvas vs DOM split:** the farm world is canvas (design only needs to suggest its mood); every panel/HUD element is real DOM — those are the design targets.
-- **Design tokens to produce:** CSS custom properties the code will consume verbatim — `--color-primary/gold/danger`, `--panel-bg` (frosted), `--radius-panel: 16px`, `--radius-pill`, `--shadow-soft`, `--font-display`, spacing scale. Naming these in the brief means the designed CSS drops straight into `styles.css`.
+- **Design tokens to produce:** CSS custom properties the code will consume verbatim — `--color-primary/gold/danger`, `--panel-bg` (parchment), `--wood-bg`, `--bevel-top/bottom`, `--radius-panel: 16px`, `--radius-pill`, `--shadow-soft`, `--font-display`, spacing scale. Naming these in the brief means the designed CSS drops straight into `styles.css`.
 - **Component inventory with exact class names** matching what the scaffold's `index.html`/`ui.js` will use: `.hud-top`, `.level-badge`, `.pill-counter`, `.dock`, `.dock-btn`, `.sheet-panel`, `.order-card`, `.shop-slot`, `.build-card`, `.radial-menu`, `.toast`, `.progress-ring`.
-- **Art direction:** modern casual (current Hay Day-level polish), vibrant flat vector + soft gradients, frosted-glass panels, rounded sans (Nunito), springy micro-interactions; explicitly "not retro, not pixel".
+- **Art direction:** modern casual (current Hay Day-level polish), Hay Day's own language — wood-plank boards, cream parchment cards, dark leather pills, chunky glossy bevel buttons, white outlined numerals — at modern polish; explicitly "not retro, not pixel, not frosted glass".
 - **Reference dimensions:** 1280×800 base window, must stay usable down to 1024×640 and scale up to 4K.
 
 Phase B branch: `claude/windows-hay-day-game-cfctdb` (draft PR). Phase A goes to `main` directly, per user instruction.
@@ -146,7 +146,7 @@ The target aesthetic is a **modern casual game** (think current Hay Day / townsh
 
 - **Flat vector art with depth cues:** smooth rounded shapes, soft gradients, subtle drop shadows under every object, gentle ambient animation (crops sway, animals bob, clouds drift). Vibrant saturated palette — lush greens, warm golds, sky blue — with a soft day-cycle tint.
 - **High-DPI crisp rendering:** canvas scaled to `devicePixelRatio`, everything drawn with anti-aliased paths — no blocky pixels anywhere.
-- **Glassy modern UI:** DOM overlay panels with rounded 16px corners, frosted translucent backgrounds (`backdrop-filter: blur`), soft shadows, a friendly rounded sans font (Nunito/system rounded), springy open/close animations, and micro-interactions (buttons scale on hover/press).
+- **Hay Day-style tactile UI:** wood-plank frames, cream parchment panels (18px rounded), dark leather-brown counter pills with gold trim, chunky glossy green/orange buttons with bevel highlights and dark outlines, white numerals with drop shadow, a friendly rounded sans font (Nunito), springy open/close animations, and micro-interactions (buttons scale on hover/press).
 - **Juice everywhere:** coin bursts, +XP floaters, harvest sparkles, elastic bounce when placing buildings, smooth eased camera pan/zoom.
 
 ### App window & screen layout
@@ -157,7 +157,7 @@ The app opens as a **frameless-feel 1280×800 resizable Electron window** titled
 - **Top-left:** circular level badge with an arcing XP progress ring, player level number inside.
 - **Top-right:** pill-shaped counters for coins (gold coin icon) and, next to them, silo/barn capacity pills that pulse when nearly full.
 - **Bottom-center dock:** a floating rounded toolbar (like a macOS dock) with big friendly icon buttons — Build 🔨, Shop stand, Orders board, Truck, Fishing — each with notification badges (e.g. "order ready").
-- **Panels:** clicking a dock icon slides up a frosted-glass sheet from the bottom (orders as cards with goods icons and coin/XP rewards; shop as a grid of sale slots; build menu as a horizontally scrollable card carousel showing price + level lock).
+- **Panels:** clicking a dock icon slides up a parchment sheet in a wooden frame from the bottom (orders as cards with goods icons and coin/XP rewards; shop as a grid of sale slots; build menu as a horizontally scrollable card carousel showing price + level lock).
 - **Contextual radial menu:** tapping a field/building pops a small radial of round action buttons around it (plant, harvest, collect, info) — the signature modern farm-game interaction.
 - **Progress feedback:** thin rounded progress rings float above growing crops and busy buildings, with a checkmark burst when ready.
 

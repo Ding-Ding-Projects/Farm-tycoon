@@ -6,15 +6,23 @@ already defines the DOM structure (`index.html`), design tokens and component cl
 
 ## Art direction
 
-**Modern casual game** — the polish level of current Hay Day / Township. Vibrant flat
-vector shapes with soft gradients, gentle drop shadows, frosted-glass UI surfaces, springy
-micro-interactions. Explicitly **not retro, not pixel art, not skeuomorphic wood textures**.
+**Hay Day's look, at modern polish level.** Warm, tactile, glossy cartoon — the UI should
+feel hand-built from the farm's own materials, and the world is isometric (2:1 diamond
+tiles). Explicitly **not frosted glass, not flat corporate, not retro/pixel**.
 
-- Palette mood: lush greens, warm golds, sky blue, cream surfaces. World palette reference
-  in `src/render/sprites.js` (`PALETTE`).
-- Typography: **Nunito** (rounded sans), weights 400/700/800. Big friendly numerals.
+- **Surfaces:** wood-plank frames and boards (layered CSS gradients on `--color-wood*`
+  tokens — no image textures), cream **parchment** cards (`--panel-bg`), dark
+  **leather-brown pills** with gold trim for counters (`--pill-bg`), hanging wooden-sign
+  panel titles (`.sheet-title`).
+- **Buttons:** chunky and glossy — green primary / orange-gold secondary, bevel highlight
+  on top (`--bevel-top`), darker chunky base edge (`--bevel-bottom`), dark outline,
+  white text with soft shadow (`--text-outline`).
+- Palette mood: lush saturated greens, warm wood browns, gold, sky blue. World palette
+  reference in `src/render/sprites.js` (`PALETTE`) — includes the wood tones.
+- Typography: **Nunito** (rounded sans), weights 400/700/800. Big white numerals with a
+  dark drop shadow, Hay Day-style.
 - Motion: everything eases with a slight overshoot (`cubic-bezier(0.34, 1.56, 0.64, 1)`);
-  panels slide up, buttons scale on hover/press.
+  panels slide up, buttons scale on hover/press, tutorial arrow bounces.
 
 ## Reference dimensions
 
@@ -27,9 +35,12 @@ placeholder (rolling green farm, isometric mood), the game renders the real thin
 Defined in `styles.css :root`; restyle by changing values, keep the names:
 
 `--color-primary`, `--color-primary-deep`, `--color-gold`, `--color-diamond`,
-`--color-danger`, `--color-ink`, `--color-ink-soft`, `--panel-bg` (frosted/translucent),
-`--panel-blur`, `--pill-bg`, `--radius-panel` (16px), `--radius-pill`, `--shadow-soft`,
-`--shadow-pop`, `--font-display`, spacing scale `--sp-1…--sp-6`.
+`--color-danger`, `--color-ink`, `--color-ink-soft`, `--color-cream`,
+`--color-wood`, `--color-wood-dark`, `--color-wood-light`, `--color-leather`,
+`--panel-bg` (parchment gradient), `--panel-border`, `--wood-bg` (plank gradient),
+`--pill-bg` (leather gradient), `--radius-panel` (18px), `--radius-pill`,
+`--shadow-soft`, `--shadow-pop`, `--bevel-top`, `--bevel-bottom`, `--text-outline`,
+`--font-display`, spacing scale `--sp-1…--sp-6`.
 
 ## Component inventory (exact class names used by the code)
 
@@ -47,7 +58,7 @@ Defined in `styles.css :root`; restyle by changing values, keep the names:
 | `.toast` / `.toast-stack` | transient top-center messages |
 | `.modal-backdrop` / `.modal-card` | centered popups (level-up, daily wheel, confirmations) |
 | `.btn` (+ `.gold`, `.danger`) | primary pill buttons |
-| `.tutorial-overlay` | arrow + highlight layer for the guided intro |
+| `.tutorial-overlay` | guided-intro layer: `.tutorial-spotlight` (dim + circular cutout), `.tutorial-bubble` (parchment instruction card), `.tutorial-arrow` (bouncing pointer) |
 
 ## Screens to design (artboards)
 

@@ -1,30 +1,44 @@
-/* styles.css — Farm Tycoon UI.
-   Design tokens below are the contract with DESIGN_BRIEF.md: Claude Design's output
-   should redefine these custom properties + the component classes, and it drops in. */
+/* styles.css — Farm Tycoon UI, Hay Day-style theme.
+   Warm and tactile: wood-plank panels, cream parchment cards, chunky glossy buttons with
+   bevel highlights and darker outlines, dark leather-brown counter pills with gold trim.
+   All texture is layered CSS gradients — no images.
+   Design tokens + class names below are the contract with DESIGN_BRIEF.md:
+   restyle by changing token values / class rules, never by renaming. */
 
 :root {
   /* palette */
-  --color-primary: #4caf50;
-  --color-primary-deep: #2e7d32;
-  --color-gold: #f5b52e;
+  --color-primary: #6abe30;        /* Hay Day glossy green */
+  --color-primary-deep: #4c9420;
+  --color-gold: #f5a623;           /* glossy orange-gold buttons */
   --color-diamond: #58c7f0;
   --color-danger: #e05a4e;
-  --color-ink: #2b3a2e;
-  --color-ink-soft: #6b7a6e;
+  --color-ink: #5b3a1e;            /* warm brown text */
+  --color-ink-soft: #8a6a48;
+  --color-cream: #fdf3dc;
+
+  /* wood */
+  --color-wood: #b07b45;
+  --color-wood-dark: #8a5a2e;
+  --color-wood-light: #cf9a5e;
+  --color-leather: #6e4a26;        /* dark brown counter pills */
 
   /* surfaces */
-  --panel-bg: rgba(255, 252, 245, 0.82);
-  --panel-blur: 14px;
-  --pill-bg: rgba(255, 252, 245, 0.9);
+  --panel-bg: linear-gradient(#fdf6e3, #f7e9c8);           /* parchment */
+  --panel-border: 3px solid var(--color-wood-dark);
+  --wood-bg: linear-gradient(#c08a50 0%, #b07b45 45%, #a06c38 55%, #8a5a2e 100%);
+  --pill-bg: linear-gradient(#7d5630, #5d3d1e);
 
   /* shape */
-  --radius-panel: 16px;
+  --radius-panel: 18px;
   --radius-pill: 999px;
-  --shadow-soft: 0 8px 28px rgba(30, 50, 20, 0.18);
-  --shadow-pop: 0 3px 10px rgba(30, 50, 20, 0.22);
+  --shadow-soft: 0 10px 28px rgba(60, 35, 10, 0.35);
+  --shadow-pop: 0 4px 10px rgba(60, 35, 10, 0.3);
+  --bevel-top: inset 0 2px 0 rgba(255, 255, 255, 0.45);    /* glossy highlight */
+  --bevel-bottom: inset 0 -3px 0 rgba(0, 0, 0, 0.22);      /* chunky base edge */
 
   /* type */
   --font-display: 'Nunito', system-ui, -apple-system, sans-serif;
+  --text-outline: 0 2px 0 rgba(0, 0, 0, 0.35);             /* Hay Day numeral shadow */
 
   /* spacing scale */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
@@ -32,7 +46,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; font-family: var(--font-display); color: var(--color-ink); }
-body { background: linear-gradient(#aee3ff, #cdefb0); }
+body { background: linear-gradient(#8fd3ff, #b8e88a); }
 
 #world { position: fixed; inset: 0; display: block; touch-action: none; }
 
@@ -45,59 +59,77 @@ body { background: linear-gradient(#aee3ff, #cdefb0); }
 .hud-top > * { pointer-events: auto; }
 
 .level-badge {
-  position: relative; width: 64px; height: 64px; border-radius: 50%;
-  background: var(--pill-bg); box-shadow: var(--shadow-pop);
-  display: grid; place-items: center; font-weight: 800; font-size: 24px;
+  position: relative; width: 66px; height: 66px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--color-gold) 70%);
+  border: 3px solid #fff; outline: 3px solid var(--color-wood-dark);
+  box-shadow: var(--shadow-pop), var(--bevel-top);
+  display: grid; place-items: center; font-weight: 800; font-size: 26px;
+  color: #fff; text-shadow: var(--text-outline);
 }
-.level-badge .progress-ring { position: absolute; inset: -4px; }
+.level-badge .progress-ring { position: absolute; inset: -6px; }
 
 .hud-counters { display: flex; gap: var(--sp-2); }
 .pill-counter {
   display: flex; align-items: center; gap: var(--sp-2);
-  background: var(--pill-bg); border-radius: var(--radius-pill);
-  padding: var(--sp-2) var(--sp-4); font-weight: 800; box-shadow: var(--shadow-pop);
-  backdrop-filter: blur(var(--panel-blur));
+  background: var(--pill-bg); border: 2px solid var(--color-wood-dark);
+  border-radius: var(--radius-pill); padding: var(--sp-2) var(--sp-4);
+  font-weight: 800; color: #fff; text-shadow: var(--text-outline);
+  box-shadow: var(--shadow-pop), var(--bevel-top);
 }
 .pill-counter.warn { animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(1.06); } }
 
-/* ---------- Dock ---------- */
+/* ---------- Dock (wooden board) ---------- */
 .dock {
   position: fixed; bottom: var(--sp-4); left: 50%; transform: translateX(-50%);
   display: flex; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3);
-  background: var(--panel-bg); backdrop-filter: blur(var(--panel-blur));
-  border-radius: var(--radius-panel); box-shadow: var(--shadow-soft);
+  background: var(--wood-bg);
+  border: 3px solid var(--color-wood-dark); border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-soft), var(--bevel-top);
 }
 .dock-btn {
-  width: 56px; height: 56px; font-size: 26px; border: none; cursor: pointer;
-  border-radius: 14px; background: transparent;
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+  width: 58px; height: 58px; font-size: 26px; border: none; cursor: pointer;
+  border-radius: 14px;
+  background: linear-gradient(#fdf6e3, #f0debb);
+  border: 2px solid var(--color-wood-dark);
+  box-shadow: var(--bevel-top), var(--bevel-bottom);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s;
   position: relative;
 }
-.dock-btn:hover { background: rgba(76, 175, 80, 0.12); transform: translateY(-3px) scale(1.08); }
+.dock-btn:hover { filter: brightness(1.06); transform: translateY(-4px) scale(1.08); }
 .dock-btn:active { transform: scale(0.94); }
 .dock-btn .badge {
-  position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px;
-  border-radius: 9px; background: var(--color-danger); color: #fff;
-  font-size: 11px; font-weight: 800; display: grid; place-items: center; padding: 0 4px;
+  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px;
+  border-radius: 10px; background: var(--color-danger); border: 2px solid #fff;
+  color: #fff; font-size: 11px; font-weight: 800;
+  display: grid; place-items: center; padding: 0 4px; text-shadow: none;
 }
 
-/* ---------- Sheet panels ---------- */
+/* ---------- Sheet panels (parchment on wood frame) ---------- */
 .sheet-panel {
   position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
   width: min(720px, calc(100vw - 32px)); max-height: 68vh; overflow-y: auto;
-  background: var(--panel-bg); backdrop-filter: blur(var(--panel-blur));
-  border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: var(--shadow-soft);
+  background: var(--panel-bg);
+  border: var(--panel-border); border-bottom: none;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  box-shadow: var(--shadow-soft), var(--bevel-top);
   padding: var(--sp-3) var(--sp-5) var(--sp-6);
   animation: sheet-up 0.28s cubic-bezier(0.34, 1.3, 0.64, 1);
 }
 @keyframes sheet-up { from { transform: translate(-50%, 40px); opacity: 0; } }
-.sheet-handle { width: 44px; height: 5px; border-radius: 3px; background: var(--color-ink-soft); opacity: 0.4; margin: 0 auto var(--sp-3); }
-.sheet-title { margin: 0 0 var(--sp-4); font-size: 22px; font-weight: 800; }
+.sheet-handle { width: 48px; height: 6px; border-radius: 3px; background: var(--color-wood); margin: 0 auto var(--sp-3); }
+.sheet-title {
+  margin: -12px auto var(--sp-4); width: fit-content; padding: var(--sp-2) var(--sp-5);
+  background: var(--wood-bg); border: 2px solid var(--color-wood-dark);
+  border-radius: var(--radius-pill); font-size: 20px; font-weight: 800;
+  color: #fff; text-shadow: var(--text-outline);   /* hanging wooden sign */
+  box-shadow: var(--shadow-pop), var(--bevel-top);
+}
 
 /* panel content components */
 .order-card, .shop-slot, .build-card {
-  background: rgba(255, 255, 255, 0.75); border-radius: var(--radius-panel);
+  background: linear-gradient(#fffdf5, #f9eed2);
+  border: 2px solid #d9b98a; border-radius: var(--radius-panel);
   box-shadow: var(--shadow-pop); padding: var(--sp-4);
 }
 .order-card { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-3); }
@@ -110,46 +142,74 @@ body { background: linear-gradient(#aee3ff, #cdefb0); }
 /* ---------- Radial menu ---------- */
 .radial-menu { position: fixed; pointer-events: none; }
 .radial-menu button {
-  pointer-events: auto; position: absolute; width: 52px; height: 52px; border: none;
-  border-radius: 50%; background: var(--pill-bg); box-shadow: var(--shadow-pop);
-  font-size: 22px; cursor: pointer; transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: auto; position: absolute; width: 54px; height: 54px;
+  border-radius: 50%; font-size: 22px; cursor: pointer;
+  background: linear-gradient(#fdf6e3, #f0debb);
+  border: 3px solid var(--color-wood-dark);
+  box-shadow: var(--shadow-pop), var(--bevel-top);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .radial-menu button:hover { transform: scale(1.15); }
 
 /* ---------- Toasts & modals ---------- */
-.toast-stack { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); display: grid; gap: var(--sp-2); pointer-events: none; }
+.toast-stack { position: fixed; top: 96px; left: 50%; transform: translateX(-50%); display: grid; gap: var(--sp-2); pointer-events: none; }
 .toast {
-  background: var(--panel-bg); backdrop-filter: blur(var(--panel-blur));
+  background: var(--pill-bg); border: 2px solid var(--color-wood-dark);
   border-radius: var(--radius-pill); padding: var(--sp-2) var(--sp-5);
-  font-weight: 800; box-shadow: var(--shadow-pop); animation: toast-in 0.25s ease-out;
+  font-weight: 800; color: #fff; text-shadow: var(--text-outline);
+  box-shadow: var(--shadow-pop), var(--bevel-top); animation: toast-in 0.25s ease-out;
 }
 @keyframes toast-in { from { transform: translateY(-12px); opacity: 0; } }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(20, 35, 15, 0.35); display: grid; place-items: center; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(40, 25, 5, 0.45); display: grid; place-items: center; }
 .modal-card {
-  background: var(--panel-bg); backdrop-filter: blur(var(--panel-blur));
-  border-radius: var(--radius-panel); box-shadow: var(--shadow-soft);
+  background: var(--panel-bg); border: var(--panel-border);
+  border-radius: var(--radius-panel); box-shadow: var(--shadow-soft), var(--bevel-top);
   padding: var(--sp-6); min-width: 320px; max-width: 480px; text-align: center;
   animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes modal-pop { from { transform: scale(0.85); opacity: 0; } }
 
-/* ---------- Buttons ---------- */
+/* ---------- Buttons (glossy Hay Day) ---------- */
 .btn {
-  font-family: inherit; font-weight: 800; font-size: 16px; border: none; cursor: pointer;
-  border-radius: var(--radius-pill); padding: var(--sp-3) var(--sp-5);
-  background: var(--color-primary); color: #fff; box-shadow: var(--shadow-pop);
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-family: inherit; font-weight: 800; font-size: 17px; cursor: pointer;
+  border-radius: 14px; padding: var(--sp-3) var(--sp-5);
+  background: linear-gradient(#8ed653, var(--color-primary) 45%, var(--color-primary-deep));
+  border: 2px solid #3e7a19; color: #fff; text-shadow: var(--text-outline);
+  box-shadow: var(--shadow-pop), var(--bevel-top), var(--bevel-bottom);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s;
 }
-.btn:hover { transform: scale(1.05); }
-.btn:active { transform: scale(0.96); }
-.btn.gold { background: var(--color-gold); color: var(--color-ink); }
-.btn.danger { background: var(--color-danger); }
+.btn:hover { transform: scale(1.05); filter: brightness(1.07); }
+.btn:active { transform: scale(0.96); box-shadow: var(--shadow-pop), var(--bevel-bottom); }
+.btn.gold { background: linear-gradient(#ffcf5c, var(--color-gold) 45%, #d88a12); border-color: #a86a0c; }
+.btn.danger { background: linear-gradient(#f08276, var(--color-danger) 45%, #b53c32); border-color: #8f2f27; }
 .btn:disabled { filter: grayscale(0.8); opacity: 0.6; cursor: default; transform: none; }
 
-/* ---------- Tutorial ---------- */
+/* ---------- Tutorial overlay ---------- */
 .tutorial-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+/* spotlight: a huge box-shadow around the cutout circle dims everything else */
+.tutorial-spotlight {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(30, 18, 4, 0.55);
+  transition: all 0.35s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.tutorial-bubble {
+  position: absolute; max-width: 300px; padding: var(--sp-4) var(--sp-5);
+  background: var(--panel-bg); border: var(--panel-border);
+  border-radius: var(--radius-panel); box-shadow: var(--shadow-soft);
+  font-weight: 700; font-size: 16px; pointer-events: auto;
+  animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tutorial-arrow {
+  position: absolute; font-size: 40px; pointer-events: none;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));
+  animation: arrow-bounce 0.8s ease-in-out infinite;
+}
+@keyframes arrow-bounce { 50% { transform: translateY(-12px); } }
 
-.boot-status { position: fixed; bottom: 96px; width: 100%; text-align: center; font-weight: 700; color: var(--color-ink-soft); pointer-events: none; }
+.boot-status {
+  position: fixed; bottom: 96px; width: 100%; text-align: center;
+  font-weight: 800; color: #fff; text-shadow: var(--text-outline); pointer-events: none;
+}
 
 [hidden] { display: none !important; }

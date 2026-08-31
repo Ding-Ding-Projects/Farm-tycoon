@@ -465,6 +465,32 @@ export const EVENTS = [
   { id: 'gold_rush',        name: 'Gold Rush',        desc: 'Mine yields are doubled!',   effect: { mineDouble: true } },
 ];
 
+/**
+ * Tutorial — the guided first minutes. Steps run in order; each highlights a target and
+ * waits for its completion event (fired via tutorial.notify(event)). Uses only level 1–3
+ * content (fields, wheat, chicken coop, bakery, order board).
+ * target semantics: 'world:<objectKind>' spotlights the nearest matching world object
+ * (screen coords via renderer.tileToScreen); 'dock:<panel>' spotlights that dock button;
+ * 'panel:<selector>' spotlights an element inside the open sheet panel; null = center bubble.
+ */
+export const TUTORIAL = {
+  finishReward: { coins: 200, diamonds: 2, xp: 20 },
+  steps: [
+    { id: 'welcome',      target: null,                text: 'Welcome to your farm! Let’s get things growing. 🌱', event: 'dismissed' },
+    { id: 'plant_wheat',  target: 'world:field',       text: 'Tap a field and drag the wheat over your plots to plant it.', event: 'planted' },
+    { id: 'grow_wait',    target: 'world:field',       text: 'Wheat takes a moment to grow — watch the timer ring!', event: 'crop_ready' },
+    { id: 'harvest',      target: 'world:field',       text: 'It’s ready! Tap the field and swipe to harvest.', event: 'harvested' },
+    { id: 'silo_peek',    target: 'dock:inventory',    text: 'Your crops are stored in the silo. Take a look!', event: 'panel_opened:inventory' },
+    { id: 'sell_wheat',   target: 'panel:.shop-slot',  text: 'Sell 2 wheat to earn your first coins.', event: 'sold' },
+    { id: 'buy_coop',     target: 'dock:build',        text: 'Open the build menu and buy a Chicken Coop. 🐔', event: 'placed:chicken' },
+    { id: 'feed_hens',    target: 'world:pen',         text: 'Feed your chickens — they’ll lay eggs for you.', event: 'fed' },
+    { id: 'buy_bakery',   target: 'dock:build',        text: 'Now buy a Bakery from the build menu.', event: 'placed:bakery' },
+    { id: 'bake_bread',   target: 'world:building',    text: 'Tap the Bakery and queue up some bread. 🍞', event: 'enqueued:bread' },
+    { id: 'first_order',  target: 'dock:orders',       text: 'The order board pays extra for goods. Fulfill your first order!', event: 'order_fulfilled' },
+    { id: 'done',         target: null,                text: 'You’re a real farmer now — the farm is yours! 🎉', event: 'dismissed' },
+  ],
+};
+
 /** New game starting condition. */
 export const NEW_GAME = {
   coins: 150,

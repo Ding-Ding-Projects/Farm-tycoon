@@ -161,6 +161,90 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
     if (!matEarned.has(mid)) errors.push(`material '${mid}' has no source - it can be spent but never earned`);
 }
 
+// Recipe gating: a recipe's unlockLevel must never open before its building AND never
+// open before every one of its inputs is actually obtainable. A crop, animal product,
+// fish, mine yield, forage find, zoo souvenir, island cargo good or merge reward has a
+// real earliest level; a recipe output's own earliest level is its own unlockLevel, so
+// this resolves as a fixed point over the whole crafting graph (the Feed Mill making
+// otter_feed out of rice is exactly the kind of gap this exists to catch).
+{
+  const earliest = new Map(); // itemId -> earliest level truly obtainable
+  const bump = (id, lvl) => {
+    if (lvl == null || !Number.isFinite(lvl)) return;
+    const cur = earliest.get(id);
+    if (cur == null || lvl < cur) earliest.set(id, lvl);
+  };
+  for (const [cid, c] of Object.entries(d.CROPS)) bump(cid, c.unlockLevel);
+  for (const a of Object.values(d.ANIMALS)) bump(a.product, a.unlockLevel);
+  for (const f of d.FISHING.species) bump(f, d.FISHING.unlockLevel);
+  for (const l of d.FISHING.chestLoot) if (l.item) bump(l.item, d.FISHING.unlockLevel);
+  for (const dep of d.MINE.depths) for (const t of Object.values(dep.tools)) for (const y of t.yields) bump(y.item, dep.unlockLevel);
+  for (const n of Object.values(d.FORAGING.nodes)) for (const y of n.yields) bump(y.item, n.unlockLevel);
+  for (const z of Object.values(d.ZOO.enclosures)) bump(z.product, z.unlockLevel);
+  for (const i of Object.values(d.ISLANDS.destinations)) for (const g of Object.keys(i.cargo)) bump(g, i.unlockLevel);
+  for (const p of d.TRAINS.materialPool) bump(p.material, d.TRAINS.unlockLevel);
+  for (const p of d.AIRPORT.rewards.materialPool) bump(p.material, d.AIRPORT.unlockLevel);
+  for (const s of Object.values(d.EXPEDITIONS.sites)) for (const l of s.loot) { if (l.material) bump(l.material, s.unlockLevel); if (l.item) bump(l.item, s.unlockLevel); }
+  for (const c of Object.values(d.MERGE.chains)) {
+    if (c.topReward && c.topReward.item) bump(c.topReward.item, d.MERGE.unlockLevel);
+    for (const rw of Object.values(c.claims)) if (rw.item) bump(rw.item, d.MERGE.unlockLevel);
+  }
+
+  const recipeLevel = new Map();
+  const resolveInputLevel = (id) => (earliest.has(id) ? earliest.get(id) : (recipeLevel.has(id) ? recipeLevel.get(id) : null));
+  let changed = true, pass = 0;
+  while (changed && pass < 50) {
+    changed = false; pass++;
+    for (const b of Object.values(d.BUILDINGS)) {
+      for (const r of b.recipes) {
+        let lvl = b.unlockLevel, ok = true;
+        for (const iid of Object.keys(r.inputs)) {
+          const il = resolveInputLevel(iid);
+          if (il == null) { ok = false; break; }
+          if (il > lvl) lvl = il;
+        }
+        if (!ok) continue;
+        if (recipeLevel.get(r.id) !== lvl) { recipeLevel.set(r.id, lvl); earliest.set(r.id, lvl); changed = true; }
+      }
+    }
+  }
+
+  for (const [bid, b] of Object.entries(d.BUILDINGS)) {
+    for (const r of b.recipes) {
+      if (typeof r.unlockLevel !== 'number') { errors.push(`${bid}/${r.id}: missing unlockLevel`); continue; }
+      if (r.unlockLevel < b.unlockLevel)
+        errors.push(`${bid}/${r.id}: unlockLevel ${r.unlockLevel} is below its building's unlockLevel ${b.unlockLevel}`);
+      const trueLevel = recipeLevel.get(r.id);
+      if (trueLevel != null && r.unlockLevel < trueLevel)
+        errors.push(`${bid}/${r.id}: unlockLevel ${r.unlockLevel} is below the true earliest availability ${trueLevel} of its inputs`);
+    }
+  }
+}
+
+// Margin: a non-sink recipe's output must sell for more than the sum of its inputs, or a
+// player is strictly better off selling the raw ingredients. Recipes that are deliberate
+// sinks (feed, and every Building Workshop component/kit) are tagged sink: true and are
+// exempt on purpose - feed is consumed by animals, not resold, and kits exist to place a
+// building, not to be flipped for coins.
+{
+  const sellValue = (id) => (d.CROPS[id] || d.GOODS[id] || d.MATERIALS[id])?.sellPrice;
+  for (const [bid, b] of Object.entries(d.BUILDINGS)) {
+    for (const r of b.recipes) {
+      if (r.sink) continue;
+      const out = d.GOODS[r.id];
+      if (!out) continue; // already flagged above
+      let inSum = 0;
+      for (const [iid, qty] of Object.entries(r.inputs)) {
+        const sv = sellValue(iid);
+        if (sv == null) continue; // already flagged above
+        inSum += sv * qty;
+      }
+      if (out.sellPrice <= inSum)
+        errors.push(`${bid}/${r.id}: output sells for ${out.sellPrice} but inputs sell for ${inSum} - underwater and not marked sink: true`);
+    }
+  }
+}
+
 // Animals: product in GOODS, feed is a feed-mill recipe (or null for bees).
 const feedIds = new Set(d.BUILDINGS.feed_mill.recipes.map((r) => r.id));
 for (const [aid, a] of Object.entries(d.ANIMALS)) {

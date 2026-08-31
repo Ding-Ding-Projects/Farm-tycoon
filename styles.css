@@ -1,3 +1,4 @@
+@import url('./fonts/fonts.css');  /* 27 locally vendored faces - no CDN at runtime */
 /* styles.css — Farm Tycoon UI, Hay Day-style theme.
    Warm and tactile: wood-plank panels, cream parchment cards, chunky glossy buttons with
    bevel highlights and darker outlines, dark leather-brown counter pills with gold trim.
@@ -37,7 +38,11 @@
   --bevel-bottom: inset 0 -3px 0 rgba(0, 0, 0, 0.22);      /* chunky base edge */
 
   /* type */
-  --font-display: 'Nunito', system-ui, -apple-system, sans-serif;
+  /* Baloo 2 for display, Nunito for UI, per design/handoff/styles.css. Both are vendored
+     locally in fonts/ - the handoff stylesheet named them while shipping neither the files nor
+     an @font-face, which falls back to system-ui with no error and no warning. */
+  --font-display: 'Baloo 2', 'Nunito', system-ui, -apple-system, sans-serif;
+  --font-ui: 'Nunito', system-ui, -apple-system, sans-serif;
   --text-outline: 0 2px 0 rgba(0, 0, 0, 0.35);             /* Hay Day numeral shadow */
 
   /* spacing scale */

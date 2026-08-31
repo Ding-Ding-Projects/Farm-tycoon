@@ -1283,6 +1283,152 @@ export const EVENTS = {
  * (screen coords via renderer.tileToScreen); 'dock:<panel>' spotlights that dock button;
  * 'panel:<selector>' spotlights an element inside the open sheet panel; null = center bubble.
  */
+/**
+ * Simulated neighbours. The game is single-player and offline-first, so every "other player"
+ * it shows - co-op members, regatta rivals, newspaper farms, request posters - comes from this
+ * one pool. It is deliberately ONE system: co-op, regatta and the newspaper each rolling their
+ * own roster would let the same neighbour appear as three different people in three surfaces.
+ *
+ * Generated once from state.createdAt and stored in state.neighbours, never re-rolled per load.
+ * A neighbour who helped with a request yesterday is the same neighbour in this week's regatta,
+ * with the same name and farm. Re-rolling every load is what makes a simulated world feel fake.
+ *
+ * Their activity advances on wall-clock elapsed time, not on ticks the player watched, so a
+ * rival's score moves while the app is closed.
+ *
+ * Never presented as real people online. The co-op and regatta surfaces say plainly that these
+ * are simulated.
+ */
+export const NEIGHBOURS = {
+  poolSize: 40,
+  levelBand: [-6, 6],          // relative to the player, so rivals stay plausible
+  firstNames: [
+    'Ada', 'Bo', 'Cleo', 'Dane', 'Elsa', 'Finn', 'Greta', 'Hugo', 'Iris', 'Jonas',
+    'Kit', 'Lena', 'Mabel', 'Nils', 'Otto', 'Pia', 'Quinn', 'Rosa', 'Silas', 'Tove',
+    'Ulla', 'Vera', 'Wes', 'Xenia', 'Yuki', 'Zeb', 'Anya', 'Bram', 'Cora', 'Dov',
+  ],
+  lastNames: [
+    'Applegate', 'Barleycorn', 'Clover', 'Dunmore', 'Eastfield', 'Fallow', 'Greenhill',
+    'Harrow', 'Ivyshaw', 'Jessop', 'Kettle', 'Larkspur', 'Meadows', 'Northgate', 'Oakley',
+  ],
+  farmNames: [
+    'Windward Acres', 'Thistledown', 'Bramble Hollow', 'Copper Kettle Farm', 'Long Meadow',
+    'Quiet Creek', 'Redgate Farm', 'Sunnyside Holding', 'Two Oaks', 'Wren Cottage',
+    'Amberfield', 'Bellflower Farm', 'Cider Hill', 'Dovecote', 'Elder Brook',
+  ],
+  /** Drives regatta scoring, request fill speed and shop restocking. Weights need not sum to 100. */
+  activityProfiles: {
+    casual:  { weight: 40, scoreMult: 0.6, fillSecondsRange: [3600, 14400] },
+    steady:  { weight: 45, scoreMult: 1.0, fillSecondsRange: [1800, 7200] },
+    devoted: { weight: 15, scoreMult: 1.5, fillSecondsRange: [900, 3600] },
+  },
+};
+
+/**
+ * Artifacts. A SEPARATE id namespace from GOODS on purpose: artifacts live in state.museum,
+ * not the barn. Putting them in the barn would let a full barn soft-lock expedition collection,
+ * and would let order/truck/boat generators ask the player to hand over a museum piece.
+ */
+export const ARTIFACTS = {
+  clay_shard:     { name: 'Clay Shard',      set: 'pottery',   sellPrice: 200 },
+  painted_jug:    { name: 'Painted Jug',     set: 'pottery',   sellPrice: 260 },
+  storage_urn:    { name: 'Storage Urn',     set: 'pottery',   sellPrice: 320 },
+  oil_lamp:       { name: 'Clay Oil Lamp',   set: 'pottery',   sellPrice: 380 },
+  flint_blade:    { name: 'Flint Blade',     set: 'stone_age', sellPrice: 220 },
+  hand_axe:       { name: 'Hand Axe',        set: 'stone_age', sellPrice: 280 },
+  bone_needle:    { name: 'Bone Needle',     set: 'stone_age', sellPrice: 340 },
+  carved_totem:   { name: 'Carved Totem',    set: 'stone_age', sellPrice: 410 },
+  bronze_coin:    { name: 'Bronze Coin',     set: 'coins',     sellPrice: 300 },
+  silver_denarius:{ name: 'Silver Denarius', set: 'coins',     sellPrice: 380 },
+  gold_stater:    { name: 'Gold Stater',     set: 'coins',     sellPrice: 470 },
+  coin_hoard:     { name: 'Coin Hoard',      set: 'coins',     sellPrice: 580 },
+  quartz_cluster: { name: 'Quartz Cluster',  set: 'crystals',  sellPrice: 340 },
+  amethyst_geode: { name: 'Amethyst Geode',  set: 'crystals',  sellPrice: 430 },
+  rose_crystal:   { name: 'Rose Crystal',    set: 'crystals',  sellPrice: 530 },
+  star_sapphire:  { name: 'Star Sapphire',   set: 'crystals',  sellPrice: 660 },
+  ammonite:       { name: 'Ammonite',        set: 'fossils',   sellPrice: 400 },
+  trilobite:      { name: 'Trilobite',       set: 'fossils',   sellPrice: 500 },
+  fern_imprint:   { name: 'Fern Imprint',    set: 'fossils',   sellPrice: 620 },
+  raptor_claw:    { name: 'Raptor Claw',     set: 'fossils',   sellPrice: 780 },
+  ships_bell:     { name: "Ship's Bell",     set: 'sunken',    sellPrice: 460 },
+  brass_sextant:  { name: 'Brass Sextant',   set: 'sunken',    sellPrice: 580 },
+  captains_seal:  { name: "Captain's Seal",  set: 'sunken',    sellPrice: 720 },
+  pearl_casket:   { name: 'Pearl Casket',    set: 'sunken',    sellPrice: 900 },
+};
+
+/**
+ * The Museum. Six exhibits, each completed by finding every artifact in its set. Deliberately
+ * far smaller than Township's 69 collections / 345 artifacts - that is a years-long collection
+ * treadmill and this game is not asking for one.
+ */
+export const MUSEUM = {
+  unlockLevel: 60,
+  duplicatePolicy: 'sell',      // duplicates convert to coins rather than being refused
+  exhibits: {
+    pottery:   { name: 'Ancient Pottery',  artifacts: ['clay_shard', 'painted_jug', 'storage_urn', 'oil_lamp'],
+                 rewards: { coins: 60000,  diamonds: 8,  decoration: 'relic_plinth' },  visitorBonusPerHour: 40 },
+    stone_age: { name: 'The Stone Age',    artifacts: ['flint_blade', 'hand_axe', 'bone_needle', 'carved_totem'],
+                 rewards: { coins: 85000,  diamonds: 10 }, visitorBonusPerHour: 55 },
+    coins:     { name: 'Coins of Empire',  artifacts: ['bronze_coin', 'silver_denarius', 'gold_stater', 'coin_hoard'],
+                 rewards: { coins: 120000, diamonds: 12 }, visitorBonusPerHour: 70 },
+    crystals:  { name: 'Crystals',         artifacts: ['quartz_cluster', 'amethyst_geode', 'rose_crystal', 'star_sapphire'],
+                 rewards: { coins: 160000, diamonds: 14 }, visitorBonusPerHour: 90 },
+    fossils:   { name: 'Fossils',          artifacts: ['ammonite', 'trilobite', 'fern_imprint', 'raptor_claw'],
+                 rewards: { coins: 210000, diamonds: 18, decoration: 'fossil_display' }, visitorBonusPerHour: 115 },
+    sunken:    { name: 'The Sunken Ship',  artifacts: ['ships_bell', 'brass_sextant', 'captains_seal', 'pearl_casket'],
+                 rewards: { coins: 280000, diamonds: 24 }, visitorBonusPerHour: 145 },
+  },
+};
+
+/**
+ * Expeditions. Send a crew to a site; they come back with loot after a real-time trip. Supplies
+ * are consumed up front, so a failed run costs something - otherwise there is no decision.
+ */
+export const EXPEDITIONS = {
+  unlockLevel: 57,
+  crewSlots: 3,
+  specialists: {
+    digger:   { name: 'Digger',   cost: 40000, hireTime: 7200,  bonus: { artifactChance: 0.05 } },
+    scout:    { name: 'Scout',    cost: 55000, hireTime: 9000,  bonus: { speedMult: 0.85 } },
+    cook:     { name: 'Cook',     cost: 70000, hireTime: 10800, bonus: { riskReduction: 0.05 } },
+    mechanic: { name: 'Mechanic', cost: 90000, hireTime: 12600, bonus: { lootBonus: 0.15 } },
+  },
+  sites: {
+    dust_canyon:  { name: 'Dust Canyon',    unlockLevel: 57, duration: 5400,  riskFailChance: 0.10, artifactChance: 0.25,
+                    supplies: { bread: 2, carrot_juice: 1 },
+                    loot: [{ item: 'ore_silver', qty: [3, 6], weight: 40 }, { artifact: 'clay_shard', weight: 15 },
+                           { material: 'cement', qty: [1, 3], weight: 15 }, { coins: [500, 1500], weight: 30 }] },
+    hollow_ridge: { name: 'Hollow Ridge',   unlockLevel: 61, duration: 9000,  riskFailChance: 0.12, artifactChance: 0.28,
+                    supplies: { bread: 3, cheese: 1 },
+                    loot: [{ item: 'ore_gold', qty: [2, 5], weight: 38 }, { artifact: 'flint_blade', weight: 17 },
+                           { material: 'wire', qty: [1, 3], weight: 15 }, { coins: [1200, 3000], weight: 30 }] },
+    salt_flats:   { name: 'Salt Flats',     unlockLevel: 65, duration: 12600, riskFailChance: 0.14, artifactChance: 0.30,
+                    supplies: { green_tea: 2, pickles: 1 },
+                    loot: [{ item: 'ore_platinum', qty: [1, 3], weight: 32 }, { artifact: 'bronze_coin', weight: 18 },
+                           { material: 'rope', qty: [2, 4], weight: 20 }, { coins: [2500, 5000], weight: 30 }] },
+    glass_caves:  { name: 'Glass Caves',    unlockLevel: 70, duration: 16200, riskFailChance: 0.15, artifactChance: 0.33,
+                    supplies: { olive_oil: 1, sushi_roll: 1 },
+                    loot: [{ item: 'gem', qty: [1, 2], weight: 28 }, { artifact: 'quartz_cluster', weight: 20 },
+                           { material: 'timber', qty: [2, 5], weight: 22 }, { coins: [4000, 8000], weight: 30 }] },
+    fossil_beds:  { name: 'Fossil Beds',    unlockLevel: 75, duration: 21600, riskFailChance: 0.16, artifactChance: 0.36,
+                    supplies: { lasagna: 1, mint_tea: 2 },
+                    loot: [{ item: 'ore_platinum', qty: [2, 4], weight: 26 }, { artifact: 'ammonite', weight: 22 },
+                           { material: 'jackhammer', qty: [1, 2], weight: 18 }, { coins: [7000, 13000], weight: 34 }] },
+    drowned_bay:  { name: 'Drowned Bay',    unlockLevel: 80, duration: 27000, riskFailChance: 0.18, artifactChance: 0.38,
+                    supplies: { canned_fish: 1, herb_fondue: 1 },
+                    loot: [{ item: 'pearls', qty: [1, 3], weight: 26 }, { artifact: 'ships_bell', weight: 24 },
+                           { material: 'electric_saw', qty: [1, 2], weight: 16 }, { coins: [11000, 20000], weight: 34 }] },
+    ember_slope:  { name: 'Ember Slope',    unlockLevel: 86, duration: 32400, riskFailChance: 0.20, artifactChance: 0.40,
+                    supplies: { pearl_necklace: 1, mint_yogurt: 2 },
+                    loot: [{ item: 'gem', qty: [2, 4], weight: 24 }, { artifact: 'raptor_claw', weight: 26 },
+                           { material: 'drill', qty: [1, 3], weight: 16 }, { coins: [18000, 32000], weight: 34 }] },
+    lost_terrace: { name: 'The Lost Terrace',unlockLevel: 92, duration: 39600, riskFailChance: 0.22, artifactChance: 0.45,
+                    supplies: { gold_ring: 1, caviar_tin: 1 },
+                    loot: [{ item: 'gem', qty: [3, 6], weight: 22 }, { artifact: 'pearl_casket', weight: 28 },
+                           { material: 'jackhammer', qty: [2, 4], weight: 16 }, { coins: [30000, 55000], weight: 34 }] },
+  },
+};
+
 export const TUTORIAL = {
   finishReward: { coins: 200, diamonds: 2, xp: 20 },
   steps: [

@@ -228,6 +228,91 @@ for (const [label, table] of [['crop', d.CROPS], ['animal', d.ANIMALS], ['buildi
     if (v.unlockLevel > d.LEVELS.maxLevel)
       errors.push(`${label} '${id}' unlocks at ${v.unlockLevel}, above maxLevel ${d.LEVELS.maxLevel}`);
 
+// Artifacts live in their own id namespace because they are stored in state.museum, not the
+// barn. If an id collided with a good, a crop or a material, the two stores would disagree
+// about what the player owns and nothing else would notice.
+{
+  const spaces = [['GOODS', d.GOODS], ['CROPS', d.CROPS], ['MATERIALS', d.MATERIALS], ['ARTIFACTS', d.ARTIFACTS]];
+  for (let i = 0; i < spaces.length; i++)
+    for (let j = i + 1; j < spaces.length; j++)
+      for (const id of Object.keys(spaces[i][1]))
+        if (spaces[j][1][id]) errors.push(`id '${id}' exists in both ${spaces[i][0]} and ${spaces[j][0]}`);
+}
+
+// Museum: every artifact belongs to exactly one exhibit, and every exhibit lists only real
+// artifacts. Checked as a bijection in BOTH directions - a one-way check passes happily on an
+// artifact that belongs to no exhibit and can therefore never be displayed.
+{
+  const claimed = new Map();
+  for (const [eid, ex] of Object.entries(d.MUSEUM.exhibits)) {
+    if (!ex.artifacts || ex.artifacts.length === 0) errors.push(`exhibit ${eid}: no artifacts`);
+    for (const aid of ex.artifacts || []) {
+      if (!d.ARTIFACTS[aid]) errors.push(`exhibit ${eid}: unknown artifact '${aid}'`);
+      if (claimed.has(aid)) errors.push(`artifact '${aid}' is in both ${claimed.get(aid)} and ${eid}`);
+      claimed.set(aid, eid);
+    }
+    if (ex.rewards) {
+      if (ex.rewards.decoration && !d.DECORATIONS[ex.rewards.decoration])
+        errors.push(`exhibit ${eid}: reward decoration '${ex.rewards.decoration}' unknown`);
+      if (!(ex.rewards.coins > 0)) errors.push(`exhibit ${eid}: reward coins must be positive`);
+    }
+    if (!(ex.visitorBonusPerHour >= 0)) errors.push(`exhibit ${eid}: bad visitorBonusPerHour`);
+  }
+  for (const [aid, a] of Object.entries(d.ARTIFACTS)) {
+    if (!claimed.has(aid)) errors.push(`artifact '${aid}' is in no exhibit - it can never be displayed`);
+    if (!d.MUSEUM.exhibits[a.set]) errors.push(`artifact '${aid}': set '${a.set}' is not an exhibit`);
+    else if (!d.MUSEUM.exhibits[a.set].artifacts.includes(aid))
+      errors.push(`artifact '${aid}' claims set '${a.set}' but that exhibit does not list it`);
+    if (!(a.sellPrice > 0)) errors.push(`artifact '${aid}': bad sellPrice`);
+  }
+}
+
+// Expeditions: supplies are real items, and every loot entry names exactly one kind of reward.
+// "Exactly one" matters - an entry with both an item and coins would pay twice or neither
+// depending on which branch the collector happens to check first.
+for (const [sid, s] of Object.entries(d.EXPEDITIONS.sites)) {
+  for (const k of Object.keys(s.supplies || {})) if (!item(k)) errors.push(`expedition ${sid}: supply '${k}' unknown`);
+  if (!(s.duration > 0)) errors.push(`expedition ${sid}: bad duration`);
+  if (!(s.riskFailChance >= 0 && s.riskFailChance < 1)) errors.push(`expedition ${sid}: riskFailChance out of range`);
+  if (!(s.artifactChance >= 0 && s.artifactChance <= 1)) errors.push(`expedition ${sid}: artifactChance out of range`);
+  for (const l of s.loot || []) {
+    const kinds = ['item', 'artifact', 'material', 'coins', 'diamonds'].filter((k) => l[k] !== undefined);
+    if (kinds.length !== 1) errors.push(`expedition ${sid}: loot entry names ${kinds.length} reward kinds (${kinds.join(', ') || 'none'}), needs exactly 1`);
+    if (l.item && !d.GOODS[l.item]) errors.push(`expedition ${sid}: loot item '${l.item}' unknown`);
+    if (l.artifact && !d.ARTIFACTS[l.artifact]) errors.push(`expedition ${sid}: loot artifact '${l.artifact}' unknown`);
+    if (l.material && !d.MATERIALS[l.material]) errors.push(`expedition ${sid}: loot material '${l.material}' unknown`);
+    if (!(l.weight > 0)) errors.push(`expedition ${sid}: loot weight must be positive`);
+  }
+}
+if (!(d.EXPEDITIONS.crewSlots > 0)) errors.push('EXPEDITIONS: crewSlots must be positive');
+for (const [spid, sp] of Object.entries(d.EXPEDITIONS.specialists)) {
+  if (!(sp.cost > 0) || !(sp.hireTime > 0)) errors.push(`specialist ${spid}: bad cost or hireTime`);
+  const BONUS = ['artifactChance', 'speedMult', 'riskReduction', 'lootBonus'];
+  for (const k of Object.keys(sp.bonus || {})) if (!BONUS.includes(k)) errors.push(`specialist ${spid}: unknown bonus '${k}'`);
+}
+
+// Neighbours: one pool, and it must actually be able to produce distinct people.
+{
+  const N = d.NEIGHBOURS;
+  if (!(N.poolSize > 0)) errors.push('NEIGHBOURS: poolSize must be positive');
+  for (const key of ['firstNames', 'lastNames', 'farmNames']) {
+    if (!N[key] || N[key].length === 0) errors.push(`NEIGHBOURS: ${key} is empty`);
+    else if (new Set(N[key]).size !== N[key].length) errors.push(`NEIGHBOURS: ${key} contains duplicates`);
+  }
+  // The pool must be namable without collisions, or two "different" neighbours share a name.
+  if (N.firstNames && N.lastNames && N.firstNames.length * N.lastNames.length < N.poolSize)
+    errors.push(`NEIGHBOURS: ${N.firstNames.length} x ${N.lastNames.length} name combinations cannot fill a pool of ${N.poolSize}`);
+  if (!N.farmNames || N.farmNames.length < 1) errors.push('NEIGHBOURS: needs at least one farm name');
+  if (!(N.levelBand[0] <= N.levelBand[1])) errors.push('NEIGHBOURS: levelBand is inverted');
+  const profs = Object.entries(N.activityProfiles || {});
+  if (profs.length === 0) errors.push('NEIGHBOURS: no activity profiles');
+  for (const [pid, pr] of profs) {
+    if (!(pr.weight > 0)) errors.push(`neighbour profile ${pid}: weight must be positive`);
+    if (!(pr.scoreMult > 0)) errors.push(`neighbour profile ${pid}: scoreMult must be positive`);
+    if (!(pr.fillSecondsRange[0] <= pr.fillSecondsRange[1])) errors.push(`neighbour profile ${pid}: fillSecondsRange inverted`);
+  }
+}
+
 // LEVELS.unlocks ids resolve to known content or feature flags.
 const features = new Set([
   'field', 'orders_board', 'truck', 'boat', 'fishing', 'mine', 'pets', 'merge_meadow',

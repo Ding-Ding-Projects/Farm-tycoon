@@ -126,7 +126,9 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add RELEASE-CODENAMES.md
-            git commit \n              -m "Record dim sum code name for ${{ steps.tagver.outputs.tag }}" \n              -m "記錄呢個 release 用咗邊隻點心做代號，食過就唔會撞名。"
+            git commit \
+              -m "Record dim sum code name for ${{ steps.tagver.outputs.tag }}" \
+              -m "記錄呢個 release 用咗邊隻點心做代號，食過就唔會撞名。"
             git push origin HEAD:main
           else
             echo "No code-name ledger change to commit."

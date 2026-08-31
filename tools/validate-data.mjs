@@ -57,7 +57,42 @@ for (const a of d.ACHIEVEMENTS) {
 }
 
 // Decorations & pets sanity.
-for (const [id, dec] of Object.entries(d.DECORATIONS)) if (!dec.cost && !dec.voucherCost) errors.push(`decoration ${id}: no cost`);
+for (const [id, dec] of Object.entries(d.DECORATIONS)) {
+  if (!dec.cost && !dec.voucherCost && !dec.eventOnly) errors.push(`decoration ${id}: no cost and not eventOnly`);
+  if (dec.holiday && !d.EVENTS.holidays.some((hd) => hd.id === dec.holiday)) errors.push(`decoration ${id}: unknown holiday '${dec.holiday}'`);
+}
+
+// Events: rotations non-empty; thresholds ascending & matching rewards; reward refs resolve.
+const STAT_KEYS = new Set([
+  'cropsHarvested', 'goodsProduced', 'ordersFulfilled', 'trucksCompleted', 'truckBundles',
+  'boatsCompleted', 'boatCrates', 'fishCaught', 'uniqueFishCaught', 'mineDigs',
+  'animalCollections', 'shopSales', 'merges', 'feedMade', 'coinsEarned', 'level',
+]);
+const checkReward = (ctx, rw) => {
+  if (rw.item && !d.GOODS[rw.item]) errors.push(`${ctx}: reward item '${rw.item}' unknown`);
+  if (rw.decoration && !d.DECORATIONS[rw.decoration]) errors.push(`${ctx}: reward decoration '${rw.decoration}' unknown`);
+};
+for (const pool of [d.EVENTS.weekend.rotation, d.EVENTS.miniWeekday.rotation]) {
+  if (!pool.length) errors.push('event rotation empty');
+  for (const ev of pool) {
+    for (const s of Object.keys(ev.pointsFor)) if (!STAT_KEYS.has(s)) errors.push(`event ${ev.id}: unknown stat '${s}'`);
+    if (ev.thresholds.length !== ev.rewards.length) errors.push(`event ${ev.id}: thresholds/rewards length mismatch`);
+    for (let i = 1; i < ev.thresholds.length; i++) if (ev.thresholds[i] <= ev.thresholds[i - 1]) errors.push(`event ${ev.id}: thresholds not ascending`);
+    ev.rewards.forEach((rw) => checkReward(`event ${ev.id}`, rw));
+  }
+}
+for (const t of d.EVENTS.fair.taskPool) {
+  if (!STAT_KEYS.has(t.stat)) errors.push(`fair task ${t.id}: unknown stat '${t.stat}'`);
+  if (!(t.target > 0) || !(t.points > 0)) errors.push(`fair task ${t.id}: bad target/points`);
+}
+if (d.EVENTS.fair.taskPool.length < d.EVENTS.fair.tasksPerFair) errors.push('fair taskPool smaller than tasksPerFair');
+{
+  const r = d.EVENTS.fair.ribbonThresholds;
+  if (!(r.bronze < r.silver && r.silver < r.gold)) errors.push('fair ribbon thresholds not ascending');
+  for (const [tier, rw] of Object.entries(d.EVENTS.fair.ribbonRewards)) checkReward(`fair ribbon ${tier}`, rw);
+  for (const p of d.EVENTS.fair.fairPass) checkReward('fairPass', p);
+}
+for (const hd of d.EVENTS.holidays) if (!hd.months?.length) errors.push(`holiday ${hd.id}: no months`);
 
 if (errors.length) {
   console.error(`data.js validation FAILED (${errors.length}):\n- ` + errors.join('\n- '));
@@ -67,5 +102,6 @@ console.log(
   `data.js OK — ${Object.keys(d.CROPS).length} crops, ${Object.keys(d.ANIMALS).length} animals, ` +
   `${Object.keys(d.BUILDINGS).length} buildings, ${Object.values(d.BUILDINGS).reduce((n, b) => n + b.recipes.length, 0)} recipes, ` +
   `${Object.keys(d.GOODS).length} goods, ${Object.keys(d.MERGE.chains).length} merge chains, ${d.ACHIEVEMENTS.length} achievements, ` +
-  `${d.LEVELS.maxLevel} levels all with unlocks`
+  `${d.LEVELS.maxLevel} levels all with unlocks, ${d.EVENTS.weekend.rotation.length} weekend events + ` +
+  `${d.EVENTS.miniWeekday.rotation.length} mini-events + ${d.EVENTS.fair.taskPool.length} fair tasks + ${d.EVENTS.holidays.length} holidays`
 );

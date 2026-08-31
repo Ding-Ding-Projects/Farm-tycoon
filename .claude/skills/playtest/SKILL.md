@@ -21,11 +21,13 @@ Uses the debug hook `main.js` exposes: `window.__farmDebug = { timeSkip(ms), sta
    - `coins >= 0`, `diamonds >= 0`
    - silo/barn item totals ≤ capacity
    - no `production` entry references a missing object or recipe
-5. **Orders:** fulfill one board order with stocked goods → coins and XP increase by the
+5. **Events:** event invariants — `state.event.points` never negative; claiming a tier
+   twice is a no-op; expired events settle without crash on load.
+6. **Orders:** fulfill one board order with stocked goods → coins and XP increase by the
    order's stated reward.
-6. **Save/reload:** trigger save, `page.reload()`, deep-compare state before/after
+7. **Save/reload:** trigger save, `page.reload()`, deep-compare state before/after
    (ignoring volatile fields like `lastSaved`). Offline progress: `timeSkip` while a crop
    grows, reload → crop is ready.
-7. **Screenshot** the final state for a visual once-over.
+8. **Screenshot** the final state for a visual once-over.
 
 Any invariant failure or console error = do not commit; fix first.

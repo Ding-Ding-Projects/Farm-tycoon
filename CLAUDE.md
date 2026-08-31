@@ -34,7 +34,7 @@ API contract with `/* Phase B */` stub bodies — implement to those contracts.
 | `src/fishing.js` | cast + reel minigame, chests |
 | `src/mine.js` | digs + ore yields (smelting is a normal building recipe) |
 | `src/merge.js` | Merge Meadow: merge-board minigame (chains, energy, claims) |
-| `src/extras.js` | achievements, daily wheel, visitors, pets, seasonal events |
+| `src/extras.js` | achievements, daily wheel, visitors, pets, events (weekend/mini/Farm Fair/holidays) |
 | `src/render/renderer.js` | camera, iso tile math, frame drawing, DPR scaling |
 | `src/render/sprites.js` | ALL vector art draw functions (no image assets, ever) |
 | `src/render/effects.js` | particles: coin bursts, XP floaters, sparkles |

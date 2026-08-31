@@ -330,6 +330,20 @@ export const DECORATIONS = {
   golden_statue:{ name: 'Golden Cow Statue', voucherCost: 40, size: [2, 2] },
   lily_pond:    { name: 'Lily Pond',         voucherCost: 25, size: [2, 2] },
   topiary:      { name: 'Topiary Horse',     voucherCost: 15, size: [1, 1] },
+  // event-exclusive (gold tier of weekend events / Fair Pass) — no coin price
+  bunting_fence:   { name: 'Bunting Fence',    eventOnly: true, size: [1, 1] },
+  festival_tent:   { name: 'Festival Tent',    eventOnly: true, size: [2, 2] },
+  prize_trophy:    { name: 'Prize Trophy',     eventOnly: true, size: [1, 1] },
+  balloon_cluster: { name: 'Balloon Cluster',  eventOnly: true, size: [1, 1] },
+  trophy_bronze:   { name: 'Bronze Fair Trophy', eventOnly: true, size: [1, 1] },
+  trophy_silver:   { name: 'Silver Fair Trophy', eventOnly: true, size: [1, 1] },
+  trophy_gold:     { name: 'Golden Fair Trophy', eventOnly: true, size: [2, 2] },
+  // holiday-limited (purchasable only in season; owned ones persist)
+  snowman:        { name: 'Snowman',         cost: 600,  size: [1, 1], holiday: 'winter_holiday' },
+  string_lights:  { name: 'String Lights',   cost: 400,  size: [1, 1], holiday: 'winter_holiday' },
+  pumpkin_pile:   { name: 'Pumpkin Pile',    cost: 450,  size: [1, 1], holiday: 'harvest_fest' },
+  cherry_blossom: { name: 'Cherry Blossom',  cost: 800,  size: [1, 1], holiday: 'spring_bloom' },
+  beach_chair:    { name: 'Beach Chair',     cost: 350,  size: [1, 1], holiday: 'summer_splash' },
 };
 
 /** Level curve + per-level unlocks (levels 1–40, an unlock at every level). */
@@ -457,13 +471,116 @@ export const PETS = {
   cat: { name: 'Cat', unlockLevel: 10, cost: 2000, feedXp: 15 },
 };
 
-/** Rotating seasonal events (client-side schedule, one active at a time, ~3 days each). */
-export const EVENTS = [
-  { id: 'harvest_festival', name: 'Harvest Festival', desc: 'Crops sell for 2x!',        effect: { cropSellMult: 2 } },
-  { id: 'fishing_frenzy',   name: 'Fishing Frenzy',   desc: 'Double fish from the pond!', effect: { fishDouble: true } },
-  { id: 'baking_bonanza',   name: 'Baking Bonanza',   desc: 'Bakery goods give 2x XP!',   effect: { bakeryXpMult: 2 } },
-  { id: 'gold_rush',        name: 'Gold Rush',        desc: 'Mine yields are doubled!',   effect: { mineDouble: true } },
-];
+/**
+ * Events — Hay Day-style event system, single-player adaptation. Entirely client-side and
+ * deterministic from the calendar (no server): the ISO week number picks the weekend event
+ * from the rotation, so schedules are predictable and identical across reinstalls.
+ * Event state lives in state.event: { id, kind, endsAt, points, claimedTiers }.
+ */
+export const EVENTS = {
+  /**
+   * Weekend point events — one runs every Fri 00:00 → Sun 24:00 (local), chosen by
+   * weekNumber % rotation.length. Themed actions score points (via extras.addEventPoints);
+   * bronze/silver/gold tiers pay out once each. Point thresholds are BASE values; at claim
+   * time they scale by (0.5 + level/20) so early players can reach tiers too.
+   * effect: passive buff while the event runs (consumed via extras.activeEventEffect()).
+   */
+  weekend: {
+    tiers: ['bronze', 'silver', 'gold'],
+    levelScale: (level) => 0.5 + level / 20,
+    rotation: [
+      { id: 'harvest_event',  name: 'Harvest Event',   desc: 'Score for every crop harvested — 2x crop XP all weekend!',
+        pointsFor: { cropsHarvested: 1 }, effect: { cropXpMult: 2 },
+        thresholds: [120, 400, 1000],
+        rewards: [{ coins: 500 }, { coins: 1500, diamonds: 2 }, { coins: 4000, diamonds: 5, decoration: 'bunting_fence' }] },
+      { id: 'production_event', name: 'Production Event', desc: 'Score for every good produced!',
+        pointsFor: { goodsProduced: 2 }, effect: { productionXpMult: 2 },
+        thresholds: [100, 320, 800],
+        rewards: [{ coins: 600 }, { coins: 1800, diamonds: 2 }, { coins: 4500, diamonds: 5, decoration: 'festival_tent' }] },
+      { id: 'fishing_frenzy', name: 'Fishing Frenzy',  desc: 'Score per fish — and every catch is doubled!',
+        pointsFor: { fishCaught: 5 }, effect: { fishDouble: true },
+        thresholds: [60, 200, 500],
+        rewards: [{ coins: 500 }, { coins: 1500, diamonds: 2 }, { coins: 4000, diamonds: 5, item: 'dynamite', qty: 3 }] },
+      { id: 'mining_madness', name: 'Mining Madness',  desc: 'Score per ore — and ore yields are doubled!',
+        pointsFor: { mineDigs: 8 }, effect: { mineDouble: true },
+        thresholds: [64, 200, 480],
+        rewards: [{ coins: 800 }, { coins: 2400, diamonds: 3 }, { coins: 6000, diamonds: 6, decoration: 'prize_trophy' }] },
+      { id: 'truck_bonanza',  name: 'Truck Bonanza',   desc: 'Score per truck bundle — trucks pay +50% coins!',
+        pointsFor: { truckBundles: 10 }, effect: { truckCoinMult: 1.5 },
+        thresholds: [60, 180, 420],
+        rewards: [{ coins: 700 }, { coins: 2000, diamonds: 2 }, { coins: 5000, diamonds: 5, decoration: 'balloon_cluster' }] },
+      { id: 'boat_race',      name: 'Boat Race',       desc: 'Score per boat crate — boats bring extra vouchers!',
+        pointsFor: { boatCrates: 12 }, effect: { boatVoucherBonus: 3 },
+        thresholds: [48, 144, 360],
+        rewards: [{ coins: 900 }, { coins: 2600, diamonds: 3 }, { coins: 6500, diamonds: 6, vouchers: 12 }] },
+      { id: 'merge_mania',    name: 'Merge Mania',     desc: 'Score per merge in Merge Meadow — energy refills faster!',
+        pointsFor: { merges: 3 }, effect: { mergeEnergyRegenMult: 2 },
+        thresholds: [60, 210, 540],
+        rewards: [{ coins: 500 }, { coins: 1500, diamonds: 2 }, { coins: 4000, diamonds: 6 }] },
+    ],
+  },
+  /**
+   * Tue–Wed mini-event: a small single-tier buff + goal, rotating on the same week number.
+   */
+  miniWeekday: {
+    rotation: [
+      { id: 'egg_hunt',   name: 'Egg Hunt',    desc: 'Collect 30 animal products for a bonus!', pointsFor: { animalCollections: 1 }, thresholds: [30], rewards: [{ coins: 800, diamonds: 1 }] },
+      { id: 'bake_off',   name: 'Bake-Off',    desc: 'Bake 15 bakery goods for a bonus!',       pointsFor: { goodsProduced: 1 }, buildingFilter: 'bakery', thresholds: [15], rewards: [{ coins: 900, diamonds: 1 }] },
+      { id: 'order_rush', name: 'Order Rush',  desc: 'Fulfill 10 board orders for a bonus!',    pointsFor: { ordersFulfilled: 1 }, thresholds: [10], rewards: [{ coins: 1000, diamonds: 1 }] },
+    ],
+  },
+  /**
+   * Farm Fair — the Derby, solo adaptation. Monthly (first full week each month), L15+:
+   * 9 tasks drawn deterministically from taskPool (seeded by year+month); finish any 7
+   * within the week. Ribbon tiers by summed task points. fairPass: lifetime gold ribbons
+   * unlock the trophy decoration line.
+   */
+  fair: {
+    unlockLevel: 15,
+    tasksPerFair: 9,
+    tasksToComplete: 7,
+    durationDays: 7,
+    ribbonThresholds: { bronze: 900, silver: 1600, gold: 2300 },
+    ribbonRewards: {
+      bronze: { coins: 3000, diamonds: 3 },
+      silver: { coins: 8000, diamonds: 6 },
+      gold:   { coins: 20000, diamonds: 12 },
+    },
+    fairPass: [
+      { goldRibbons: 1, decoration: 'trophy_bronze' },
+      { goldRibbons: 3, decoration: 'trophy_silver' },
+      { goldRibbons: 6, decoration: 'trophy_gold' },
+    ],
+    taskPool: [
+      { id: 'harvest_150',  desc: 'Harvest 150 crops',            stat: 'cropsHarvested',   target: 150, points: 300 },
+      { id: 'harvest_320',  desc: 'Harvest 320 crops',            stat: 'cropsHarvested',   target: 320, points: 450 },
+      { id: 'produce_40',   desc: 'Produce 40 goods',             stat: 'goodsProduced',    target: 40,  points: 300 },
+      { id: 'produce_90',   desc: 'Produce 90 goods',             stat: 'goodsProduced',    target: 90,  points: 450 },
+      { id: 'orders_12',    desc: 'Fulfill 12 board orders',      stat: 'ordersFulfilled',  target: 12,  points: 300 },
+      { id: 'orders_25',    desc: 'Fulfill 25 board orders',      stat: 'ordersFulfilled',  target: 25,  points: 450 },
+      { id: 'trucks_6',     desc: 'Complete 6 truck orders',      stat: 'trucksCompleted',  target: 6,   points: 350 },
+      { id: 'crates_8',     desc: 'Fill 8 boat crates',           stat: 'boatCrates',       target: 8,   points: 350 },
+      { id: 'fish_15',      desc: 'Catch 15 fish',                stat: 'fishCaught',       target: 15,  points: 250 },
+      { id: 'fish_35',      desc: 'Catch 35 fish',                stat: 'fishCaught',       target: 35,  points: 400 },
+      { id: 'dig_10',       desc: 'Dig 10 times in the mine',     stat: 'mineDigs',         target: 10,  points: 300 },
+      { id: 'animals_60',   desc: 'Collect 60 animal products',   stat: 'animalCollections', target: 60, points: 300 },
+      { id: 'shop_15',      desc: 'Sell 15 shop listings',        stat: 'shopSales',        target: 15,  points: 250 },
+      { id: 'merges_40',    desc: 'Make 40 merges in the Meadow', stat: 'merges',           target: 40,  points: 300 },
+      { id: 'feed_30',      desc: 'Make 30 batches of feed',      stat: 'feedMade',         target: 30,  points: 300 },
+    ],
+  },
+  /**
+   * Holiday seasons — date-keyed cosmetic overlays + limited shop decorations.
+   * months are 1-based; tint applies over the world; decorations with matching `holiday`
+   * are only purchasable during the season (owned ones stay forever).
+   */
+  holidays: [
+    { id: 'spring_bloom',   name: 'Spring Bloom',   months: [4],  tint: 'rgba(255, 220, 240, 0.06)', extraFlowers: true },
+    { id: 'summer_splash',  name: 'Summer Splash',  months: [7],  tint: 'rgba(255, 240, 180, 0.06)' },
+    { id: 'harvest_fest',   name: 'Harvest Fest',   months: [10], tint: 'rgba(255, 180, 90, 0.08)',  pumpkinsEverywhere: true },
+    { id: 'winter_holiday', name: 'Winter Holiday', months: [12], tint: 'rgba(210, 235, 255, 0.12)', snow: true },
+  ],
+};
 
 /**
  * Tutorial — the guided first minutes. Steps run in order; each highlights a target and

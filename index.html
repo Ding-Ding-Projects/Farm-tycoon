@@ -27,6 +27,20 @@
     </div>
   </div>
 
+  <!-- Event banner (weekend event / mini-event / Farm Fair; hidden when none active) -->
+  <div class="event-banner" id="event-banner" hidden>
+    <span class="event-icon" id="event-icon">🎪</span>
+    <div class="event-info">
+      <strong id="event-name"></strong>
+      <div class="event-progress"><div class="event-progress-fill" id="event-progress-fill"></div>
+        <span class="event-tier-pin" data-tier="bronze"></span>
+        <span class="event-tier-pin" data-tier="silver"></span>
+        <span class="event-tier-pin" data-tier="gold"></span>
+      </div>
+    </div>
+    <span class="event-timer" id="event-timer"></span>
+  </div>
+
   <!-- Bottom dock -->
   <nav class="dock" id="dock">
     <button class="dock-btn" data-panel="build" title="Build">🔨</button>

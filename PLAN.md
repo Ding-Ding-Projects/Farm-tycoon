@@ -126,7 +126,25 @@ Applies to **Phase B**: the game is implemented **fully, start to finish, in a s
 - **Visitors:** occasional NPC visitors wander to your shop/farm and ask to buy a specific item at a premium — accept or decline.
 - **Merge Meadow (L11) — Township-style merge minigame:** a separate 7×9 merge board opened from the dock. Generators (Toolbox, Seed Sack, Gift Box) spawn tier-1 items for energy (regenerates ~1/90s, max 100, offline like all timers); drag two identical items to merge into the next tier across 3 chains (Tools 7 tiers, Plants 7, Treats 6). Mid-chain and top-tier items are claimable for rewards that pay into the main farm — coins, diamonds, boat vouchers, and mine tools — so the minigame feeds the core loop. Small bonus drops (coins/energy) on ~12% of merges. Board state persists in the save. Module: `src/merge.js`; tuning in `data.js` `MERGE`.
 - **Pets (L10+):** dog and cat roam the farm; feed them daily for an XP bonus and idle animations.
-- **Seasonal events:** a lightweight rotating event every few days (e.g. "Harvest Festival": wheat sells 2x; "Fishing Frenzy": double fish) — banner announces it, adds variety without new assets.
+- **Events (Hay Day-style, offline single-player; all client-side + deterministic from the calendar):**
+  - **Weekend point events** (Fri–Sun, picked by ISO week number from a 7-event rotation):
+    Harvest / Production / Fishing Frenzy / Mining Madness / Truck Bonanza / Boat Race /
+    Merge Mania. Themed actions score points; bronze/silver/gold tiers (level-scaled
+    thresholds) pay coins, diamonds, goods — gold tiers of some events grant exclusive
+    decorations (bunting fence, festival tent, prize trophy, balloon cluster). Each event
+    also carries a passive weekend buff (2x crop XP, double fish, +50% truck coins, ...).
+  - **Weekday mini-events** (Tue–Wed): one small single-tier goal (Egg Hunt, Bake-Off,
+    Order Rush).
+  - **Farm Fair** (the Derby, solo adaptation; monthly, L15+): 9 tasks drawn from a
+    15-task pool (seeded by year+month), complete any 7 in the week; bronze/silver/gold
+    ribbons by task points with big rewards; lifetime gold ribbons fill the **Fair Pass**
+    (bronze/silver/golden trophy decoration line).
+  - **Holiday seasons** (month-keyed, cosmetic): Spring Bloom, Summer Splash, Harvest
+    Fest, Winter Holiday (snow tint) — each with limited shop decorations that stay once
+    owned. No paid anything.
+  - UI: `.event-banner` strip under the HUD (icon, progress bar with tier pins, timer);
+    event panel via the ⭐ extras dock button. Data in `data.js` `EVENTS`; logic contract
+    in `extras.js` (tickEvents, addEventPoints, claimEventTier, activeFair, ...).
 - **Tutorial:** guided first 10 minutes — arrow + highlight overlay walks the player through plant → harvest → feed chicken → bake bread → fulfill first order.
 - **Sound (WebAudio, generated in code):** soft pops, coin clinks, harvest swishes, ambient birds — synthesized (no audio files), with a mute toggle.
 - **Settings panel:** sound on/off, autosave interval, reset game, and manual save-export/import (JSON download/paste) so progress can move between machines.

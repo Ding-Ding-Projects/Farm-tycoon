@@ -59,6 +59,7 @@ Defined in `styles.css :root`; restyle by changing values, keep the names:
 | `.toast` / `.toast-stack` | transient top-center messages |
 | `.modal-backdrop` / `.modal-card` | centered popups (level-up, daily wheel, confirmations) |
 | `.btn` (+ `.gold`, `.danger`) | primary pill buttons |
+| `.event-banner` | event HUD strip: `.event-icon`, `.event-progress` (+ `.event-progress-fill`, `.event-tier-pin[data-tier]`), `.event-timer` |
 | `.tutorial-overlay` | guided-intro layer: `.tutorial-spotlight` (dim + circular cutout), `.tutorial-bubble` (parchment instruction card), `.tutorial-arrow` (bouncing pointer) |
 
 ## Screens to design (artboards)
@@ -79,6 +80,10 @@ Defined in `styles.css :root`; restyle by changing values, keep the names:
 14. **Merge Meadow** — full-screen 7×9 merge board (Township-style): rounded item tiles
     with tier badges, generator tiles (Toolbox/Seed Sack/Gift Box), energy bar with regen
     timer, drag-merge affordance, claimable-item glow, chain-progress strip at the top
+15. **Events** — the `.event-banner` HUD strip (icon, name, point bar with bronze/silver/
+    gold tier pins, countdown) + the event panel: weekend-event view (tier reward cards,
+    claim buttons) and Farm Fair view (3×3 task card grid with progress bars, ribbon
+    meter, Fair Pass trophy track)
 
 ## Game content the UI shows (for realistic mockups)
 

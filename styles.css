@@ -79,6 +79,34 @@ body { background: linear-gradient(#8fd3ff, #b8e88a); }
 .pill-counter.warn { animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(1.06); } }
 
+/* ---------- Event banner ---------- */
+.event-banner {
+  position: fixed; top: 96px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: var(--sp-3);
+  background: var(--panel-bg); border: 2px solid var(--color-wood-dark);
+  border-radius: var(--radius-pill); padding: var(--sp-2) var(--sp-4);
+  box-shadow: var(--shadow-pop), var(--bevel-top); font-weight: 800; cursor: pointer;
+}
+.event-banner .event-icon { font-size: 24px; }
+.event-progress {
+  position: relative; width: 180px; height: 10px; margin-top: 4px;
+  background: rgba(90, 60, 25, 0.25); border-radius: 5px;
+}
+.event-progress-fill {
+  height: 100%; width: 0; border-radius: 5px;
+  background: linear-gradient(#ffd45c, var(--color-gold));
+  transition: width 0.4s ease;
+}
+.event-tier-pin {
+  position: absolute; top: -3px; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid #fff; background: #cd7f32; box-shadow: var(--shadow-pop);
+}
+.event-tier-pin[data-tier="bronze"] { left: 30%; }
+.event-tier-pin[data-tier="silver"] { left: 62%; background: #c0c0c0; }
+.event-tier-pin[data-tier="gold"]   { left: 95%; background: var(--color-gold); }
+.event-tier-pin.claimed { filter: saturate(0.3) brightness(0.8); }
+.event-timer { color: var(--color-ink-soft); font-size: 14px; }
+
 /* ---------- Dock (wooden board) ---------- */
 .dock {
   position: fixed; bottom: var(--sp-4); left: 50%; transform: translateX(-50%);

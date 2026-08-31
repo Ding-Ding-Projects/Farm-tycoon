@@ -1748,32 +1748,35 @@ export const REGATTA = {
  * Locked structures are derelict and visible from level 1 rather than hidden: that is what
  * makes a level-90 system discoverable at level 5 and turns the map into the roadmap.
  *
- * Positions sit outside FARM.startZone so the opening farm is not crowded; the validator
- * checks they are in bounds and do not overlap each other.
+ * Every footprint sits ENTIRELY inside one zone whose unlock level is at or below the
+ * structure's own, so nothing stands on land the player cannot reach yet - the barn and the
+ * silo used to sit in an expansion twelve levels out of reach. The early structures hug the
+ * edges of the 12x12 start zone so its middle stays clear for crop fields. The validator
+ * checks containment, bounds and overlap.
  */
 export const STRUCTURES = {
-  order_board:   { name: 'Order Board',       size: [1, 1], pos: { x: 12, y: 22 }, unlockLevel: 3,  panel: 'orders' },
-  truck_bay:     { name: 'Truck Bay',         size: [2, 1], pos: { x: 15, y: 22 }, unlockLevel: 8,  panel: 'truck' },
-  barn:          { name: 'Barn',              size: [2, 2], pos: { x: 18, y: 22 }, unlockLevel: 1,  panel: 'barn' },
-  silo:          { name: 'Silo',              size: [1, 2], pos: { x: 21, y: 22 }, unlockLevel: 1,  panel: 'silo' },
-  shop_stand:    { name: 'Roadside Shop',     size: [2, 1], pos: { x: 12, y: 8  }, unlockLevel: 4,  panel: 'shop' },
-  boat_dock:     { name: 'Boat Dock',         size: [3, 2], pos: { x: 5,  y: 26 }, unlockLevel: 17, panel: 'boat' },
-  lake:          { name: 'Fishing Lake',      size: [4, 3], pos: { x: 5,  y: 22 }, unlockLevel: 12, panel: 'fishing' },
-  mine_entrance: { name: 'Mine Entrance',     size: [2, 2], pos: { x: 27, y: 8  }, unlockLevel: 24, panel: 'mine' },
-  merge_plot:    { name: 'Merge Meadow',      size: [3, 3], pos: { x: 5,  y: 5  }, unlockLevel: 28, panel: 'merge' },
-  market_stall:  { name: 'Market Stall',      size: [2, 1], pos: { x: 15, y: 8  }, unlockLevel: 9,  panel: 'market' },
-  train_station: { name: 'Train Station',     size: [4, 2], pos: { x: 22, y: 27 }, unlockLevel: 30, panel: 'trains' },
-  airport:       { name: 'Airport',           size: [4, 3], pos: { x: 27, y: 22 }, unlockLevel: 38, panel: 'airport' },
-  helipad:       { name: 'Helicopter Pad',    size: [2, 2], pos: { x: 22, y: 8  }, unlockLevel: 22, panel: 'helicopter' },
-  workshop_yard: { name: 'Building Workshop', size: [3, 2], pos: { x: 8,  y: 8  }, unlockLevel: 6,  panel: 'workshop' },
-  museum_hall:   { name: 'Museum',            size: [3, 2], pos: { x: 32, y: 12 }, unlockLevel: 60, panel: 'museum' },
-  laboratory:    { name: 'Laboratory',        size: [2, 2], pos: { x: 32, y: 16 }, unlockLevel: 54, panel: 'lab' },
-  expedition_camp:{ name: 'Expedition Camp',  size: [3, 2], pos: { x: 32, y: 5  }, unlockLevel: 57, panel: 'expeditions' },
-  town_gate:     { name: 'Road to Town',      size: [2, 2], pos: { x: 18, y: 5  }, unlockLevel: 20, panel: 'town' },
-  zoo_gate:      { name: 'Road to the Zoo',   size: [2, 2], pos: { x: 27, y: 5  }, unlockLevel: 34, panel: 'zoo' },
-  mailbox:       { name: 'Mailbox',           size: [1, 1], pos: { x: 12, y: 5  }, unlockLevel: 7,  panel: 'newspaper' },
-  bookshelf:     { name: 'Collections Shelf', size: [1, 1], pos: { x: 14, y: 5  }, unlockLevel: 10, panel: 'collections' },
-  tripod:        { name: 'Camera Tripod',     size: [1, 1], pos: { x: 16, y: 5  }, unlockLevel: 15, panel: 'photo' },
+  order_board:   { name: 'Order Board',       size: [1, 1], pos: { x: 20, y: 11 }, unlockLevel: 3,  panel: 'orders' },
+  truck_bay:     { name: 'Truck Bay',         size: [2, 1], pos: { x: 17, y: 11 }, unlockLevel: 8,  panel: 'truck' },
+  barn:          { name: 'Barn',              size: [2, 2], pos: { x: 10, y: 10 }, unlockLevel: 1,  panel: 'barn' },
+  silo:          { name: 'Silo',              size: [1, 2], pos: { x: 12, y: 10 }, unlockLevel: 1,  panel: 'silo' },
+  shop_stand:    { name: 'Roadside Shop',     size: [2, 1], pos: { x: 20, y: 10 }, unlockLevel: 4,  panel: 'shop' },
+  boat_dock:     { name: 'Boat Dock',         size: [3, 2], pos: { x: 10, y: 22 }, unlockLevel: 17, panel: 'boat' },
+  lake:          { name: 'Fishing Lake',      size: [4, 3], pos: { x: 22, y: 10 }, unlockLevel: 12, panel: 'fishing' },
+  mine_entrance: { name: 'Mine Entrance',     size: [2, 2], pos: { x: 5,  y: 13 }, unlockLevel: 24, panel: 'mine' },
+  merge_plot:    { name: 'Merge Meadow',      size: [3, 3], pos: { x: 10, y: 5  }, unlockLevel: 28, panel: 'merge' },
+  market_stall:  { name: 'Market Stall',      size: [2, 1], pos: { x: 17, y: 10 }, unlockLevel: 9,  panel: 'market' },
+  train_station: { name: 'Train Station',     size: [4, 2], pos: { x: 22, y: 22 }, unlockLevel: 30, panel: 'trains' },
+  airport:       { name: 'Airport',           size: [4, 3], pos: { x: 22, y: 5  }, unlockLevel: 38, panel: 'airport' },
+  helipad:       { name: 'Helicopter Pad',    size: [2, 2], pos: { x: 8,  y: 10 }, unlockLevel: 22, panel: 'helicopter' },
+  workshop_yard: { name: 'Building Workshop', size: [3, 2], pos: { x: 13, y: 10 }, unlockLevel: 6,  panel: 'workshop' },
+  museum_hall:   { name: 'Museum',            size: [3, 2], pos: { x: 27, y: 11 }, unlockLevel: 60, panel: 'museum' },
+  laboratory:    { name: 'Laboratory',        size: [2, 2], pos: { x: 27, y: 5  }, unlockLevel: 54, panel: 'lab' },
+  expedition_camp:{ name: 'Expedition Camp',  size: [3, 2], pos: { x: 27, y: 8  }, unlockLevel: 57, panel: 'expeditions' },
+  town_gate:     { name: 'Road to Town',      size: [2, 2], pos: { x: 5,  y: 10 }, unlockLevel: 20, panel: 'town' },
+  zoo_gate:      { name: 'Road to the Zoo',   size: [2, 2], pos: { x: 5,  y: 22 }, unlockLevel: 34, panel: 'zoo' },
+  mailbox:       { name: 'Mailbox',           size: [1, 1], pos: { x: 21, y: 11 }, unlockLevel: 7,  panel: 'newspaper' },
+  bookshelf:     { name: 'Collections Shelf', size: [1, 1], pos: { x: 10, y: 21 }, unlockLevel: 10, panel: 'collections' },
+  tripod:        { name: 'Camera Tripod',     size: [1, 1], pos: { x: 11, y: 21 }, unlockLevel: 15, panel: 'photo' },
 };
 
 /**

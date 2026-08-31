@@ -438,6 +438,27 @@ if (!(d.HELICOPTER.rewards.materialsPerFlight[0] <= d.HELICOPTER.rewards.materia
     }
   const panels = list.map(([, s]) => s.panel);
   if (new Set(panels).size !== panels.length) errors.push('STRUCTURES: two structures open the same panel');
+
+  // A structure must stand on land the player can actually own by the time it opens.
+  // Every footprint sits ENTIRELY inside one zone - the start zone or a single expansion -
+  // and that zone must unlock at or before the structure does. Straddling two zones is its
+  // own failure: half a building on unbought land is not a thing that can be clicked.
+  // Expansion unlock levels come from LEVELS.unlocks, which is what actually grants them,
+  // rather than from a second hand-maintained list that would drift.
+  const zoneLevel = new Map([['startZone', 1]]);
+  for (const [lvl, ids] of Object.entries(d.LEVELS.unlocks))
+    for (const id of ids) if (id.startsWith('expansion_')) zoneLevel.set(id, +lvl);
+  const zones = [{ id: 'startZone', r: d.FARM.startZone }, ...d.FARM.expansions.map((e) => ({ id: e.id, r: e.rect }))];
+  for (const z of zones) if (!zoneLevel.has(z.id)) errors.push(`zone '${z.id}' is granted by no level in LEVELS.unlocks`);
+  for (const [sid, s] of list) {
+    const box = { x: s.pos.x, y: s.pos.y, w: s.size[0], h: s.size[1] };
+    const host = zones.find((z) => box.x >= z.r.x && box.y >= z.r.y &&
+                                   box.x + box.w <= z.r.x + z.r.w && box.y + box.h <= z.r.y + z.r.h);
+    if (!host) { errors.push(`structure ${sid}: no single zone contains it - it straddles unowned land`); continue; }
+    const need = zoneLevel.get(host.id) || 0;
+    if (need > s.unlockLevel)
+      errors.push(`structure ${sid} opens at level ${s.unlockLevel} but stands in ${host.id}, which the player cannot own until level ${need}`);
+  }
 }
 
 // Foraging. Free pickups, so the only thing that can go wrong is a node that yields something

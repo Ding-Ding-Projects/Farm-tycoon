@@ -119,25 +119,6 @@ jobs:
             --json-out "release-notes.json" \
             --token "$GH_TOKEN"
 
-      - name: Commit updated release code-name ledger
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -f "RELEASE-CODENAMES.md" ] && [ -n "$(git status --porcelain RELEASE-CODENAMES.md)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add RELEASE-CODENAMES.md
-            # Deliberately one line, no backslash continuation: on a CRLF checkout bash reads
-            # "\<CR><LF>" as an escaped carriage return rather than a line continuation, the
-            # command splits, and git receives a stray "n" as a pathspec. That took the first
-            # run of this workflow red. .gitattributes now forces LF here too, so this is belt
-            # and braces — but a line that cannot break is better than one that must not.
-            git commit -m "Record dim sum code name for ${{ steps.tagver.outputs.tag }}" -m "Records which dim sum dish this release used as its code name, so no name is reused."
-            git push origin HEAD:main
-          else
-            echo "No code-name ledger change to commit."
-          fi
-
       - name: Publish GitHub Release
         shell: bash
         run: |
@@ -160,6 +141,61 @@ jobs:
             --title "Farm Tycoon $TAG" \
             --notes-file RELEASE_NOTES.md \
             --target "${{ github.sha }}"
+
+      # This step runs AFTER the release is published, deliberately. The code-name
+      # ledger is a record OF the release, not an input to it, so it must never gate
+      # the thing it records: an earlier run (33450246307) lost this commit's push
+      # race and the whole job failed as a result, throwing away an installer that
+      # had already built and a release that would otherwise have published clean.
+      # With this step last, even a total failure here still leaves a shipped,
+      # downloadable release behind.
+      - name: Commit updated release code-name ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "RELEASE-CODENAMES.md" ] && [ -n "$(git status --porcelain RELEASE-CODENAMES.md)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add RELEASE-CODENAMES.md
+            # Deliberately one line, no backslash continuation: on a CRLF checkout bash reads
+            # "\<CR><LF>" as an escaped carriage return rather than a line continuation, the
+            # command splits, and git receives a stray "n" as a pathspec. That took the first
+            # run of this workflow red. .gitattributes now forces LF here too, so this is belt
+            # and braces — but a line that cannot break is better than one that must not.
+            git commit -m "Record dim sum code name for ${{ steps.tagver.outputs.tag }}" -m "Records which dim sum dish this release used as its code name, so no name is reused."
+            # Several workflow runs can be pushing to main at the same time, so a blind push
+            # here regularly loses the race with "! [rejected] (fetch first)". Reconcile with
+            # the remote instead of pushing blind: fetch, rebase this one ledger commit onto
+            # the current origin/main, and retry a bounded number of times. This commit only
+            # ever touches one file, so a real conflict should not happen; if it somehow does,
+            # abort the rebase and treat it the same as losing the race.
+            pushed="false"
+            attempt=1
+            max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "Push attempt $attempt of $max_attempts..."
+              if git push origin HEAD:main; then
+                pushed="true"
+                break
+              fi
+              echo "Push rejected, most likely because origin/main moved. Fetching and rebasing before retrying."
+              git fetch origin main
+              if ! git rebase origin/main; then
+                echo "Rebase of the ledger commit onto origin/main hit a conflict. Aborting the rebase and treating this as a lost race rather than hanging."
+                git rebase --abort
+                break
+              fi
+              attempt=$((attempt + 1))
+              sleep 5
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "::warning::Could not land the release code-name ledger commit after $max_attempts attempt(s); concurrent pushes to main kept winning the race. The release already published successfully, so this bookkeeping miss is not treated as a build failure."
+            else
+              echo "Code-name ledger commit pushed to main."
+            fi
+          else
+            echo "No code-name ledger change to commit."
+          fi
 
       - name: Collect artifacts (always, even on failure)
         if: ${{ always() }}

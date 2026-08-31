@@ -185,6 +185,13 @@ export const GOODS = {
   // orders, fishing chests and the shop, never produced by a recipe. Anything else lacking a
   // producer is a real gap, not a special case.
   pickaxe:  { name: 'Pickaxe',  sellPrice: 40, source: 'loot' },
+  // forage finds - free pickups from world nodes, see FORAGING
+  wild_berry:       { name: 'Wild Berries',     sellPrice: 18 },
+  mushroom:         { name: 'Mushroom',         sellPrice: 26 },
+  driftwood:        { name: 'Driftwood',        sellPrice: 22 },
+  down_feather:     { name: 'Down Feather',     sellPrice: 34 },
+  wildflower:       { name: 'Wildflower',       sellPrice: 16 },
+  wild_honey:       { name: 'Wild Honey',       sellPrice: 48 },
   dynamite: { name: 'Dynamite', sellPrice: 90, source: 'loot' },
   // island and deep-water products
   peach_melba:      { name: 'Peach Melba',        sellPrice: 900 },
@@ -1656,6 +1663,112 @@ export const STRUCTURES = {
   mailbox:       { name: 'Mailbox',           size: [1, 1], pos: { x: 12, y: 5  }, unlockLevel: 7,  panel: 'newspaper' },
   bookshelf:     { name: 'Collections Shelf', size: [1, 1], pos: { x: 14, y: 5  }, unlockLevel: 10, panel: 'collections' },
   tripod:        { name: 'Camera Tripod',     size: [1, 1], pos: { x: 16, y: 5  }, unlockLevel: 15, panel: 'photo' },
+};
+
+/**
+ * Foraging: free respawning world nodes. Berry bushes, mushroom rings, driftwood and the rest
+ * come back on their own timers and cost nothing at all - no tool, no energy, no coins.
+ *
+ * This is the most important short-gap filler in the game. Every other activity has a price:
+ * the mine wants tools, Merge Meadow wants energy, fishing has per-spot cooldowns. Foraging is
+ * the thing to tap the moment the app opens, which is exactly when a player has two minutes
+ * and nothing to spend them on.
+ *
+ * Respawns are absolute readyAt timestamps like every other timer. offlineRespawnCap stops a
+ * fortnight away from carpeting the farm in free goods - the same reasoning as the existing
+ * 12-hour cap on zoo visitor income.
+ */
+export const FORAGING = {
+  unlockLevel: 1,
+  globalMaxActive: 8,
+  xpPerPickup: 1,
+  offlineRespawnCap: 3,
+  nodes: {
+    wildflower_patch: { name: 'Wildflower Patch', respawn: 1200,  maxActive: 3, unlockLevel: 1,
+                        yields: [{ item: 'wildflower', qty: [1, 3], weight: 70 }, { item: 'wild_berry', qty: [1, 2], weight: 30 }] },
+    berry_bush:       { name: 'Berry Bush',       respawn: 1800,  maxActive: 3, unlockLevel: 1,
+                        yields: [{ item: 'wild_berry', qty: [1, 3], weight: 80 }, { item: 'wildflower', qty: [1, 1], weight: 20 }] },
+    driftwood_pile:   { name: 'Driftwood',        respawn: 3600,  maxActive: 2, unlockLevel: 4,
+                        yields: [{ item: 'driftwood', qty: [1, 2], weight: 85 }, { item: 'mushroom', qty: [1, 1], weight: 15 }] },
+    mushroom_ring:    { name: 'Mushroom Ring',    respawn: 5400,  maxActive: 2, unlockLevel: 9,
+                        yields: [{ item: 'mushroom', qty: [1, 3], weight: 90 }, { item: 'wild_honey', qty: [1, 1], weight: 10 }] },
+    birds_nest:       { name: "Bird's Nest",      respawn: 9000,  maxActive: 2, unlockLevel: 14,
+                        yields: [{ item: 'down_feather', qty: [1, 2], weight: 75 }, { item: 'egg', qty: [1, 1], weight: 25 }] },
+    wild_hive:        { name: 'Wild Hive',        respawn: 14400, maxActive: 1, unlockLevel: 23,
+                        yields: [{ item: 'wild_honey', qty: [1, 2], weight: 80 }, { item: 'honey', qty: [1, 1], weight: 20 }] },
+  },
+};
+
+/**
+ * The newspaper: browse simulated neighbours' roadside shops. Counterintuitively this is the
+ * biggest dead-time sink in Hay Day - it costs nothing to read, refreshes endlessly, and is
+ * pure browsing.
+ *
+ * It also quietly fixes a real frustration: when one missing input blocks a recipe, buying it
+ * from a neighbour beats waiting out a grow timer. Farms come from NEIGHBOURS; this table
+ * generates nobody of its own.
+ */
+export const NEWSPAPER = {
+  unlockLevel: 7,
+  refreshMinutes: 30,
+  farmsPerIssue: 12,
+  listingsPerFarm: [2, 6],
+  priceBand: [0.6, 1.3],        // multiplier on base sellPrice
+  bargainChance: 0.15,
+  bargainBand: [0.28, 0.52],    // strictly below priceBand[0], so a bargain is always's floor, or it is not a bargain
+};
+
+/**
+ * Collections and mastery - the long-gap half of dead-time content.
+ *
+ * Book entries are DERIVED from the live tables rather than hand-listed, so adding a fish or a
+ * recipe joins its book automatically and a book can never quietly drift out of date. The
+ * source name is validated against a closed set, and the validator checks each book actually
+ * derives a non-empty list: a book that silently derives zero entries would render as an empty
+ * page with no error anywhere.
+ */
+export const COLLECTIONS = {
+  unlockLevel: 10,
+  books: {
+    crop_almanac:  { name: 'Crop Almanac',     source: 'crops',     rewardPer: 4, reward: { coins: 4000,  diamonds: 1 } },
+    recipe_book:   { name: 'Recipe Book',      source: 'recipes',   rewardPer: 10, reward: { coins: 8000, diamonds: 2 } },
+    fish_book:     { name: 'Fishing Log',      source: 'fish',      rewardPer: 3, reward: { coins: 6000,  diamonds: 2 } },
+    forage_journal:{ name: 'Forage Journal',   source: 'forage',    rewardPer: 2, reward: { coins: 3000,  diamonds: 1 } },
+    relic_catalogue:{ name: 'Relic Catalogue', source: 'artifacts', rewardPer: 4, reward: { coins: 20000, diamonds: 5 } },
+  },
+};
+
+/**
+ * Building mastery: repetition earns permanent star tiers. Effects flow through EFFECT_KEYS
+ * like everything else, so mastery, minigames and research merge at one point.
+ */
+export const MASTERY = {
+  effect: 'productionTimeMult',
+  tiers: [
+    { star: 1, makes: 50,   bonus: 0.98 },
+    { star: 2, makes: 200,  bonus: 0.96 },
+    { star: 3, makes: 600,  bonus: 0.93 },
+    { star: 4, makes: 1500, bonus: 0.90 },
+  ],
+};
+
+/**
+ * Decorating and photo mode. The one filler that never runs out, because the player supplies
+ * the goal. Decorating is a MODE over the world rather than a place, so it is the single
+ * declared exception to the click-the-structure rule and toggles from the dock.
+ */
+export const DECORATE = {
+  unlockLevel: 1,
+  gridSnap: true,
+  rotations: 4,
+  undoDepth: 50,
+  multiSelectMax: 40,
+};
+
+export const PHOTO = {
+  unlockLevel: 15,
+  frames: ['frame_none', 'frame_wood', 'frame_linen', 'frame_brass', 'frame_gold'],
+  maxStickers: 8,
 };
 
 export const TUTORIAL = {

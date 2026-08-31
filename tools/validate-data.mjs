@@ -104,6 +104,9 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   for (const t of Object.values(d.MINE.tools)) for (const y of t.yields) produced.add(y.item);
   for (const i of Object.values(d.ISLANDS.destinations)) for (const g of Object.keys(i.cargo)) produced.add(g);
   for (const z of Object.values(d.ZOO.enclosures)) produced.add(z.product);
+  for (const n of Object.values(d.FORAGING.nodes)) for (const y of n.yields) produced.add(y.item);
+  for (const s of Object.values(d.EXPEDITIONS.sites)) for (const l of s.loot) if (l.item) produced.add(l.item);
+  for (const dep of d.MINE.depths) for (const t of Object.values(dep.tools)) for (const y of t.yields) produced.add(y.item);
   for (const l of d.FISHING.chestLoot) if (l.item) produced.add(l.item);
   for (const c of Object.values(d.MERGE.chains)) {
     if (c.topReward && c.topReward.item) produced.add(c.topReward.item);
@@ -396,6 +399,81 @@ if (!(d.HELICOPTER.rewards.materialsPerFlight[0] <= d.HELICOPTER.rewards.materia
   const panels = list.map(([, s]) => s.panel);
   if (new Set(panels).size !== panels.length) errors.push('STRUCTURES: two structures open the same panel');
 }
+
+// Foraging. Free pickups, so the only thing that can go wrong is a node that yields something
+// unreal, never respawns, or can stack without bound while the player is away.
+for (const [nid, n] of Object.entries(d.FORAGING.nodes)) {
+  if (!(n.respawn > 0)) errors.push(`forage node ${nid}: respawn must be positive or it never returns`);
+  if (!(n.maxActive > 0)) errors.push(`forage node ${nid}: maxActive must be positive`);
+  if (!n.yields || n.yields.length === 0) errors.push(`forage node ${nid}: yields nothing`);
+  for (const y of n.yields || []) {
+    if (!item(y.item)) errors.push(`forage node ${nid}: yield '${y.item}' unknown`);
+    if (!(y.weight > 0)) errors.push(`forage node ${nid}: yield weight must be positive`);
+    if (!(y.qty[0] > 0) || !(y.qty[0] <= y.qty[1])) errors.push(`forage node ${nid}: bad qty range for '${y.item}'`);
+  }
+}
+if (!(d.FORAGING.offlineRespawnCap > 0))
+  errors.push('FORAGING: offlineRespawnCap must be positive, or a fortnight away carpets the farm');
+{
+  const totalActive = Object.values(d.FORAGING.nodes).reduce((s, n) => s + n.maxActive, 0);
+  if (d.FORAGING.globalMaxActive > totalActive)
+    errors.push(`FORAGING: globalMaxActive ${d.FORAGING.globalMaxActive} exceeds the ${totalActive} the nodes can ever produce`);
+}
+
+// Newspaper. The bargain band must actually be a bargain - if it overlaps the ordinary price
+// band, "bargain" is a label on a normal price and the player learns to distrust the flag.
+{
+  const N = d.NEWSPAPER;
+  if (!(N.priceBand[0] > 0 && N.priceBand[0] < N.priceBand[1])) errors.push('NEWSPAPER: priceBand invalid');
+  if (!(N.bargainBand[0] > 0 && N.bargainBand[0] < N.bargainBand[1])) errors.push('NEWSPAPER: bargainBand invalid');
+  if (!(N.bargainBand[1] < N.priceBand[0]))
+    errors.push(`NEWSPAPER: bargains top out at ${N.bargainBand[1]} but ordinary prices start at ${N.priceBand[0]} - a bargain must be cheaper than any ordinary price`);
+  if (!(N.bargainChance > 0 && N.bargainChance < 1)) errors.push('NEWSPAPER: bargainChance out of range');
+  if (!(N.listingsPerFarm[0] <= N.listingsPerFarm[1])) errors.push('NEWSPAPER: listingsPerFarm inverted');
+  if (!(N.farmsPerIssue > 0) || N.farmsPerIssue > d.NEIGHBOURS.poolSize)
+    errors.push(`NEWSPAPER: ${N.farmsPerIssue} farms per issue cannot come from a pool of ${d.NEIGHBOURS.poolSize}`);
+}
+
+// Collections. Entries are derived from the live tables, so the real risk is a book whose
+// source derives NOTHING - it would render as an empty page with no error anywhere.
+{
+  const SOURCES = {
+    crops:     () => Object.keys(d.CROPS),
+    recipes:   () => Object.values(d.BUILDINGS).flatMap((b) => b.recipes.map((r) => r.id)),
+    fish:      () => d.FISHING.species,
+    forage:    () => [...new Set(Object.values(d.FORAGING.nodes).flatMap((n) => n.yields.map((y) => y.item)))],
+    artifacts: () => Object.keys(d.ARTIFACTS),
+  };
+  for (const [bid, b] of Object.entries(d.COLLECTIONS.books)) {
+    const derive = SOURCES[b.source];
+    if (!derive) { errors.push(`collection ${bid}: unknown source '${b.source}'`); continue; }
+    const entries = derive();
+    if (entries.length === 0) errors.push(`collection ${bid}: source '${b.source}' derives zero entries - the book would be empty`);
+    if (!(b.rewardPer > 0)) errors.push(`collection ${bid}: rewardPer must be positive`);
+    if (b.rewardPer > entries.length)
+      errors.push(`collection ${bid}: rewards every ${b.rewardPer} entries but the source only has ${entries.length} - the first reward is unreachable`);
+    if (!(b.reward && b.reward.coins > 0)) errors.push(`collection ${bid}: bad reward`);
+  }
+}
+
+// Mastery.
+{
+  if (!d.EFFECT_KEYS.includes(d.MASTERY.effect)) errors.push(`MASTERY: effect '${d.MASTERY.effect}' is not in EFFECT_KEYS`);
+  let makes = 0, bonus = Infinity;
+  for (const t of d.MASTERY.tiers) {
+    if (!(t.makes > makes)) errors.push(`mastery star ${t.star}: makes must ascend`);
+    makes = t.makes;
+    // productionTimeMult is a multiplier below 1, so a stronger tier is a SMALLER number.
+    if (!(t.bonus < bonus)) errors.push(`mastery star ${t.star}: bonus must improve with each tier`);
+    bonus = t.bonus;
+  }
+}
+
+// Photo frames and decorating limits.
+if (!d.PHOTO.frames || d.PHOTO.frames.length === 0) errors.push('PHOTO: no frames');
+if (new Set(d.PHOTO.frames).size !== d.PHOTO.frames.length) errors.push('PHOTO: duplicate frame ids');
+if (!(d.DECORATE.undoDepth > 0)) errors.push('DECORATE: undoDepth must be positive');
+if (!(d.DECORATE.rotations > 0)) errors.push('DECORATE: rotations must be positive');
 
 // LEVELS.unlocks ids resolve to known content or feature flags.
 const features = new Set([

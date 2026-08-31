@@ -15,3 +15,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `aad59b31a4cd` | Pea Shoot Shrimp Dumpling · 豆苗蝦餃 | `pea-shoot-shrimp-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0007-pea-shoot-shrimp-dumpling.png |
 | 0.1.0 | `ee6d8b0c8325` | Lobster Dumpling · 龍蝦餃 | `lobster-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0008-lobster-dumpling.png |
 | 0.1.0 | `013509a4a7f6` | Dried Scallop Shrimp Dumpling · 瑤柱蝦餃 | `dried-scallop-shrimp-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0009-dried-scallop-shrimp-dumpling.png |
+| 0.1.0 | `375952d002b2` | Cuttlefish Shrimp Dumpling · 墨魚蝦餃 | `cuttlefish-shrimp-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0010-cuttlefish-shrimp-dumpling.png |

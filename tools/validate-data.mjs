@@ -12,6 +12,8 @@ const item = (id) => d.CROPS[id] || d.GOODS[id];
 const recipeInput = (id) => d.CROPS[id] || d.GOODS[id] || d.MATERIALS[id];
 // Materials resolve, have positive quantities, and - when a set is named - come from the
 // right economy. A barn upgrade asking for expansion tools is a design bug, not a typo.
+// requiredSet is only worth having if every caller passes one: the four callers that passed
+// null meant a house could demand expansion tools and nothing would have said a word.
 const checkMaterials = (ctx, mats, requiredSet = null) => {
   for (const [m, qty] of Object.entries(mats || {})) {
     const mat = d.MATERIALS[m];
@@ -180,11 +182,11 @@ for (const [cid, c] of Object.entries(d.MERGE.chains)) {
 
 // Township layer: town, trains/airport, zoo, islands, market, expansion materials.
 for (const [id, h] of Object.entries(d.TOWN.houses)) {
-  checkMaterials(`house ${id}`, h.materials);
+  checkMaterials(`house ${id}`, h.materials, 'building');
   if (!(h.population > 0) || !(h.cost > 0) || !(h.tier >= 1)) errors.push(`house ${id}: bad population/cost/tier`);
 }
 for (const [id, c] of Object.entries(d.TOWN.communityBuildings)) {
-  checkMaterials(`community ${id}`, c.materials);
+  checkMaterials(`community ${id}`, c.materials, 'building');
   if (!(c.capacity > 0)) errors.push(`community ${id}: bad capacity`);
 }
 {
@@ -192,11 +194,15 @@ for (const [id, c] of Object.entries(d.TOWN.communityBuildings)) {
   for (const m of d.TOWN.milestones) {
     if (m.population <= prev) errors.push('town milestones not ascending');
     prev = m.population;
-    checkMaterials('town milestone', m.rewards.materials);
+    // Milestone payouts take the building set too. A reward is not a build cost, so this is
+    // a deliberate choice rather than a forced one: the town pays out in the currency the
+    // town spends, which keeps its loop closed and stops a milestone quietly becoming a
+    // back door for expansion tools or storage parts that belong to other channels.
+    checkMaterials('town milestone', m.rewards.materials, 'building');
   }
 }
 for (const [id, z] of Object.entries(d.ZOO.enclosures)) {
-  checkMaterials(`zoo ${id}`, z.materials);
+  checkMaterials(`zoo ${id}`, z.materials, 'building');
   if (!d.GOODS[z.product]) errors.push(`zoo ${id}: product '${z.product}' not in GOODS`);
   for (const f of Object.keys(z.feed)) if (!item(f)) errors.push(`zoo ${id}: feed '${f}' unknown`);
 }

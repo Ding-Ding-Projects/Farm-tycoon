@@ -131,7 +131,30 @@ Verified TRUE by the audit: the 16 rects tile the grid to exactly 100% with zero
 overlaps; 22 structures; every crop has a sink; 26 factories with 26 distinct minigame effects;
 no duplicate ids; no recipe input cycles; `unlockLevel` agrees with `LEVELS.unlocks` everywhere.
 
-Items 1–4 are being fixed. **5 and 6 are open** and are design questions rather than bugs.
+**Items 1–4 are fixed** (`895e7a6`, `5b56e2e`, `1f92a99`), each with a guard watched red then
+green, and both fixes re-verified here by independent computation rather than taken on trust:
+zero unsourced materials, zero structures on land that unlocks too late, zero straddles.
+
+- Trains, the airport and the helicopter now carry weighted `materialPool` tables in the same
+  shape the expedition loot already used. Trains supply building + expansion sets, the airport
+  expansion + storage, the helicopter is storage-led and quick. The `advanced` set stays
+  expedition-only, honouring the Tool Exchange note.
+- All 22 structures were misplaced, not the four the audit named — `mine_entrance` opened at 24
+  while standing on level-39 land, and `train_station` at 30 on level-54 land. Ten early
+  structures now hug the start zone's edges, leaving rows y12–20 clear for fields.
+- The earn-side guard now exists, so the comment that promised it is finally true. It is
+  correctly *not* fooled by removing a material from one of its two pools.
+
+**5 and 6 remain open** and are design questions rather than bugs:
+
+- 70 recipes are unlockable before their inputs are. The Feed Mill opens at level 5 with recipes
+  blocked until 51–77, so a new player sees five entries they cannot explain. Recipes carry no
+  `unlockLevel` of their own, so fixing this means either adding that field or reordering.
+- 45 of 128 recipes have a non-positive margin, and the Building Workshop's halves disagree in
+  sign: components destroy value while late kits print it. Since kits are ordinary goods with a
+  sell price, the intended loop is invertible — craft components at a loss, sell the kit for
+  ~9,800 rather than placing it. Either kits should not be sellable, or the margins need
+  rebalancing.
 
 ## Not done — the honest list
 

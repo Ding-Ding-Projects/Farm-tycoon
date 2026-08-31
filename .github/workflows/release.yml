@@ -1,0 +1,180 @@
+name: Build and Release (Windows)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Squirrel.Windows installer and publish a release
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+    outputs:
+      tag: ${{ steps.tagver.outputs.tag }}
+      run_conclusion: ${{ job.status }}
+    steps:
+      - name: Record workflow start time
+        id: started
+        shell: bash
+        run: echo "start_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        shell: bash
+        run: npm install
+
+      # No test/lint step: this project's standing CI policy is build, package,
+      # publish and attach evidence only. Local `npm test` runs before a push,
+      # never as a release gate.
+
+      - name: Determine unique release tag
+        id: tagver
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_VERSION="$(node -p "require('./package.json').version")"
+          SHA_SHORT="$(git rev-parse --short=12 HEAD)"
+          RUN_NUMBER="${GITHUB_RUN_NUMBER}"
+          TAG="v${BASE_VERSION}-build${RUN_NUMBER}+${SHA_SHORT}"
+          echo "Chosen tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build Squirrel.Windows installer
+        shell: bash
+        run: npm run dist
+
+      - name: Verify unsigned packaging output
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR="dist/squirrel-windows"
+          if [ ! -d "$DIR" ]; then
+            echo "::error::Expected packaging output directory '$DIR' was not produced."
+            exit 1
+          fi
+          shopt -s nullglob
+          setup_files=("$DIR"/*Setup*.exe)
+          releases_file=("$DIR"/RELEASES)
+          nupkg_files=("$DIR"/*.nupkg)
+          if [ ${#setup_files[@]} -eq 0 ]; then
+            echo "::error::No Setup.exe found in $DIR"
+            exit 1
+          fi
+          if [ ${#releases_file[@]} -eq 0 ]; then
+            echo "::error::No RELEASES file found in $DIR"
+            exit 1
+          fi
+          if [ ${#nupkg_files[@]} -eq 0 ]; then
+            echo "::error::No .nupkg file found in $DIR"
+            exit 1
+          fi
+          echo "Found installer artifacts:"
+          ls -la "$DIR"
+          # Code signing is permanently prohibited for this project. Confirm the
+          # setup executable really is unsigned rather than merely asserting it.
+          for f in "${setup_files[@]}"; do
+            sig=$(powershell -NoProfile -Command "(Get-AuthenticodeSignature -LiteralPath '$f').Status" | tr -d '\r')
+            echo "Signature status for $f: $sig"
+            if [ "$sig" != "NotSigned" ]; then
+              echo "::error::Expected NotSigned for $f but got '$sig'. Code signing is permanently prohibited for this project."
+              exit 1
+            fi
+          done
+
+      - name: Record workflow end time
+        id: finished
+        shell: bash
+        run: echo "end_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/release-notes.mjs \
+            --version "${{ steps.tagver.outputs.base_version }}" \
+            --sha "${{ github.sha }}" \
+            --artifact-dir "dist/squirrel-windows" \
+            --workflow-start "${{ steps.started.outputs.start_iso }}" \
+            --workflow-end "${{ steps.finished.outputs.end_iso }}" \
+            --out "RELEASE_NOTES.md" \
+            --json-out "release-notes.json"
+
+      - name: Commit updated release code-name ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "RELEASE-CODENAMES.md" ] && [ -n "$(git status --porcelain RELEASE-CODENAMES.md)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add RELEASE-CODENAMES.md
+            git commit \n              -m "Record dim sum code name for ${{ steps.tagver.outputs.tag }}" \n              -m "記錄呢個 release 用咗邊隻點心做代號，食過就唔會撞名。"
+            git push origin HEAD:main
+          else
+            echo "No code-name ledger change to commit."
+          fi
+
+      - name: Publish GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tagver.outputs.tag }}"
+          IMG_FILE="$(node -p "JSON.parse(require('fs').readFileSync('release-notes.json','utf8')).codename?.localImagePath || ''")"
+          ASSETS=(dist/squirrel-windows/*Setup*.exe dist/squirrel-windows/RELEASES dist/squirrel-windows/*.nupkg)
+          if [ -n "$IMG_FILE" ] && [ -f "$IMG_FILE" ]; then
+            ASSETS+=("$IMG_FILE")
+          else
+            echo "::warning::No dim sum code-name photo asset available for this release; publishing without one."
+          fi
+          gh release create "$TAG" \
+            "${ASSETS[@]}" \
+            --title "Farm Tycoon $TAG" \
+            --notes-file RELEASE_NOTES.md \
+            --target "${{ github.sha }}"
+
+      - name: Collect artifacts (always, even on failure)
+        if: ${{ always() }}
+        shell: bash
+        continue-on-error: true
+        run: |
+          mkdir -p ci-evidence
+          cp -f RELEASE_NOTES.md ci-evidence/ 2>/dev/null || true
+          cp -f release-notes.json ci-evidence/ 2>/dev/null || true
+          if [ -d dist/squirrel-windows ]; then
+            cp -f dist/squirrel-windows/*Setup*.exe ci-evidence/ 2>/dev/null || true
+            cp -f dist/squirrel-windows/RELEASES ci-evidence/ 2>/dev/null || true
+            cp -f dist/squirrel-windows/*.nupkg ci-evidence/ 2>/dev/null || true
+          fi
+          {
+            echo "run_id=${{ github.run_id }}"
+            echo "sha=${{ github.sha }}"
+            echo "job_status=${{ job.status }}"
+          } > ci-evidence/run-context.txt
+
+      - name: Upload artifacts (always, even on failure)
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ github.run_id }}
+          path: ci-evidence/
+          if-no-files-found: warn
+          retention-days: 30

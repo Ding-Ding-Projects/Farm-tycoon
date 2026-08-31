@@ -1,33 +1,83 @@
 # Handoff
 
-State of the repository as of commit `14d067f` on `main`. Written to be read by whoever picks
+State of the repository as of commit `013509a` on `main`. Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
 
 ## Where the project actually is
 
-**Phase A is complete and then some. Phase B has not started.** `src/data.js` is real, final,
-validated content. Everything else in `src/` is a documented contract with `/* Phase B */` stub
-bodies — 238 of them. **The game does not play yet.**
+**Phase B is complete.** Every module contract in `src/` now has a real implementation body.
+`grep -r "/\* Phase B \*/" src/` — the exact marker earlier drafts of this file counted — returns
+nothing across all 37 files. The handful of remaining textual mentions of "Phase B" in the source
+(`src/main.js`, `src/state.js`, `src/ui.js`, `src/render/renderer.js`) are historical/contextual
+comments, not stub markers; quoted here so the next reader doesn't have to re-derive that:
 
-**What the built application actually does, verified by launching it** (earlier drafts of this
-file understated this and were wrong). The packaged Windows build launches, calls
-`state.load()`, and renders a complete static scene: meadow ground with mottling and tufts, a
-road, a tree, fencing, a four-plot wheat field, a barn, a market stall, a HUD with a level badge
-and four counters, and a seven-icon dock. It labels itself on screen: *"Scaffold build —
-gameplay arrives in Phase B"*.
+- `src/main.js:80` — `/** Run every timer/tick module's tick(now), defensively — Phase B stubs are
+  safe no-ops. */` (defensive comment; there are no stubs left to be safe against)
+- `src/render/renderer.js:19` — a comment noting the camera fix is a *real* implementation, not a
+  stub, contrasted with the old state
+- `src/state.js:33,88,168` — describing why the state shape was seeded ahead of the modules that
+  would fill it in
 
-None of it is live. `main.js` calls `drawSplash(canvas)` and never calls `renderer.init`,
-`ui.init` or `input.init` — those are stubs, so **no listeners are attached and the dock is
-art**. The HUD is static markup: it reads 0 coins while `NEW_GAME.coins` is 150. That is a
-decorative interface, which this project's own rules only permit because it is labelled as a
-preview rather than presented as working.
+**What the built application actually does, verified by loading it at commit `013509a`, in a
+browser, at `http://127.0.0.1:8123`** (use the loopback address — a stale server bound to IPv6
+`localhost` will otherwise serve a cached older page, which cost real time to notice):
 
-That distinction matters more than any other line in this document: the content is finished, the
-game is not.
+- Zero console errors.
+- `window.__farmDebug` exists and exposes `{ state, timeSkip, give }` against the live,
+  mutating game object — not a static readout. Observed on a fresh load: level 1, 150 coins,
+  6 diamonds, a silo holding 7/50 wheat seeds, an empty 0/50 barn, and 6 farm objects.
+- `styles.css` at the repository root is the "Sunlit Homestead" overhaul — byte-identical to
+  `design/handoff/styles.css` apart from line endings (root is CRLF, the design reference is LF).
+  The design pass is applied to the running game, not sitting unintegrated in `design/`.
+- The dock (`index.html`) carries exactly four buttons: decorate, achievements, co-op/regatta
+  (hidden until unlocked), settings — matching the "systems open from their world structure"
+  interaction rule.
+- `SAVE_VERSION` is **3**. `newGameState()` seeds every subsystem key — `workshop`, `minigames`,
+  `neighbours`, `coop`, `regatta`, `expeditions`, `museum`, `lab`, `helicopter`, `islands`, `mine`,
+  `town`, `zoo`, `merge`, `trains`, `airport`, `foraging`, `newspaper`, `collections`, `decorate`,
+  `photo` — so no module ever has to branch on whether a state key exists, only on whether it holds
+  anything yet. Two migrations exist and were read, not assumed: `1→2` defaults `merge`/`trains`/
+  `airport` for a save that predates them; `2→3` defaults `town`/`zoo`/`market` the same way. Both
+  leave every other key on the object untouched.
+
+## Verification state
+
+`npm test` runs the content validator (`tools/validate-data.mjs`) followed by eight gameplay-logic
+suites. Real output from this checkout:
+
+```
+data.js OK — 22 crops, 12 animals, 26 buildings, 128 recipes, 192 goods, 3 merge
+chains, 39 achievements, 95 levels all with unlocks, 10 weekend events + 6
+mini-events + 25 fair tasks + 6 holidays, town: 16 houses + 10 community, 14 zoo
+enclosures, 8 islands, 23 materials
+```
+
+followed by eight suites (`test-camera`, `test-core`, `test-logistics`, `test-crafting`,
+`test-township`, `test-research`, `test-deadtime`, `test-social`) reporting `13`, `27`, `19`, `23`,
+`10`, `15`, `16`, and `24` passed respectively — **147 passed, 0 failed**, `npm test` exits 0.
+These exercise the real running modules, not just `data.js` shape: planting/harvesting through
+`production.tick`, offline catch-up, save/load round-trips, the merge board, workshop crafting,
+trains/town/zoo, research, and the neighbours/co-op/regatta social layer.
+
+World-structure placement was independently re-verified here rather than only trusted from the
+suite: all 22 entries in `STRUCTURES` resolve to themselves from their own tile, across 101
+occupied tiles, with zero overlaps and every panel id unique. Twenty of the twenty-two are locked
+at level 1 and still present/clickable — confirmed against `LEVELS.unlocks`.
+
+CI (`.github/workflows/release.yml`) is real and green for this exact commit: `gh run list`
+reports `conclusion: success` for the workflow run against SHA `013509a...`. The latest published
+release, `v0.1.0-build18+013509a4a7f6`, is `isDraft: false`, `isPrerelease: false`, targets this
+exact commit, and carries a genuine `Farm.Tycoon-Setup-0.1.0.exe` (119,255,552 bytes), the full
+`.nupkg`, and a `RELEASES` index — checked via `gh release view --json assets`, not assumed from
+the workflow's own "success" label. CI does not run tests as a release gate; that is this
+project's standing policy (see the comment in `release.yml`), not an oversight — `npm test` is the
+local gate, run before every push.
 
 ## What landed in the content expansion
 
-Nine commits, sourced from the Hay Day and Township community wikis.
+Nine commits, sourced from the Hay Day and Township community wikis. Unchanged since the last
+handoff — `src/data.js` has had only unlock-ordering and margin fixes since (see "Audit findings"
+below), not further content growth.
 
 | | Before | Now |
 |---|---|---|
@@ -38,11 +88,11 @@ Nine commits, sourced from the Hay Day and Township community wikis.
 | Zoo enclosures / islands | 8 / 4 | 14 / 8 |
 | Levels / achievements | 50 / 21 | 95 / 39 |
 
-New systems, all data-complete with module contracts: Building Workshop and kits, per-factory
-minigames, simulated neighbours, co-op with a request board, weekly regatta, expeditions,
-artifacts and museum, permanent research laboratory, helicopter, tiered mine depths, foraging,
-newspaper, collection books, building mastery, decorating and photo mode, plus 22 placed world
-structures.
+New systems, all now implemented behind their module contracts: Building Workshop and kits,
+per-factory minigames, simulated neighbours, co-op with a request board, weekly regatta,
+expeditions, artifacts and museum, permanent research laboratory, helicopter, tiered mine depths,
+foraging, newspaper, collection books, building mastery, decorating and photo mode, plus 22 placed
+world structures.
 
 ### The two mechanics that make this not a clone
 
@@ -56,20 +106,10 @@ Plus one interaction rule: **systems open by clicking their structure in the wor
 the HUD or dock. Locked structures are derelict but still clickable from level 1, so the map is
 the roadmap.
 
-## Verification state
-
-`npm test` (`tools/validate-data.mjs`) is green and now enforces roughly thirty rule families.
-**Every rule was broken on purpose and watched go red before being trusted.** Several found real
-defects the moment they first ran: four materials being spent on nothing, a co-op perk using an
-effect key outside the shared set, the laboratory placed on top of the museum, and a newspaper
-"bargain" band topping out at exactly the ordinary price floor.
-
-The game was loaded in a browser at the verified commit: canvas present, zero console errors, all
-192 goods and 28 research nodes resolving at runtime.
-
 ## Corrections on the record
 
-Three balance conclusions in this session were wrong, each because the metric was wrong:
+Three balance conclusions in an earlier session were wrong, each because the metric was wrong.
+Kept verbatim because the reasoning, not just the number, is the useful part:
 
 1. A claimed **20x mid-game grind wall** — an artefact of weighting one crop field like one
    building slot. Corrected: 129 h / 721 h / 1883 h across the three bands, an ordinary curve.
@@ -83,127 +123,130 @@ Three balance conclusions in this session were wrong, each because the metric wa
 Commit `ceed28b` still carries the wrong 20x figure. A commit message cannot be fixed without
 rewriting history, so it stays wrong and this document is the correction.
 
-## Packaging and fonts — done since the first draft of this file
+## Packaging and fonts
 
-- **The Windows installer is Squirrel.Windows**, not NSIS, and it is a *proven* build rather
-  than a validated config: `dist/squirrel-windows/` holds a 119 MB `Setup.exe`, `RELEASES` and
-  the full `.nupkg`. Verified `NotSigned` with no signer certificate, which is the permanent
-  policy, and the unknown-publisher warning that follows from it is expected.
+- **The Windows installer is Squirrel.Windows**, not NSIS, and it is now a *shipped* build, not
+  just a validated config: the published release above carries a real 119,255,552-byte
+  `Setup.exe`, `RELEASES`, and the full `.nupkg`, built by the same `npm run dist` command anyone
+  can run locally. Verified `NotSigned` with no signer certificate, which is the permanent policy,
+  and the unknown-publisher warning that follows from it is expected.
 - **There is a real application icon.** `tools/make-icon.mjs` generates it in pure code — no
   downloaded art, consistent with the project's vector-art convention — and emits a genuine
   multi-size `.ico` (magic `00 00 01 00`, five images at 16/32/48/128/256) plus a 512 px master.
-  Note `build/` is globally ignored, so the two icon files are explicit `!` exceptions in
-  `.gitignore`; without that the icon reference breaks on a fresh checkout.
-- **The two design fonts are vendored locally**, 27 faces / 947 KiB, via `tools/vendor-fonts.mjs`.
-  It is a script rather than a manual download because one family query returns 27 `@font-face`
-  blocks across weights and `unicode-range` subsets; hand-vendoring "two fonts" would ship two
-  files and silently drop every non-latin subset.
-- **`index.html` no longer loads Google Fonts over the network.** It had done so since the
-  scaffold, against this project's own no-CDN rule — a pre-existing defect found while verifying
-  the vendoring.
+  `build/` is globally ignored, so the two icon files are explicit `!` exceptions in `.gitignore`;
+  without that the icon reference breaks on a fresh checkout.
+- **The two design fonts are vendored locally**, 27 faces / 947 KiB, via `tools/vendor-fonts.mjs`,
+  used by both the game (`fonts/`) and the GitHub Pages site (`docs/fonts/`, imported via
+  `docs/styles.css`'s local `@import`, no CDN). It is a script rather than a manual download
+  because one family query returns 27 `@font-face` blocks across weights and `unicode-range`
+  subsets; hand-vendoring "two fonts" would ship two files and silently drop every non-latin
+  subset.
+- **`index.html` and `docs/index.html` load no fonts over the network.** `index.html` had done so
+  since the scaffold, against this project's own no-CDN rule — a pre-existing defect found while
+  verifying the vendoring and fixed since.
 
-Two verification lessons from that work, recorded because both produce false confidence:
+Two verification lessons from that work, worth keeping because both produce false confidence:
 `document.fonts.check()` returned `true` for all eight weights while **zero** faces were
 registered, so it cannot be trusted alone; and a `FontFace` probe reported a network error only
 because the filename had been guessed rather than read off disk.
 
 ## Audit findings — read this before trusting the content
 
-An adversarial audit ran 99 mutation probes against the validator. **51 guards fired correctly**,
-including every one named in the commit messages: material sets, expansion geometry, storage
-trios, kit integrity, minigame integrity, the orphan/sink audit, the museum bijection in both
-directions, expedition loot arity, mine depths, lab acyclicity, structure placement, and the
-co-op/regatta pools. The `MINE.tools` identity check is genuinely load-bearing — the audit's own
-deep clone tripped it on the first control run.
+An adversarial audit ran 99 mutation probes against the validator, several sessions ago. **51
+guards fired correctly**, including material sets, expansion geometry, storage trios, kit
+integrity, minigame integrity, the orphan/sink audit, the museum bijection in both directions,
+expedition loot arity, mine depths, lab acyclicity, structure placement, and the co-op/regatta
+pools. The `MINE.tools` identity check is genuinely load-bearing — the audit's own deep clone
+tripped it on the first control run.
 
-It also found real defects, ranked:
+It also found real defects, all fixed and re-verified independently rather than taken on trust:
 
-1. **Nine of 23 materials had no source anywhere** — the whole expansion set (`shovel`, `axe`,
-   `saw`) and the whole storage set (`bolt`, `plank`, `duct_tape`, `screw`, `wood_panel`,
-   `bracket`). `TRAINS`, `AIRPORT` and `HELICOPTER` carry material *counts* with no pool naming
-   which material arrives. Consequence: **every farm expansion and every storage upgrade was
-   permanently unbuyable, so the farm could never grow past the start zone.** Independently
-   confirmed before being acted on.
-2. **No structure stood on land the player owns.** `barn` and `silo` sat on row 22 — inside
-   `expansion_2`, which unlocks at level 13 — so a level-1 player could not reach their own barn.
-   `workshop_yard` unlocked at 6 and sat in level-35 land. Two structures straddled zone
-   boundaries.
-3. **The guard for #1 lied.** `tools/validate-data.mjs` said "a material with no source is a
-   wall" while implementing only the spend side. That comment is worse than none: it tells the
-   next reader a check exists, so nobody looks again. This is the second time in this project a
-   comment has asserted a safety property that was never implemented.
-4. `checkMaterials` accepts a `requiredSet` but is called with `null` for houses, community
-   buildings, zoo enclosures and milestones — so 4 of 6 consumers are unchecked.
-5. Three buildings are inert on the level they unlock (`build_workshop` for 15 levels,
-   `tea_house` 6, `oil_press` 3), and 70 recipes are unlockable before their inputs are. Recipes
-   carry no `unlockLevel` of their own, so they are gated only by input availability.
-6. 45 of 128 recipes have a non-positive margin, and the Building Workshop's two halves disagree
-   in sign: components destroy value while late kits print it.
+1. **Nine of 23 materials had no source anywhere.** Fixed in `895e7a6` — trains, the airport and
+   the helicopter now carry weighted `materialPool` tables. Re-verified: zero unsourced materials.
+2. **No structure stood on land the player owns.** Fixed in `5b56e2e` — all 22 structures were
+   misplaced, not the four originally named; ten early structures now hug the start zone's edges.
+   Re-verified: zero structures on land that unlocks too late, zero straddles.
+3. **The guard for #1 originally lied** — it claimed to check both the spend side and the earn
+   side of the material economy while only implementing the spend side. The earn-side guard now
+   exists and is correctly not fooled by removing a material from one of its two pools.
+4. `checkMaterials` accepted a `requiredSet` but was called with `null` for houses, community
+   buildings, zoo enclosures and milestones. Fixed — all six consumers are now checked.
 
-Verified TRUE by the audit: the 16 rects tile the grid to exactly 100% with zero gaps and zero
-overlaps; 22 structures; every crop has a sink; 26 factories with 26 distinct minigame effects;
-no duplicate ids; no recipe input cycles; `unlockLevel` agrees with `LEVELS.unlocks` everywhere.
+Two further findings from that audit were still open as of the previous handoff. Both have since
+been substantially addressed by commits `ce58198`, `9cea1c9`, `9e672ca`, and `523ae84` — verified
+here directly, by recomputation against the current `src/data.js`, not by re-reading commit
+messages:
 
-**Items 1–4 are fixed** (`895e7a6`, `5b56e2e`, `1f92a99`), each with a guard watched red then
-green, and both fixes re-verified here by independent computation rather than taken on trust:
-zero unsourced materials, zero structures on land that unlocks too late, zero straddles.
+5. **Recipes unlockable before their inputs, and buildings inert on unlock.** Every recipe now
+   carries its own `unlockLevel`, and `tools/validate-data.mjs` rejects any recipe whose
+   `unlockLevel` sits before the true earliest availability of its inputs (0 violations on the
+   current data — this is what the audit's "70 recipes" count was measuring, and it is now
+   structurally guarded, not just fixed once). Re-checking the three buildings the audit named
+   directly: `build_workshop` no longer sits inert on unlock (unlock level 6, earliest usable
+   recipe also 6 — was inert for 15 levels). `tea_house` (unlocks 56, first recipe 62) and
+   `oil_press` (unlocks 52, first recipe 55) still open several levels before their first usable
+   recipe — a 6-level and 3-level gap respectively, unchanged from the original finding and not
+   covered by any guard. This narrower point is real, current, and small; it is not the "70
+   recipes" problem, which is closed.
+6. **Non-positive recipe margins.** Recomputed directly against the current data with the same
+   sell-value logic the validator uses: **0 of 128 recipes now have a non-positive margin among
+   non-sink recipes** (was 45). Every Building Workshop component and kit recipe (41 of them) is
+   now explicitly tagged `sink: true` and exempted from the margin check by design — a sink is a
+   good meant to be consumed, not resold, exactly like feed. Checking those 41 sink recipes
+   directly against a single-hop raw-input-cost comparison (cost to buy the recipe's direct inputs
+   at their own sell price, vs. the recipe's own sell price), 40 of 41 now cost more to craft than
+   they would fetch selling directly; one, `shingle` in `build_workshop`, still nets a small +5.
+   **This single-hop check does not rule out a multi-step arbitrage across the full chain** (raw
+   materials → components → kit, summing real material cost rather than component resale price),
+   which was not re-simulated end to end here. Flag this as reduced and very likely closed, not
+   proven eliminated — the original "craft components at a loss, sell the kit for ~9,800" scenario
+   specifically was not re-run.
 
-- Trains, the airport and the helicopter now carry weighted `materialPool` tables in the same
-  shape the expedition loot already used. Trains supply building + expansion sets, the airport
-  expansion + storage, the helicopter is storage-led and quick. The `advanced` set stays
-  expedition-only, honouring the Tool Exchange note.
-- All 22 structures were misplaced, not the four the audit named — `mine_entrance` opened at 24
-  while standing on level-39 land, and `train_station` at 30 on level-54 land. Ten early
-  structures now hug the start zone's edges, leaving rows y12–20 clear for fields.
-- The earn-side guard now exists, so the comment that promised it is finally true. It is
-  correctly *not* fooled by removing a material from one of its two pools.
+Verified TRUE by the original audit and unaffected by any of the above: the 16 rects tile the grid
+to exactly 100% with zero gaps and zero overlaps; 22 structures; every crop has a sink; 26
+factories with 26 distinct minigame effects; no duplicate ids; no recipe input cycles;
+`unlockLevel` agrees with `LEVELS.unlocks` everywhere.
 
-**5 and 6 remain open** and are design questions rather than bugs:
+## Newly closed since the last handoff
 
-- 70 recipes are unlockable before their inputs are. The Feed Mill opens at level 5 with recipes
-  blocked until 51–77, so a new player sees five entries they cannot explain. Recipes carry no
-  `unlockLevel` of their own, so fixing this means either adding that field or reordering.
-- 45 of 128 recipes have a non-positive margin, and the Building Workshop's halves disagree in
-  sign: components destroy value while late kits print it. Since kits are ordinary goods with a
-  sell price, the intended loop is invertible — craft components at a loss, sell the kit for
-  ~9,800 rather than placing it. Either kits should not be sellable, or the margins need
-  rebalancing.
+Two items that were open problems in the previous version of this document:
+
+- **The state-shape gap.** `merge`/`trains`/`airport`/`town`/`zoo`/`market` are now seeded by
+  `newGameState()` directly rather than left to be lazily created by each module's own
+  `ensureState()` helper on first use. `SAVE_VERSION` bumped to 3 with the two migrations
+  described above. This closes a real class of bug: a module reading `state.town` before anything
+  had called its own lazy initializer would previously have hit `undefined`.
+- **The CI ledger race.** The release workflow's "Publish GitHub Release" step now runs before its
+  "Commit updated release code-name ledger" step (previously the reverse). A failure in the
+  bookkeeping commit — a transient git/network error, a merge conflict on the ledger file — can no
+  longer prevent a release that already built successfully from existing. Verified by reading the
+  step order in `.github/workflows/release.yml` (`Publish GitHub Release` at the step before
+  `Commit updated release code-name ledger`) and by the real release history: `v0.1.0-build18` and
+  `v0.1.0-build17` both exist and are non-draft.
 
 ## Not done — the honest list
 
-- **The visual overhaul is only partly integrated.** Fonts and the icon are done. The palette,
-  outlines, golden-hour lighting, depth sorting and the eight new structure sprites from
-  `design/handoff/SPRITE-NOTES.md` are not.
-- **Camera clamping is a live gap, not a future risk.** `FARM.gridSize` is 40 and a canvas at the
-  shipped tile size shows about twelve tiles. The contract is written in `renderer.js` but not
-  implemented, so roughly **half the farm exists in data and cannot be looked at**. This is the
-  first thing to fix.
-- **No CI.** There is no `.github/workflows` directory, so no remote verdict exists for any
-  commit.
-- **No release has ever been published**, and none should be until the game runs. An installer
-  now builds, but it would install a program that draws a placeholder splash.
+- **Screenshots and recordings.** None exist in this README or on the GitHub Pages site yet. A
+  separate pass is capturing the real, running, built application now; this document and the
+  README gain their capture matrix once that lands. Do not add image references ahead of that —
+  a reference to a file that isn't in the tree is worse than no image.
+- **The two open audit points above** (tea_house/oil_press unlock-inert gap; unverified multi-hop
+  kit arbitrage) are real, small, and unaddressed.
 - Regatta league reward tables, Township community buildings past level 70, and per-expansion
-  cost numbers were never verified — they are image-only on the wiki.
-
-## Why a release-grade shutdown could not complete
-
-A `yum tong` pass was attempted and stopped at the gates rather than being weakened to fit. The
-blocking evidence, all verified rather than assumed:
-
-- No CI exists, so no green remote verdict is obtainable.
-- No release and no tag has ever been published.
-- The gate requires driving the complete built UI with a capture after every click. With 238 stub
-  bodies there is no UI to drive.
-- The gate requires a per-surface capture matrix in the README. There was no README at all.
-
-Cleanup, by contrast, was already complete before the pass began: one branch (`main`, level with
-the remote), one working tree, no stashes, no tags. There was nothing to delete.
+  cost numbers were never independently verified against the wiki — they were sourced from
+  wiki text and images and taken at face value.
+- Phase B's original plan (see `CLAUDE.md`'s history and `PLAN.md`) called for the implementation
+  to land on branch `claude/windows-hay-day-game-cfctdb` with a draft PR. That did not happen —
+  every Phase B commit landed directly on `main`, the same way the scaffold did. Recorded here so
+  nobody goes looking for a branch or PR that does not exist; `git branch -a` on this checkout
+  shows only `main`.
 
 ## Suggested order for the next session
 
-1. Camera pan + clamp — the live gap above.
-2. Vendor the two fonts properly, then verify with `document.fonts.check` against the running
-   page rather than by reading the CSS.
-3. Depth sorting, then the palette, outlines and golden-hour pass from `SPRITE-NOTES.md`.
-4. The eight new structure sprites, each with its derelict variant.
-5. Only then Phase B proper: the system modules, in the dependency order their contracts imply.
+1. Capture matrix — screenshots/recordings of the real running game for the README and the
+   GitHub Pages site, once the in-flight capture pass lands (or pick that up if it hasn't).
+2. The `tea_house`/`oil_press` unlock-inert gap (small; see "Audit findings" #5).
+3. Re-simulate the full component→kit chain end to end for the Building Workshop to settle the
+   multi-hop arbitrage question definitively (see "Audit findings" #6).
+4. Re-derive the regatta league reward tables, post-level-70 Township buildings, and expansion
+   costs directly from primary sources rather than wiki text/images, if that matters for release.

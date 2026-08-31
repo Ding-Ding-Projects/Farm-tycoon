@@ -18,6 +18,7 @@ with Electron, and playable in any modern browser.
 - 🏪 **Roadside shop** — price your goods and watch them sell
 - 🎣 **Fishing pond** with a timing minigame, 8 species, and treasure chests
 - ⛏️ **Mine** for silver, gold, platinum and gems
+- 🧩 **Merge Meadow** — a Township-style merge-board minigame whose rewards feed your farm
 - 💎 Diamonds, achievements, a daily prize wheel, pets, seasonal events, land expansion,
   decorations — and **40 levels** with something new at every one
 

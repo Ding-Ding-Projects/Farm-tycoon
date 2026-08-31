@@ -64,6 +64,9 @@ Defined in `styles.css :root`; restyle by changing values, keep the names:
 11. **Achievements panel** — badge grid, progress bars, diamond rewards
 12. **Settings** — sound toggle, save export/import, reset
 13. **Tutorial overlay state** — highlight cutout + arrow + instruction bubble
+14. **Merge Meadow** — full-screen 7×9 merge board (Township-style): rounded item tiles
+    with tier badges, generator tiles (Toolbox/Seed Sack/Gift Box), energy bar with regen
+    timer, drag-merge affordance, claimable-item glow, chain-progress strip at the top
 
 ## Game content the UI shows (for realistic mockups)
 

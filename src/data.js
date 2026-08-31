@@ -269,6 +269,49 @@ export const MINE = {
   },
 };
 
+/**
+ * Merge Meadow — Township-style merge minigame on its own board.
+ * Generators spawn tier-1 items (costing energy); drag two identical items together to
+ * merge into the next tier. Top tiers pay out rewards into the main farm economy.
+ * Energy regenerates over time; board state persists in the save.
+ */
+export const MERGE = {
+  unlockLevel: 11,
+  board: { cols: 7, rows: 9 },
+  energy: { max: 100, regenSeconds: 90, costPerSpawn: 1 },
+  /** Generators sit on the board and spawn tier-1 items of their chain when tapped. */
+  generators: {
+    toolbox:    { name: 'Toolbox',      chain: 'tools',   spawnBatch: [1, 3] },
+    seed_sack:  { name: 'Seed Sack',    chain: 'plants',  spawnBatch: [1, 3] },
+    gift_box:   { name: 'Gift Box',     chain: 'treats',  spawnBatch: [1, 2] },
+  },
+  /** Chains: item tiers low → high. Merging 2 of tier n yields 1 of tier n+1. */
+  chains: {
+    tools: {
+      name: 'Tools',
+      tiers: ['Nail', 'Hammer', 'Saw', 'Drill', 'Toolkit', 'Workbench', 'Golden Workbench'],
+      /** Reward when the top tier is tapped/claimed (removed from board). */
+      topReward: { coins: 2500, item: 'pickaxe', qty: 3 },
+      /** Mid-chain claims: tier index → reward (claiming removes the item). */
+      claims: { 3: { coins: 120 }, 4: { coins: 400 }, 5: { coins: 1000, diamonds: 1 } },
+    },
+    plants: {
+      name: 'Plants',
+      tiers: ['Sprout', 'Seedling', 'Herb Pot', 'Flower Box', 'Shrub', 'Fruit Tree', 'Tree of Plenty'],
+      topReward: { coins: 2000, diamonds: 3 },
+      claims: { 3: { coins: 100 }, 4: { coins: 350 }, 5: { coins: 900, item: 'dynamite', qty: 1 } },
+    },
+    treats: {
+      name: 'Treats',
+      tiers: ['Crumb', 'Cookie Bite', 'Cupcake', 'Cake Slice', 'Layer Cake', 'Wedding Cake'],
+      topReward: { coins: 3000, vouchers: 5 },
+      claims: { 2: { coins: 80 }, 3: { coins: 250 }, 4: { coins: 800, diamonds: 1 } },
+    },
+  },
+  /** Occasional bonus drops when merging: small chance of coins/energy bubbles. */
+  mergeBonus: { chance: 0.12, loot: [{ coins: [20, 80], weight: 70 }, { energy: [5, 15], weight: 30 }] },
+};
+
 /** Decorations — cosmetic, placeable. voucher items are boat-exclusive. */
 export const DECORATIONS = {
   fence_wood:   { name: 'Wooden Fence',  cost: 30,   size: [1, 1] },
@@ -306,7 +349,7 @@ export const LEVELS = {
     8:  ['truck', 'sugar_mill'],
     9:  ['cotton', 'popcorn_pot'],
     10: ['pig', 'pets'],
-    11: ['tomato'],
+    11: ['tomato', 'merge_meadow'],
     12: ['fishing', 'grill'],
     13: ['potato', 'expansion_2'],
     14: ['sheep', 'loom'],

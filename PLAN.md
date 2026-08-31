@@ -53,6 +53,7 @@ Farm-tycoon/
 │   ├── fishing.js          # pond mini-area: cast minigame, fish inventory, chests
 │   ├── boat.js             # boat orders (bulk crates, departure timer, vouchers)
 │   ├── mine.js             # mine digging (tools, ores) + smelter integration
+│   ├── merge.js            # Merge Meadow: Township-style merge board minigame
 │   ├── extras.js           # achievements, daily wheel, NPC visitors, diamonds
 │   ├── render/
 │   │   ├── renderer.js     # camera (pan/zoom), tile grid, draw order, day tint
@@ -123,6 +124,7 @@ Applies to **Phase B**: the game is implemented **fully, start to finish, in a s
 - **Achievements (~20):** e.g. "Harvest 100 wheat", "Fulfill 50 orders", "Catch every fish" — award diamonds and profile badges, shown in an achievements panel.
 - **Daily reward:** a wheel-of-fortune spin once per day (coins, goods, diamonds), streak bonus for consecutive days.
 - **Visitors:** occasional NPC visitors wander to your shop/farm and ask to buy a specific item at a premium — accept or decline.
+- **Merge Meadow (L11) — Township-style merge minigame:** a separate 7×9 merge board opened from the dock. Generators (Toolbox, Seed Sack, Gift Box) spawn tier-1 items for energy (regenerates ~1/90s, max 100, offline like all timers); drag two identical items to merge into the next tier across 3 chains (Tools 7 tiers, Plants 7, Treats 6). Mid-chain and top-tier items are claimable for rewards that pay into the main farm — coins, diamonds, boat vouchers, and mine tools — so the minigame feeds the core loop. Small bonus drops (coins/energy) on ~12% of merges. Board state persists in the save. Module: `src/merge.js`; tuning in `data.js` `MERGE`.
 - **Pets (L10+):** dog and cat roam the farm; feed them daily for an XP bonus and idle animations.
 - **Seasonal events:** a lightweight rotating event every few days (e.g. "Harvest Festival": wheat sells 2x; "Fishing Frenzy": double fish) — banner announces it, adds variety without new assets.
 - **Tutorial:** guided first 10 minutes — arrow + highlight overlay walks the player through plant → harvest → feed chicken → bake bread → fulfill first order.
@@ -174,7 +176,7 @@ The app opens as a **frameless-feel 1280×800 resizable Electron window** titled
 5. Animals + production buildings with queues; barn storage.
 6. Economy: XP/levels/unlocks; order board.
 7. Roadside shop, truck orders, fishing pond (with minigame).
-8. Boat orders, mine + smelter, diamonds, achievements, daily wheel, NPC visitors.
+8. Boat orders, mine + smelter, Merge Meadow minigame, diamonds, achievements, daily wheel, NPC visitors.
 9. Expansion + decorations; effects/juice pass; balance timers & prices across levels 1–40.
 10. Pets, seasonal events, tutorial overlay, WebAudio SFX, settings panel with save export/import.
 11. Repo docs & tooling: `PLAN.md` (this document), `CLAUDE.md`, `.claude/skills/` (run-game, add-content, playtest), README.

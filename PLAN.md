@@ -69,7 +69,7 @@ Farm-tycoon/
 ├── electron/
 │   ├── main.cjs            # Electron main process (BrowserWindow, loads index.html)
 │   └── preload.cjs         # minimal, contextIsolation on
-├── package.json            # electron + electron-builder; scripts: start, dist (Windows NSIS)
+├── package.json            # electron + electron-builder; scripts: start, dist (Windows Squirrel.Windows — corrected from an earlier NSIS plan; see HANDOFF.md)
 ├── PLAN.md                 # this full design document, committed to the repo
 ├── DESIGN_BRIEF.md         # Claude Design handoff: screens, tokens, class names
 ├── CLAUDE.md               # project guide for future Claude sessions
@@ -89,6 +89,8 @@ Farm-tycoon/
 ## One-shot delivery requirement
 
 Applies to **Phase B**: the game is implemented **fully, start to finish, in a single pass** — every feature listed in this plan ships in that implementation; nothing is stubbed, deferred, or marked TODO. The implementation-order list below is the internal build sequence within that one pass, ending with the tested, committed, pushed result and a draft PR. (Phase A's scaffolding stubs are the sanctioned exception — they exist precisely to be filled in by Phase B.)
+
+> **Status: Phase B shipped.** Every module contract is implemented — `grep -r "/\* Phase B \*/" src/` returns nothing across the 37-file `src/` tree, and `npm test` passes 147 assertions across nine files. It did not land through the branch-plus-draft-PR route described above: every Phase B commit went directly to `main`, the same as the scaffold. See `HANDOFF.md` for the full verification record and `CLAUDE.md` for the current handoff state.
 
 ## Gameplay design (Hay Day parity)
 

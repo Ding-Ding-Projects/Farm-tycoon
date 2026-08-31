@@ -1,0 +1,36 @@
+Give the Building Workshop a Level-1 material trickle, freeing 8 buildings unlockable before their kit
+
+打通建築工作坊嘅原材料供應：8間建築喺自己套件未整到之前就話你解鎖咗
+
+The Workshop opens at Level 6 but its only material source (trains) doesn't open until 21,
+so dairy/sugar_mill/popcorn_pot/grill/loom/juice_press/pie_oven/sewing_machine each unlocked
+5-15 levels before a single kit component could be crafted - a player reaching Level 6 finds
+a workshop that can do nothing for fifteen levels.
+
+Give the daily wheel (live from the first login, no unlockLevel of its own) and fishing's
+chest loot (Level 12) small 'building'-set material drops, reusing the existing
+{material, qty, weight} pool shape for the chest entries. Recompute every base component
+and early/mid kit in the Workshop with the same recursive fixed-point method the validator
+already uses: they now resolve to Level 6, the Workshop's own floor, instead of 21.
+
+Add the guard that was missing to catch this class of bug directly: a building must not
+unlock before its own kit's recipe is actually craftable, checked against the fixed-point
+level rather than the building's own unlockLevel. Proved red by bumping kit_juice_press's
+unlockLevel above juice_press's building unlockLevel (fired exactly as expected), green
+after revert. All eight previously-affected buildings: verified craftable at or before
+their own unlock level, with zero remaining violations.
+
+工作坊Level 6開,但佢唯一嘅材料來源(火車)要到Level 21先開,搞到八間建築(奶場/糖廠/爆谷
+煲/燒烤爐/織布機/榨汁機/批爐/縫紉機)全部喺自己套件都整唔到嘅情況下就"解鎖"咗。
+
+而家幫每日轉盤(由第一次登入就有,冇解鎖等級)同摸魚寶箱(Level 12)加返少少「building」
+組物料,寶箱嗰邊沿用現有嘅{material, qty, weight}池形狀。用返驗證器本身嗰套遞歸方法,
+重新計晒工作坊入面每個基本組件同早/中期套件 - 而家全部收斂到Level 6,即係工作坊自己
+嘅底線,唔再係21。
+
+加咗個之前冇嘅檢查:建築唔可以喺自己套件真係整到之前就解鎖,用返遞歸算出嚟嘅真實等級
+嚟核對,唔淨係核對建築自己嗰個解鎖等級。試過故意谷高kit_juice_press嘅解鎖等級試過會唔
+會報錯(啱啱好中),還原返之後變返綠色。之前八間受影響嘅建築:全部核實喺自己解鎖等級
+之前或者啱啱好整到,零違規。
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>

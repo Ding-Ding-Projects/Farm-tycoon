@@ -2,14 +2,15 @@
 // Save format: one JSON blob in localStorage under KEY, with a `version` field for migrations.
 // All timers are stored as absolute wall-clock timestamps (ms) so progress continues offline.
 
-import { NEW_GAME, FARM } from './data.js';
+import { NEW_GAME, FARM, MERGE } from './data.js';
 
 export const SAVE_KEY = 'farm-tycoon-save';
-// Still 1: load() is a stub and no build has ever shipped a save, so there is nothing to
-// migrate FROM. The moment a build does ship saves, adding a key above means bumping this to 2
-// and defaulting the new keys in load() — otherwise an existing save loads with them undefined
-// and every consumer starts branching on absence.
-export const SAVE_VERSION = 1;
+// Bumped 1 -> 2 when merge/trains/airport joined the documented shape below (builds
+// v0.1.0-build2 through build11 shipped v1 saves, so a real save missing those three keys can
+// exist on a machine). Any future key added to the shape means bumping this again and adding a
+// migration in MIGRATIONS — otherwise an existing save loads with the new key undefined and
+// every consumer starts branching on absence.
+export const SAVE_VERSION = 2;
 
 // localStorage is a browser/Electron-renderer global. The game itself never runs anywhere
 // else, but tools/test-core.mjs exercises this module under plain Node, which has no such
@@ -56,6 +57,9 @@ const storage = (() => {
  *   helicopter: { current, fuel, fuelUpdatedAt, returningAt },
  *   islands: { voyage: {islandId, readyAt}|null, unlocked },
  *   mine: { depthUnlocked, currentDepth, digs },
+ *   merge: { cells: [{chain, tier}|{generator}|null, ...], energy, energyUpdatedAt },
+ *   trains: { current: {wagons, filledAt, ...}|null, returningAt, pendingMaterials },
+ *   airport: { current: {...}|null, returningAt, pendingMaterials, pendingBonus },
  *   foraging: { nodes: [{id, type, x, y, readyAt}] },
  *   newspaper: { issueId, generatedAt, listings },
  *   collections: { seen, claimed, mastery: {buildingId: {makes, star}} },
@@ -93,6 +97,22 @@ function makeStartingFields() {
     });
   }
   return objects;
+}
+
+// Shared shape builders for merge.js / trains.js's own state slices — used by both
+// newGameState() below and the v1 -> v2 migration, so the two can never drift apart.
+function makeEmptyMergeBoard() {
+  return {
+    cells: new Array(MERGE.board.cols * MERGE.board.rows).fill(null),
+    energy: MERGE.energy.max,
+    energyUpdatedAt: Date.now(),
+  };
+}
+function makeEmptyTrains() {
+  return { current: null, returningAt: 0, pendingMaterials: null };
+}
+function makeEmptyAirport() {
+  return { current: null, returningAt: 0, pendingMaterials: null, pendingBonus: 0 };
 }
 
 /** Create a fresh new-game state object (does not persist it). */
@@ -133,6 +153,9 @@ export function newGameState() {
     helicopter: { current: null, fuel: 5, fuelUpdatedAt: 0, returningAt: 0 },
     islands: { voyage: null, unlocked: [] },
     mine: { depthUnlocked: ['mine_depth_1'], currentDepth: 'mine_depth_1', digs: 0 },
+    merge: makeEmptyMergeBoard(),
+    trains: makeEmptyTrains(),
+    airport: makeEmptyAirport(),
     foraging: { nodes: [] },
     newspaper: { issueId: 0, generatedAt: 0, listings: [] },
     collections: { seen: {}, claimed: {}, mastery: {} },
@@ -144,11 +167,22 @@ export function newGameState() {
 /**
  * Migration steps, keyed by the version they upgrade FROM. Each function takes a raw parsed
  * save object at version N and returns one shaped for version N+1, never mutating in place
- * blindly since a half-applied migration is worse than none. Empty today because
- * SAVE_VERSION has never moved off 1; the next key added to the documented shape above bumps
- * SAVE_VERSION to 2 and gets its migration added here (default the new key, nothing else).
+ * blindly since a half-applied migration is worse than none. The next key added to the
+ * documented shape above bumps SAVE_VERSION again and gets its own migration added here
+ * (default the new key, nothing else — every existing key on the save passes through
+ * completely untouched).
  */
-const MIGRATIONS = {};
+const MIGRATIONS = {
+  // v1 -> v2: merge.js/trains.js gained their own state.merge/state.trains/state.airport
+  // slices. A v1 save predates all three, so default them exactly as a fresh game would;
+  // everything else on the object is left exactly as it was.
+  1: (obj) => {
+    if (!obj.merge) obj.merge = makeEmptyMergeBoard();
+    if (!obj.trains) obj.trains = makeEmptyTrains();
+    if (!obj.airport) obj.airport = makeEmptyAirport();
+    return obj;
+  },
+};
 
 function migrate(obj) {
   let v = obj.version;

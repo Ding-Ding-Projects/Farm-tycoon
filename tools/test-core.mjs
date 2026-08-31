@@ -10,7 +10,7 @@ import * as state from '../src/state.js';
 import * as economy from '../src/economy.js';
 import * as farm from '../src/farm.js';
 import * as production from '../src/production.js';
-import { NEW_GAME, CROPS, LEVELS, FARM, BUILDINGS, ANIMALS } from '../src/data.js';
+import { NEW_GAME, CROPS, LEVELS, FARM, BUILDINGS, ANIMALS, MERGE } from '../src/data.js';
 
 let passed = 0;
 const failures = [];
@@ -52,10 +52,26 @@ test('newGameState has the documented keys and NEW_GAME values', () => {
   assert.deepEqual(s.farm.unlockedZones, ['start']);
   for (const key of [
     'workshop', 'minigames', 'expeditions', 'museum', 'lab', 'helicopter',
-    'islands', 'mine', 'foraging', 'newspaper', 'collections', 'decorate', 'photo',
+    'islands', 'mine', 'merge', 'trains', 'airport', 'foraging', 'newspaper',
+    'collections', 'decorate', 'photo',
   ]) {
     assert.ok(key in s, `missing expansion key: ${key}`);
   }
+});
+
+test('newGameState seeds state.merge/state.trains/state.airport with the shapes merge.js/trains.js expect', () => {
+  const s = freshState();
+
+  // merge.js's own ensureMergeState(): { cells: Array(cols*rows).fill(null), energy: max, energyUpdatedAt }
+  assert.ok(s.merge, 'state.merge must be present, not lazily absent');
+  assert.equal(s.merge.cells.length, MERGE.board.cols * MERGE.board.rows);
+  assert.ok(s.merge.cells.every((c) => c === null), 'a fresh board must be entirely empty cells');
+  assert.equal(s.merge.energy, MERGE.energy.max);
+  assert.equal(typeof s.merge.energyUpdatedAt, 'number');
+
+  // trains.js's own ensureState(): state.trains / state.airport
+  assert.deepEqual(s.trains, { current: null, returningAt: 0, pendingMaterials: null });
+  assert.deepEqual(s.airport, { current: null, returningAt: 0, pendingMaterials: null, pendingBonus: 0 });
 });
 
 test('save -> load round-trips to a deep-equal state', () => {
@@ -93,6 +109,55 @@ test('a save from an unknown future version is rejected', () => {
   const ok = state.importSave(JSON.stringify({ ...before, version: 999 }));
   assert.equal(ok, false);
   assert.equal(state.state.coins, 42);
+});
+
+test('a v1 save without merge/trains/airport migrates to v2 with them defaulted, preserving every other key exactly', () => {
+  const s = freshState();
+  // Give the save some real, distinguishing content so "preserved byte-for-byte" is actually
+  // being tested, not just a fresh-game object that happens to survive by coincidence.
+  s.coins = 4242;
+  s.silo.items.wheat += 7;
+  s.stats.cropsHarvested = 3;
+  const fieldId = s.farm.objects[0].id;
+  production.plant(fieldId, 'wheat');
+
+  // Build a synthetic v1 save: today's (v2) state minus the three keys the v1->v2 migration
+  // adds, with version rolled back to 1 — exactly the shape a save written by an earlier
+  // build (v0.1.0-build2..build11 all shipped v1 saves) would have on disk.
+  const v1 = JSON.parse(JSON.stringify(state.state));
+  v1.version = 1;
+  delete v1.merge;
+  delete v1.trains;
+  delete v1.airport;
+  assert.ok(!('merge' in v1) && !('trains' in v1) && !('airport' in v1), 'synthetic v1 save must actually lack the three keys');
+  const preMigration = JSON.parse(JSON.stringify(v1));
+
+  const ok = state.importSave(JSON.stringify(v1));
+  assert.equal(ok, true, 'a migrated v1 save must still pass isValidSave and import cleanly');
+  assert.equal(state.state.version, state.SAVE_VERSION, 'migration must land exactly on the current version');
+
+  // The three new keys are present and match the documented/newGameState shape.
+  assert.ok(state.state.merge, 'merge must be defaulted by the migration');
+  assert.equal(state.state.merge.cells.length, MERGE.board.cols * MERGE.board.rows);
+  assert.ok(state.state.merge.cells.every((c) => c === null));
+  assert.equal(state.state.merge.energy, MERGE.energy.max);
+  assert.deepEqual(state.state.trains, { current: null, returningAt: 0, pendingMaterials: null });
+  assert.deepEqual(state.state.airport, { current: null, returningAt: 0, pendingMaterials: null, pendingBonus: 0 });
+
+  // Every key that existed before migration is untouched (version is the one legitimate
+  // exception — bumping it from 1 to 2 is the whole point of migrating).
+  for (const key of Object.keys(preMigration)) {
+    if (key === 'version') continue;
+    assert.deepEqual(state.state[key], preMigration[key], `key '${key}' must survive migration byte-for-byte`);
+  }
+
+  // The migrated, imported state round-trips through save/load with no further drift. Snapshot
+  // AFTER save() (which stamps a fresh lastSaved), matching the existing save->load round-trip
+  // test's pattern — snapshotting first would race Date.now() against the save() call below.
+  state.save();
+  const beforeReload = JSON.parse(JSON.stringify(state.state));
+  state.load();
+  assert.deepEqual(state.state, beforeReload, 'a migrated save must round-trip through save/load unchanged');
 });
 
 test('a valid save round-trips through importSave', () => {

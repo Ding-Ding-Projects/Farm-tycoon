@@ -3,26 +3,158 @@
 // Objects: {id, kind: 'field'|'building'|'pen'|'decoration'|'pond'|'mine', type, x, y}
 // occupying a [w,h] footprint from data.js sizes.
 
-/** Is the rect free (inside an unlocked zone, no overlapping object)? */
-export function canPlace(x, y, w, h) { /* Phase B */ }
+import { state } from './state.js';
+import { FARM, BUILDINGS, DECORATIONS, ANIMALS, STRUCTURES } from './data.js';
+import * as economy from './economy.js';
 
-/** Place a new object; deducts cost via economy.addCoins. Returns the object or null. */
-export function place(kind, type, x, y) { /* Phase B */ }
+let nextObjectId = 1;
+function freshId() { return `obj_${nextObjectId++}_${Date.now().toString(36)}`; }
 
-/** Move an existing object to a new position if free (edit mode). */
-export function move(objectId, x, y) { /* Phase B */ }
+/**
+ * Footprint lookup. Fields are always 1x1; buildings/decorations/structures carry an
+ * explicit [w,h] in data.js. Animal pens have no size field in data.js (ANIMALS only
+ * defines pen economy, not pen geometry), so pens default to a fixed 2x2 footprint here —
+ * a farm.js-local rendering/placement decision, not invented game content.
+ */
+function footprintOf(kind, type) {
+  if (kind === 'field') return [1, 1];
+  if (kind === 'building') return BUILDINGS[type]?.size ?? [1, 1];
+  if (kind === 'decoration') return DECORATIONS[type]?.size ?? [1, 1];
+  if (kind === 'pen') return ANIMALS[type]?.size ?? [2, 2];
+  if (STRUCTURES[type]) return STRUCTURES[type].size;
+  return [1, 1];
+}
 
-/** Sell/remove a decoration or field (refunds a fraction of cost). */
-export function remove(objectId) { /* Phase B */ }
+function costOf(kind, type) {
+  if (kind === 'field') return FARM.fieldCost;
+  if (kind === 'building') return BUILDINGS[type]?.cost ?? 0;
+  if (kind === 'decoration') return DECORATIONS[type]?.cost ?? 0;
+  if (kind === 'pen') return ANIMALS[type]?.penCost ?? 0;
+  return 0;
+}
 
-/** Object at a tile, if any (for input picking). */
-export function objectAt(x, y) { /* Phase B */ }
+/** Extra runtime fields a freshly placed object of this kind needs (timers etc). */
+function initialExtra(kind, type) {
+  if (kind === 'field') return { cropId: null, plantedAt: null, readyAt: null };
+  if (kind === 'pen') return { readyAt: null };
+  return {};
+}
 
 /** Is a tile inside any unlocked zone? */
-export function isUnlockedTile(x, y) { /* Phase B */ }
+export function isUnlockedTile(x, y) {
+  for (const zoneId of state.farm.unlockedZones) {
+    const rect = zoneId === 'start'
+      ? FARM.startZone
+      : FARM.expansions.find((e) => e.id === zoneId)?.rect;
+    if (rect && x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h) return true;
+  }
+  return false;
+}
+
+function rectInUnlockedLand(x, y, w, h) {
+  for (let ty = y; ty < y + h; ty++) {
+    for (let tx = x; tx < x + w; tx++) {
+      if (!isUnlockedTile(tx, ty)) return false;
+    }
+  }
+  return true;
+}
+
+function rectOverlapsAnyObject(x, y, w, h, ignoreId) {
+  for (const obj of state.farm.objects) {
+    if (obj.id === ignoreId) continue;
+    const [ow, oh] = footprintOf(obj.kind, obj.type);
+    const overlaps = x < obj.x + ow && x + w > obj.x && y < obj.y + oh && y + h > obj.y;
+    if (overlaps) return true;
+  }
+  return false;
+}
+
+/** Is the rect free (inside an unlocked zone, no overlapping object)? */
+export function canPlace(x, y, w, h) {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || w <= 0 || h <= 0) return false;
+  if (x < 0 || y < 0 || x + w > FARM.gridSize || y + h > FARM.gridSize) return false;
+  if (!rectInUnlockedLand(x, y, w, h)) return false;
+  if (rectOverlapsAnyObject(x, y, w, h, null)) return false;
+  return true;
+}
+
+/** Place a new object; deducts cost via economy.addCoins. Returns the object or null. */
+export function place(kind, type, x, y) {
+  const [w, h] = footprintOf(kind, type);
+  if (!canPlace(x, y, w, h)) return null;
+
+  const cost = costOf(kind, type);
+  if (cost > 0) {
+    try {
+      economy.addCoins(-cost);
+    } catch {
+      return null; // insufficient coins — nothing was ever mutated, so nothing to refund
+    }
+  }
+
+  const obj = { id: freshId(), kind, type, x, y, ...initialExtra(kind, type) };
+  state.farm.objects.push(obj);
+  return obj;
+}
+
+/** Move an existing object to a new position if free (edit mode). */
+export function move(objectId, x, y) {
+  const obj = state.farm.objects.find((o) => o.id === objectId);
+  if (!obj) return false;
+  const [w, h] = footprintOf(obj.kind, obj.type);
+  if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
+  if (x < 0 || y < 0 || x + w > FARM.gridSize || y + h > FARM.gridSize) return false;
+  if (!rectInUnlockedLand(x, y, w, h)) return false;
+  if (rectOverlapsAnyObject(x, y, w, h, objectId)) return false;
+  obj.x = x;
+  obj.y = y;
+  return true;
+}
+
+/** Sell/remove a decoration or field (refunds a fraction of cost). */
+export function remove(objectId) {
+  const idx = state.farm.objects.findIndex((o) => o.id === objectId);
+  if (idx === -1) return false;
+  const obj = state.farm.objects[idx];
+  const cost = costOf(obj.kind, obj.type);
+  state.farm.objects.splice(idx, 1);
+  if (cost > 0) economy.addCoins(Math.floor(cost * 0.5)); // refund half — cannot go negative
+  return true;
+}
+
+/** Object at a tile, if any (for input picking). */
+export function objectAt(x, y) {
+  for (const obj of state.farm.objects) {
+    const [w, h] = footprintOf(obj.kind, obj.type);
+    if (x >= obj.x && x < obj.x + w && y >= obj.y && y < obj.y + h) return obj;
+  }
+  return null;
+}
 
 /** Buy an expansion zone by id (level-gated, costs coins). Unlocks its tiles. */
-export function buyExpansion(id) { /* Phase B */ }
+export function buyExpansion(id) {
+  const exp = FARM.expansions.find((e) => e.id === id);
+  if (!exp) return false;
+  if (state.farm.unlockedZones.includes(id)) return false;
+  if (!economy.isUnlocked(id)) return false;
+  if (state.coins < exp.cost) return false;
+  for (const [mat, qty] of Object.entries(exp.materials)) {
+    if ((state.barn.items[mat] || 0) < qty) return false;
+  }
+
+  // Verified above, so the deduction below can never fail partway through.
+  economy.addCoins(-exp.cost);
+  for (const [mat, qty] of Object.entries(exp.materials)) {
+    state.barn.items[mat] -= qty;
+  }
+  state.farm.unlockedZones.push(id);
+  return true;
+}
 
 /** Zones adjacent to unlocked land that are purchasable at the current level (for UI). */
-export function availableExpansions() { /* Phase B */ }
+export function availableExpansions() {
+  return FARM.expansions.filter(
+    (e) => !state.farm.unlockedZones.includes(e.id) && economy.isUnlocked(e.id),
+  );
+}

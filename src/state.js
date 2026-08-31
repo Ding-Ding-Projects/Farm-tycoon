@@ -2,7 +2,7 @@
 // Save format: one JSON blob in localStorage under KEY, with a `version` field for migrations.
 // All timers are stored as absolute wall-clock timestamps (ms) so progress continues offline.
 
-import { NEW_GAME } from './data.js';
+import { NEW_GAME, FARM } from './data.js';
 
 export const SAVE_KEY = 'farm-tycoon-save';
 // Still 1: load() is a stub and no build has ever shipped a save, so there is nothing to
@@ -10,6 +10,20 @@ export const SAVE_KEY = 'farm-tycoon-save';
 // and defaulting the new keys in load() — otherwise an existing save loads with them undefined
 // and every consumer starts branching on absence.
 export const SAVE_VERSION = 1;
+
+// localStorage is a browser/Electron-renderer global. The game itself never runs anywhere
+// else, but tools/test-core.mjs exercises this module under plain Node, which has no such
+// global. Fall back to an in-memory store with the identical get/set/remove surface so the
+// real code path (browser localStorage) is untouched and the test path needs no setup.
+const storage = (() => {
+  if (typeof localStorage !== 'undefined') return localStorage;
+  const mem = new Map();
+  return {
+    getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+    setItem: (k, v) => { mem.set(k, String(v)); },
+    removeItem: (k) => { mem.delete(k); },
+  };
+})();
 
 /**
  * The live game state. Shape (Phase B fills in behavior; the shape is the contract):
@@ -48,8 +62,38 @@ export const SAVE_VERSION = 1;
  *   decorate: { active, selection, history, historyIndex },
  *   photo: { frame, stickers },
  * }
+ *
+ * NOTE on materials (data.js MATERIALS): they have no dedicated bucket of their own. They
+ * are goods like any other, so they live in barn.items alongside GOODS/recipe outputs —
+ * barn.items is keyed by any tradeable item id, not narrowly a data.js GOODS-table id. This
+ * keeps the documented shape above unchanged (no new top-level key) while giving trains,
+ * the airport, mine chests and expansions somewhere real to put the materials they yield.
  */
 export let state = null;
+
+/**
+ * A fresh new game starts with NEW_GAME.fields pre-placed empty field plots inside the
+ * start zone, matching the actual Hay Day opening state, so there is immediately something
+ * to plant on. Placed as a simple row well below the fixed structures row (barn/silo/order
+ * board all sit around startZone.y+0..1 per STRUCTURES) so a Phase B structures layer using
+ * those documented positions never collides with the starting fields.
+ */
+function makeStartingFields() {
+  const objects = [];
+  for (let i = 0; i < NEW_GAME.fields; i++) {
+    objects.push({
+      id: `field_${i + 1}`,
+      kind: 'field',
+      type: 'field',
+      x: FARM.startZone.x + 1 + i,
+      y: FARM.startZone.y + 3,
+      cropId: null,
+      plantedAt: null,
+      readyAt: null,
+    });
+  }
+  return objects;
+}
 
 /** Create a fresh new-game state object (does not persist it). */
 export function newGameState() {
@@ -62,7 +106,7 @@ export function newGameState() {
     vouchers: 0,
     level: NEW_GAME.level,
     xp: 0,
-    farm: { objects: [], unlockedZones: ['start'] },
+    farm: { objects: makeStartingFields(), unlockedZones: ['start'] },
     silo: { capacity: 50, items: { ...NEW_GAME.seeds } },
     barn: { capacity: 50, items: {} },
     production: [],
@@ -97,17 +141,114 @@ export function newGameState() {
   };
 }
 
+/**
+ * Migration steps, keyed by the version they upgrade FROM. Each function takes a raw parsed
+ * save object at version N and returns one shaped for version N+1, never mutating in place
+ * blindly since a half-applied migration is worse than none. Empty today because
+ * SAVE_VERSION has never moved off 1; the next key added to the documented shape above bumps
+ * SAVE_VERSION to 2 and gets its migration added here (default the new key, nothing else).
+ */
+const MIGRATIONS = {};
+
+function migrate(obj) {
+  let v = obj.version;
+  while (v < SAVE_VERSION) {
+    const step = MIGRATIONS[v];
+    if (!step) break; // no known path forward, caller rejects it as invalid below
+    obj = step(obj);
+    v = obj.version = v + 1;
+  }
+  return obj;
+}
+
+/** Structural validation for a save object, rejects anything malformed or half-shaped. */
+function isValidSave(obj) {
+  if (!obj || typeof obj !== 'object') return false;
+  if (typeof obj.version !== 'number') return false;
+  if (typeof obj.coins !== 'number' || obj.coins < 0) return false;
+  if (typeof obj.diamonds !== 'number' || obj.diamonds < 0) return false;
+  if (typeof obj.level !== 'number' || obj.level < 1) return false;
+  if (typeof obj.xp !== 'number' || obj.xp < 0) return false;
+  if (!obj.farm || !Array.isArray(obj.farm.objects) || !Array.isArray(obj.farm.unlockedZones)) return false;
+  if (!obj.silo || typeof obj.silo.capacity !== 'number' || typeof obj.silo.items !== 'object' || obj.silo.items === null) return false;
+  if (!obj.barn || typeof obj.barn.capacity !== 'number' || typeof obj.barn.items !== 'object' || obj.barn.items === null) return false;
+  if (!Array.isArray(obj.production)) return false;
+  if (!obj.orders || typeof obj.orders !== 'object') return false;
+  if (!obj.stats || typeof obj.stats !== 'object') return false;
+  return true;
+}
+
 /** Load from localStorage (running migrations by version) or start a new game. Sets `state`. */
-export function load() { /* Phase B */ state = newGameState(); return state; }
+export function load() {
+  const raw = storage.getItem(SAVE_KEY);
+  if (!raw) { state = newGameState(); return state; }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    state = newGameState(); // corrupt JSON, never half-load it
+    return state;
+  }
+
+  if (!parsed || typeof parsed !== 'object' || typeof parsed.version !== 'number') {
+    state = newGameState();
+    return state;
+  }
+  if (parsed.version > SAVE_VERSION) {
+    // A save from a newer build than this one understands. Never guess at its shape.
+    state = newGameState();
+    return state;
+  }
+  if (parsed.version < SAVE_VERSION) parsed = migrate(parsed);
+  if (!isValidSave(parsed) || parsed.version !== SAVE_VERSION) {
+    state = newGameState();
+    return state;
+  }
+
+  state = parsed;
+  return state;
+}
 
 /** Persist `state` to localStorage. Called by the autosave timer and on quit. */
-export function save() { /* Phase B */ }
+export function save() {
+  if (!state) return;
+  state.lastSaved = Date.now();
+  storage.setItem(SAVE_KEY, JSON.stringify(state));
+}
 
 /** Serialize the save to a JSON string for export (settings panel). */
-export function exportSave() { /* Phase B */ }
+export function exportSave() {
+  if (!state) return null;
+  return JSON.stringify(state);
+}
 
-/** Import a save from a JSON string; validates version and shape. */
-export function importSave(json) { /* Phase B */ }
+/**
+ * Import a save from a JSON string; validates version and shape. Returns true and applies
+ * plus persists it on success; returns false and leaves the live `state` completely
+ * untouched on any failure (malformed JSON, unknown future version, or a shape that fails
+ * validation).
+ */
+export function importSave(json) {
+  let parsed;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return false;
+  }
+  if (!parsed || typeof parsed !== 'object' || typeof parsed.version !== 'number') return false;
+  if (parsed.version > SAVE_VERSION) return false;
+  if (parsed.version < SAVE_VERSION) parsed = migrate(parsed);
+  if (!isValidSave(parsed) || parsed.version !== SAVE_VERSION) return false;
+
+  state = parsed;
+  save();
+  return true;
+}
 
 /** Wipe the save and restart (settings panel "reset game"). */
-export function resetGame() { /* Phase B */ }
+export function resetGame() {
+  state = newGameState();
+  save();
+  return state;
+}

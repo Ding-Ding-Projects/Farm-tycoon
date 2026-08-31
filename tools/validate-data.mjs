@@ -5,10 +5,20 @@ import * as d from '../src/data.js';
 
 const errors = [];
 const item = (id) => d.CROPS[id] || d.GOODS[id];
-const checkMaterials = (ctx, mats) => {
-  for (const [m, q] of Object.entries(mats || {})) {
-    if (!d.MATERIALS[m]) errors.push(`${ctx}: unknown material '${m}'`);
-    if (!(q > 0)) errors.push(`${ctx}: bad material qty for '${m}'`);
+// Recipe inputs are wider than item(): the Building Workshop consumes raw MATERIALS to
+// craft components and kits, so a recipe input may be a crop, a good, or a material.
+// item() stays narrow for everything else (zoo feed, island cargo) where materials are
+// not a legal input.
+const recipeInput = (id) => d.CROPS[id] || d.GOODS[id] || d.MATERIALS[id];
+// Materials resolve, have positive quantities, and - when a set is named - come from the
+// right economy. A barn upgrade asking for expansion tools is a design bug, not a typo.
+const checkMaterials = (ctx, mats, requiredSet = null) => {
+  for (const [m, qty] of Object.entries(mats || {})) {
+    const mat = d.MATERIALS[m];
+    if (!mat) { errors.push(`${ctx}: unknown material '${m}'`); continue; }
+    if (!(qty > 0)) errors.push(`${ctx}: bad material qty for '${m}'`);
+    if (requiredSet && mat.set !== requiredSet)
+      errors.push(`${ctx}: material '${m}' is set '${mat.set}', expected '${requiredSet}'`);
   }
 };
 
@@ -16,9 +26,43 @@ const checkMaterials = (ctx, mats) => {
 for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   for (const r of b.recipes) {
     if (!d.GOODS[r.id]) errors.push(`${bid}: recipe output '${r.id}' not in GOODS`);
-    for (const i of Object.keys(r.inputs)) if (!item(i)) errors.push(`${bid}/${r.id}: input '${i}' unknown`);
+    for (const i of Object.keys(r.inputs)) if (!recipeInput(i)) errors.push(`${bid}/${r.id}: input '${i}' unknown`);
     if (!(r.time > 0) || !(r.xp > 0)) errors.push(`${bid}/${r.id}: bad time/xp`);
   }
+}
+
+// Building kits: the crafting spine. A kit must be a real good, must actually be craftable
+// in the Building Workshop, and must not be reachable before the building it places exists -
+// otherwise a player can hold a kit for a building the game will not let them own.
+{
+  const WORKSHOP = 'build_workshop';
+  const ws = d.BUILDINGS[WORKSHOP];
+  if (!ws) errors.push('BUILDINGS: build_workshop is missing - nothing can craft kits');
+  const craftable = new Set((ws ? ws.recipes : []).map((r) => r.id));
+  const kitOwners = new Map();
+  for (const [bid, b] of Object.entries(d.BUILDINGS)) {
+    if (!b.kit) continue;
+    if (!d.GOODS[b.kit]) errors.push(`building ${bid}: kit '${b.kit}' not in GOODS`);
+    else if (!craftable.has(b.kit)) errors.push(`building ${bid}: kit '${b.kit}' is not craftable in ${WORKSHOP}`);
+    if (kitOwners.has(b.kit)) errors.push(`kit '${b.kit}' is claimed by both ${kitOwners.get(b.kit)} and ${bid}`);
+    kitOwners.set(b.kit, bid);
+    if (ws && b.unlockLevel < ws.unlockLevel)
+      errors.push(`building ${bid} unlocks at ${b.unlockLevel}, before ${WORKSHOP} at ${ws.unlockLevel} - its kit is uncraftable`);
+  }
+  // Hand-written list, because a rule alone passes trivially on a building that simply has
+  // no kit field. These must each require one; the three coin-only ones must NOT.
+  const MUST_HAVE_KIT = ['dairy', 'sugar_mill', 'popcorn_pot', 'grill', 'pie_oven', 'loom', 'sewing_machine', 'juice_press', 'jam_maker', 'coffee_kiosk', 'candy_machine', 'tropical_cafe', 'smelter'];
+  const COIN_ONLY = ['feed_mill', 'bakery', 'build_workshop'];
+  for (const bid of MUST_HAVE_KIT) {
+    if (!d.BUILDINGS[bid]) errors.push(`kit inventory names unknown building '${bid}'`);
+    else if (!d.BUILDINGS[bid].kit) errors.push(`building ${bid} must require a build kit but has none`);
+  }
+  for (const bid of COIN_ONLY)
+    if (d.BUILDINGS[bid] && d.BUILDINGS[bid].kit)
+      errors.push(`building ${bid} must stay coin-only but requires kit '${d.BUILDINGS[bid].kit}'`);
+  for (const bid of Object.keys(d.BUILDINGS))
+    if (!MUST_HAVE_KIT.includes(bid) && !COIN_ONLY.includes(bid))
+      errors.push(`building ${bid} is in neither the kit list nor the coin-only list - classify it`);
 }
 
 // Animals: product in GOODS, feed is a feed-mill recipe (or null for bees).
@@ -66,7 +110,42 @@ for (const [id, isl] of Object.entries(d.ISLANDS.destinations)) {
   for (const g of Object.keys(isl.cargo)) if (!d.GOODS[g]) errors.push(`island ${id}: cargo '${g}' not in GOODS`);
   if (!(isl.tripTime > 0)) errors.push(`island ${id}: bad tripTime`);
 }
-for (const e of d.FARM.expansions) checkMaterials(`expansion ${e.id}`, e.materials);
+// Every material set id is one of the four; every material is priced.
+for (const [id, m] of Object.entries(d.MATERIALS)) {
+  if (!d.MATERIAL_SETS.includes(m.set)) errors.push(`material ${id}: unknown set '${m.set}'`);
+  if (!(m.sellPrice > 0)) errors.push(`material ${id}: bad sellPrice`);
+}
+
+// Expansions draw from the EXPANSION set only, sit inside the grid, and never overlap each
+// other or the start zone. Overlap is silent corruption otherwise: two unlock zones would
+// claim the same tiles and whichever rendered last would win.
+for (const e of d.FARM.expansions) checkMaterials(`expansion ${e.id}`, e.materials, 'expansion');
+{
+  const N = d.FARM.gridSize;
+  const rects = [{ id: 'startZone', r: d.FARM.startZone }, ...d.FARM.expansions.map((e) => ({ id: e.id, r: e.rect }))];
+  for (const { id, r } of rects)
+    if (r.x < 0 || r.y < 0 || r.w <= 0 || r.h <= 0 || r.x + r.w > N || r.y + r.h > N)
+      errors.push(`${id}: rect out of bounds for gridSize ${N}`);
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i].r, b = rects[j].r;
+      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)
+        errors.push(`${rects[i].id} overlaps ${rects[j].id}`);
+    }
+}
+
+// Storage upgrades draw from the STORAGE set, and silo/barn must not share a trio.
+for (const [which, s] of Object.entries(d.STORAGE)) {
+  if (!Array.isArray(s.materials) || s.materials.length !== 3)
+    errors.push(`storage ${which}: expected exactly 3 upgrade materials`);
+  for (const m of s.materials || []) {
+    if (!d.MATERIALS[m]) errors.push(`storage ${which}: unknown material '${m}'`);
+    else if (d.MATERIALS[m].set !== 'storage') errors.push(`storage ${which}: '${m}' is not a storage material`);
+  }
+  if (!(s.materialBase > 0) || !(s.materialStep > 0)) errors.push(`storage ${which}: bad material scaling`);
+}
+if (d.STORAGE.silo.materials.some((m) => d.STORAGE.barn.materials.includes(m)))
+  errors.push('STORAGE: silo and barn must not share upgrade materials');
 if (!(d.MARKET.slots > 0) || !(d.MARKET.priceMultiplier > 1)) errors.push('MARKET tuning invalid');
 if (!(d.TRAINS.wagons[0] <= d.TRAINS.wagons[1])) errors.push('TRAINS wagons range invalid');
 

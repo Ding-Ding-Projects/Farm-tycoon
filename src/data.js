@@ -137,12 +137,38 @@ export const GOODS = {
   // mine tools (consumed, obtainable from orders/fishing chests/shop)
   pickaxe:  { name: 'Pickaxe',  sellPrice: 40 },
   dynamite: { name: 'Dynamite', sellPrice: 90 },
+  // build components (Building Workshop) - crafted from MATERIALS, consumed by kits
+  beam:         { name: 'Steel Beam',       sellPrice: 70 },
+  frame:        { name: 'Timber Frame',     sellPrice: 85 },
+  panel:        { name: 'Wall Panel',       sellPrice: 95 },
+  fitting:      { name: 'Brass Fitting',    sellPrice: 110 },
+  glazing:      { name: 'Glazing Unit',     sellPrice: 130 },
+  wiring_loom:  { name: 'Wiring Loom',      sellPrice: 150 },
+  plumbing:     { name: 'Plumbing Set',     sellPrice: 170 },
+  shingle:      { name: 'Roof Shingle',     sellPrice: 60 },
+  // building kits - one per craftable building; consumed to PLACE it (see BUILDINGS.kit)
+  kit_dairy:            { name: 'Dairy Kit',            sellPrice: 420 },
+  kit_sugar_mill:       { name: 'Sugar Mill Kit',       sellPrice: 500 },
+  kit_popcorn_pot:      { name: 'Popcorn Pot Kit',      sellPrice: 560 },
+  kit_grill:            { name: 'BBQ Grill Kit',        sellPrice: 640 },
+  kit_pie_oven:         { name: 'Pie Oven Kit',         sellPrice: 720 },
+  kit_loom:             { name: 'Loom Kit',             sellPrice: 820 },
+  kit_sewing_machine:   { name: 'Sewing Machine Kit',   sellPrice: 920 },
+  kit_juice_press:      { name: 'Juice Press Kit',      sellPrice: 1050 },
+  kit_jam_maker:        { name: 'Jam Maker Kit',        sellPrice: 1180 },
+  kit_coffee_kiosk:     { name: 'Coffee Kiosk Kit',     sellPrice: 1320 },
+  kit_candy_machine:    { name: 'Candy Machine Kit',    sellPrice: 1480 },
+  kit_tropical_cafe:    { name: 'Tropical Cafe Kit',    sellPrice: 1700 },
+  kit_smelter:          { name: 'Smelter Kit',          sellPrice: 1950 },
 };
 
 /**
  * Production buildings. Each has an ordered recipe list:
  * inputs: {itemId: qty} — crops, goods, or other products. time in seconds.
  */
+// Every production building except feed_mill, bakery and build_workshop itself requires a
+// crafted KIT to place (kit: <goodId>), on top of its coin cost. Those three stay coin-only
+// so the opening hour of the game never depends on a supply chain that does not exist yet.
 export const BUILDINGS = {
   feed_mill: {
     name: 'Feed Mill', unlockLevel: 5, cost: 300, size: [2, 2], queueSlots: 3,
@@ -164,7 +190,7 @@ export const BUILDINGS = {
     ],
   },
   dairy: {
-    name: 'Dairy', unlockLevel: 6, cost: 450, size: [2, 2], queueSlots: 3,
+    name: 'Dairy', unlockLevel: 6, cost: 450, size: [2, 2], kit: 'kit_dairy', queueSlots: 3,
     recipes: [
       { id: 'cream',       inputs: { milk: 1 },              time: 600,  xp: 3 },
       { id: 'butter',      inputs: { cream: 1, milk: 1 },    time: 1500, xp: 5 },
@@ -173,7 +199,7 @@ export const BUILDINGS = {
     ],
   },
   sugar_mill: {
-    name: 'Sugar Mill', unlockLevel: 8, cost: 600, size: [2, 2], queueSlots: 3,
+    name: 'Sugar Mill', unlockLevel: 8, cost: 600, size: [2, 2], kit: 'kit_sugar_mill', queueSlots: 3,
     recipes: [
       { id: 'sugar',       inputs: { sugarcane: 1 },           time: 600,  xp: 3 },
       { id: 'brown_sugar', inputs: { sugarcane: 2 },           time: 1200, xp: 4 },
@@ -181,7 +207,7 @@ export const BUILDINGS = {
     ],
   },
   popcorn_pot: {
-    name: 'Popcorn Pot', unlockLevel: 9, cost: 750, size: [2, 2], queueSlots: 3,
+    name: 'Popcorn Pot', unlockLevel: 9, cost: 750, size: [2, 2], kit: 'kit_popcorn_pot', queueSlots: 3,
     recipes: [
       { id: 'popcorn',          inputs: { corn: 2 },                time: 450,  xp: 3 },
       { id: 'buttered_popcorn', inputs: { corn: 2, butter: 1 },     time: 1800, xp: 7 },
@@ -189,7 +215,7 @@ export const BUILDINGS = {
     ],
   },
   grill: {
-    name: 'Grill', unlockLevel: 12, cost: 1100, size: [2, 2], queueSlots: 3,
+    name: 'Grill', unlockLevel: 12, cost: 1100, size: [2, 2], kit: 'kit_grill', queueSlots: 3,
     recipes: [
       { id: 'bacon_eggs',   inputs: { bacon: 1, egg: 2 },               time: 1200, xp: 5 },
       { id: 'pancakes',     inputs: { wheat: 2, egg: 1, syrup: 1 },     time: 1800, xp: 7 },
@@ -198,7 +224,7 @@ export const BUILDINGS = {
     ],
   },
   pie_oven: {
-    name: 'Pie Oven', unlockLevel: 16, cost: 1800, size: [2, 2], queueSlots: 3,
+    name: 'Pie Oven', unlockLevel: 16, cost: 1800, size: [2, 2], kit: 'kit_pie_oven', queueSlots: 3,
     recipes: [
       { id: 'carrot_pie',     inputs: { carrot: 3, wheat: 2, egg: 1 },      time: 2400, xp: 8 },
       { id: 'pumpkin_pie',    inputs: { pumpkin: 1, wheat: 2, egg: 2 },     time: 3600, xp: 10 },
@@ -207,14 +233,14 @@ export const BUILDINGS = {
     ],
   },
   loom: {
-    name: 'Loom', unlockLevel: 14, cost: 1500, size: [2, 2], queueSlots: 3,
+    name: 'Loom', unlockLevel: 14, cost: 1500, size: [2, 2], kit: 'kit_loom', queueSlots: 3,
     recipes: [
       { id: 'cotton_fabric', inputs: { cotton: 3 },        time: 1800, xp: 6 },
       { id: 'sweater',       inputs: { wool: 2 },          time: 3600, xp: 9 },
     ],
   },
   sewing_machine: {
-    name: 'Sewing Machine', unlockLevel: 20, cost: 2800, size: [2, 2], queueSlots: 3,
+    name: 'Sewing Machine', unlockLevel: 20, cost: 2800, size: [2, 2], kit: 'kit_sewing_machine', queueSlots: 3,
     recipes: [
       { id: 'cotton_shirt', inputs: { cotton_fabric: 2 },            time: 3600, xp: 10 },
       { id: 'wooly_hat',    inputs: { wool: 1, cotton_fabric: 1 },   time: 4500, xp: 11 },
@@ -222,7 +248,7 @@ export const BUILDINGS = {
     ],
   },
   juice_press: {
-    name: 'Juice Press', unlockLevel: 15, cost: 1700, size: [2, 2], queueSlots: 3,
+    name: 'Juice Press', unlockLevel: 15, cost: 1700, size: [2, 2], kit: 'kit_juice_press', queueSlots: 3,
     recipes: [
       { id: 'carrot_juice', inputs: { carrot: 3 },                 time: 1200, xp: 5 },
       { id: 'tomato_juice', inputs: { tomato: 2 },                 time: 2400, xp: 7 },
@@ -231,7 +257,7 @@ export const BUILDINGS = {
     ],
   },
   jam_maker: {
-    name: 'Jam Maker', unlockLevel: 22, cost: 3600, size: [2, 2], queueSlots: 3,
+    name: 'Jam Maker', unlockLevel: 22, cost: 3600, size: [2, 2], kit: 'kit_jam_maker', queueSlots: 3,
     recipes: [
       { id: 'strawberry_jam', inputs: { strawberry: 3, sugar: 1 }, time: 4500, xp: 11 },
       { id: 'honey_jam',      inputs: { honey: 1, sugar: 2 },      time: 5400, xp: 13 },
@@ -239,7 +265,7 @@ export const BUILDINGS = {
     ],
   },
   coffee_kiosk: {
-    name: 'Coffee Kiosk', unlockLevel: 30, cost: 6500, size: [2, 2], queueSlots: 3,
+    name: 'Coffee Kiosk', unlockLevel: 30, cost: 6500, size: [2, 2], kit: 'kit_coffee_kiosk', queueSlots: 3,
     recipes: [
       { id: 'espresso',     inputs: { coffee: 2 },              time: 3600, xp: 10 },
       { id: 'latte',        inputs: { coffee: 2, milk: 1 },     time: 4500, xp: 12 },
@@ -247,7 +273,7 @@ export const BUILDINGS = {
     ],
   },
   candy_machine: {
-    name: 'Candy Machine', unlockLevel: 26, cost: 5000, size: [2, 2], queueSlots: 3,
+    name: 'Candy Machine', unlockLevel: 26, cost: 5000, size: [2, 2], kit: 'kit_candy_machine', queueSlots: 3,
     recipes: [
       { id: 'caramel',      inputs: { sugar: 2, cream: 1 },        time: 3600, xp: 9 },
       { id: 'honey_toffee', inputs: { honey: 1, brown_sugar: 1 },  time: 5400, xp: 12 },
@@ -255,7 +281,7 @@ export const BUILDINGS = {
     ],
   },
   tropical_cafe: {
-    name: 'Tropical Café', unlockLevel: 36, cost: 12000, size: [2, 2], queueSlots: 3,
+    name: 'Tropical Café', unlockLevel: 36, cost: 12000, size: [2, 2], kit: 'kit_tropical_cafe', queueSlots: 3,
     recipes: [
       { id: 'banana_split',  inputs: { banana: 2, cream: 1, sugar: 1 },   time: 5400, xp: 14 },
       { id: 'pina_smoothie', inputs: { pineapple: 2, milk: 1 },           time: 6300, xp: 15 },
@@ -264,11 +290,42 @@ export const BUILDINGS = {
     ],
   },
   smelter: {
-    name: 'Smelter', unlockLevel: 24, cost: 4200, size: [2, 2], queueSlots: 2,
+    name: 'Smelter', unlockLevel: 24, cost: 4200, size: [2, 2], kit: 'kit_smelter', queueSlots: 2,
     recipes: [
       { id: 'silver_bar',   inputs: { ore_silver: 2 },   time: 3600,  xp: 9 },
       { id: 'gold_bar',     inputs: { ore_gold: 2 },     time: 5400,  xp: 12 },
       { id: 'platinum_bar', inputs: { ore_platinum: 2 }, time: 7200,  xp: 16 },
+    ],
+  },
+  // The Building Workshop is the spine of progression: coins alone never place a
+  // production building. Raw MATERIALS become components here, components become a kit,
+  // and the kit is consumed to place its building (BUILDINGS[x].kit). It is itself
+  // coin-only, as are feed_mill and bakery, so the tutorial never dead-ends.
+  build_workshop: {
+    name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], queueSlots: 3,
+    minigame: 'workshop_fit',
+    recipes: [
+      { id: 'shingle',              inputs: { slab: 1, nails: 1 },                              time: 600,   xp: 3 },
+      { id: 'beam',                 inputs: { brick: 1, nails: 2 },                             time: 900,   xp: 4 },
+      { id: 'frame',                inputs: { timber: 1, nails: 2 },                            time: 1200,  xp: 5 },
+      { id: 'panel',                inputs: { slab: 2, paint: 1 },                              time: 1500,  xp: 6 },
+      { id: 'fitting',              inputs: { hammer: 1, wire: 1 },                             time: 1800,  xp: 7 },
+      { id: 'glazing',              inputs: { glass: 2, fitting: 1 },                           time: 2400,  xp: 9 },
+      { id: 'wiring_loom',          inputs: { wire: 2, rope: 1 },                               time: 3000,  xp: 11 },
+      { id: 'plumbing',             inputs: { cement: 1, fitting: 2 },                          time: 3600,  xp: 13 },
+      { id: 'kit_dairy',            inputs: { frame: 2, panel: 2, shingle: 3 },                 time: 5400,  xp: 20 },
+      { id: 'kit_sugar_mill',       inputs: { beam: 2, frame: 2, shingle: 3 },                  time: 6300,  xp: 23 },
+      { id: 'kit_popcorn_pot',      inputs: { beam: 2, panel: 3, fitting: 1 },                  time: 7200,  xp: 26 },
+      { id: 'kit_grill',            inputs: { beam: 3, fitting: 2, shingle: 4 },                time: 8100,  xp: 29 },
+      { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33 },
+      { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37 },
+      { id: 'kit_sewing_machine',   inputs: { frame: 4, fitting: 3, wiring_loom: 1 },           time: 12600, xp: 42 },
+      { id: 'kit_juice_press',      inputs: { beam: 4, plumbing: 2, glazing: 2 },               time: 14400, xp: 47 },
+      { id: 'kit_jam_maker',        inputs: { panel: 5, glazing: 2, plumbing: 2 },              time: 16200, xp: 53 },
+      { id: 'kit_coffee_kiosk',     inputs: { glazing: 3, wiring_loom: 2, panel: 4 },           time: 18000, xp: 59 },
+      { id: 'kit_candy_machine',    inputs: { fitting: 5, wiring_loom: 3, beam: 4 },            time: 21600, xp: 66 },
+      { id: 'kit_tropical_cafe',    inputs: { glazing: 4, plumbing: 3, frame: 6 },              time: 25200, xp: 74 },
+      { id: 'kit_smelter',          inputs: { beam: 8, cement: 4, plumbing: 3 },                time: 28800, xp: 84 },
     ],
   },
 };
@@ -387,7 +444,7 @@ export const LEVELS = {
     3:  ['bakery', 'orders_board', 'carrot'],
     4:  ['expansion_1'],
     5:  ['feed_mill', 'soybean'],
-    6:  ['cow', 'dairy'],
+    6:  ['cow', 'build_workshop', 'dairy'],
     7:  ['sugarcane'],
     8:  ['truck', 'sugar_mill'],
     9:  ['cotton', 'popcorn_pot', 'market'],
@@ -435,10 +492,25 @@ export const LEVELS = {
   },
 };
 
-/** Storage: silo (crops) and barn (goods). Upgrade cost scales per tier. */
+/**
+ * Silo (crops) and barn (goods) capacity. Upgrades cost coins AND the STORAGE material
+ * set - Hay Day charges three material types per upgrade, the count stepping up by one
+ * each level (upgrade n needs n+2 of each). Silo and barn take different trios so one
+ * cannot be starved to feed the other.
+ */
 export const STORAGE = {
-  silo: { baseCapacity: 50, upgradeStep: 25, upgradeCostBase: 150, upgradeCostFactor: 1.6 },
-  barn: { baseCapacity: 50, upgradeStep: 25, upgradeCostBase: 200, upgradeCostFactor: 1.6 },
+  silo: {
+    baseCapacity: 50, upgradeStep: 25, upgradeCostBase: 150, upgradeCostFactor: 1.6,
+    materials: ['screw', 'wood_panel', 'bracket'],
+    materialBase: 3,      // upgrade 1 needs 3 of each
+    materialStep: 1,      // +1 of each per subsequent upgrade
+  },
+  barn: {
+    baseCapacity: 50, upgradeStep: 25, upgradeCostBase: 200, upgradeCostFactor: 1.6,
+    materials: ['bolt', 'plank', 'duct_tape'],
+    materialBase: 3,
+    materialStep: 1,
+  },
 };
 
 /** Order board / truck / boat tuning. */
@@ -458,21 +530,50 @@ export const SHOP = {
 // ============================== TOWNSHIP LAYER ==============================
 
 /**
- * Construction materials (Township-style). Stored in the barn. Sources: trains, airport,
- * mine chests, event rewards. Consumed by town houses/community buildings and farm
- * expansions (land deed / mallet / marker stake — the Hay Day expansion trio).
+ * Construction materials, split into four purpose-scoped SETS (the Township model - the
+ * game keeps separate material economies rather than one undifferentiated pile):
+ *
+ *   building  - town houses, community buildings, zoo enclosures
+ *   expansion - farm land expansions and island unlocks
+ *   storage   - silo and barn capacity upgrades (Hay Day: three types per upgrade)
+ *   advanced  - late-tier buildings; Tool Exchange only, never from trains
+ *
+ * Stored in the barn. Sources: trains, airport, helicopter, mine chests, expeditions,
+ * event rewards. Every material must appear in at least one source pool AND at least one
+ * build cost, which tools/validate-data.mjs enforces.
  */
 export const MATERIALS = {
-  brick:        { name: 'Brick',        sellPrice: 30 },
-  slab:         { name: 'Slab',         sellPrice: 30 },
-  glass:        { name: 'Glass',        sellPrice: 30 },
-  paint:        { name: 'Paint',        sellPrice: 35 },
-  hammer:       { name: 'Hammer',       sellPrice: 35 },
-  nails:        { name: 'Nails',        sellPrice: 25 },
-  land_deed:    { name: 'Land Deed',    sellPrice: 60 },
-  mallet:       { name: 'Mallet',       sellPrice: 60 },
-  marker_stake: { name: 'Marker Stake', sellPrice: 60 },
+  // building
+  brick:        { name: 'Brick',        set: 'building',  sellPrice: 30 },
+  slab:         { name: 'Slab',         set: 'building',  sellPrice: 30 },
+  glass:        { name: 'Glass',        set: 'building',  sellPrice: 30 },
+  paint:        { name: 'Paint',        set: 'building',  sellPrice: 35 },
+  hammer:       { name: 'Hammer',       set: 'building',  sellPrice: 35 },
+  nails:        { name: 'Nails',        set: 'building',  sellPrice: 25 },
+  cement:       { name: 'Cement',       set: 'building',  sellPrice: 45 },
+  tile:         { name: 'Roof Tile',    set: 'building',  sellPrice: 45 },
+  // expansion (Township: shovel / axe / saw)
+  shovel:       { name: 'Shovel',       set: 'expansion', sellPrice: 60 },
+  axe:          { name: 'Axe',          set: 'expansion', sellPrice: 60 },
+  saw:          { name: 'Saw',          set: 'expansion', sellPrice: 60 },
+  // storage (Hay Day: barn and silo each take their own trio)
+  bolt:         { name: 'Bolt',         set: 'storage',   sellPrice: 40 },
+  plank:        { name: 'Plank',        set: 'storage',   sellPrice: 40 },
+  duct_tape:    { name: 'Duct Tape',    set: 'storage',   sellPrice: 40 },
+  screw:        { name: 'Screw',        set: 'storage',   sellPrice: 40 },
+  wood_panel:   { name: 'Wood Panel',   set: 'storage',   sellPrice: 40 },
+  bracket:      { name: 'Bracket',      set: 'storage',   sellPrice: 40 },
+  // advanced (Tool Exchange only, never from trains)
+  jackhammer:   { name: 'Jackhammer',   set: 'advanced',  sellPrice: 140 },
+  drill:        { name: 'Drill',        set: 'advanced',  sellPrice: 140 },
+  electric_saw: { name: 'Electric Saw', set: 'advanced',  sellPrice: 140 },
+  wire:         { name: 'Wire',         set: 'advanced',  sellPrice: 90 },
+  rope:         { name: 'Rope',         set: 'advanced',  sellPrice: 90 },
+  timber:       { name: 'Timber',       set: 'advanced',  sellPrice: 90 },
 };
+
+/** The four material sets. Closed enum - validated. */
+export const MATERIAL_SETS = ['building', 'expansion', 'storage', 'advanced'];
 
 /**
  * The Town (L20): a reserved district on the world grid. Houses grant population;
@@ -588,20 +689,29 @@ export const MARKET = {
 
 /** Farm grid + expansion zones. */
 export const FARM = {
-  gridSize: 32,
+  // Grid grew 32 -> 40 to make room for expansions 10-15: the original nine rects plus
+  // the start zone already tiled x5..31 by y5..26 completely, so anything further would
+  // have overlapped. The validator now asserts in-bounds and non-overlap.
+  gridSize: 40,
   startZone: { x: 10, y: 10, w: 12, h: 12 },
-  // Expansions cost coins + the Hay Day material trio (land deeds / mallets / marker
-  // stakes from MATERIALS, earned via trains/airport/chests/events).
+  // Expansions cost coins + the EXPANSION material set (shovel / axe / saw), earned from
+  // trains, airport, helicopter and expedition loot. Never the building or storage sets.
   expansions: [
-    { id: 'expansion_1', rect: { x: 22, y: 10, w: 5, h: 12 }, cost: 500,    materials: { land_deed: 1, mallet: 1, marker_stake: 1 } },
-    { id: 'expansion_2', rect: { x: 10, y: 22, w: 12, h: 5 }, cost: 2000,   materials: { land_deed: 2, mallet: 2, marker_stake: 2 } },
-    { id: 'expansion_3', rect: { x: 5,  y: 10, w: 5, h: 12 }, cost: 6000,   materials: { land_deed: 3, mallet: 3, marker_stake: 3 } },
-    { id: 'expansion_4', rect: { x: 10, y: 5,  w: 12, h: 5 }, cost: 15000,  materials: { land_deed: 4, mallet: 4, marker_stake: 4 } },
-    { id: 'expansion_5', rect: { x: 22, y: 22, w: 5, h: 5 },  cost: 30000,  materials: { land_deed: 6, mallet: 5, marker_stake: 5 } },
-    { id: 'expansion_6', rect: { x: 5,  y: 22, w: 5, h: 5 },  cost: 50000,  materials: { land_deed: 7, mallet: 6, marker_stake: 6 } },
-    { id: 'expansion_7', rect: { x: 5,  y: 5,  w: 5, h: 5 },  cost: 80000,  materials: { land_deed: 8, mallet: 8, marker_stake: 7 } },
-    { id: 'expansion_8', rect: { x: 22, y: 5,  w: 5, h: 5 },  cost: 120000, materials: { land_deed: 10, mallet: 9, marker_stake: 9 } },
-    { id: 'expansion_9', rect: { x: 27, y: 5,  w: 5, h: 22 }, cost: 200000, materials: { land_deed: 12, mallet: 12, marker_stake: 12 } },
+    { id: 'expansion_1', rect: { x: 22, y: 10, w: 5, h: 12 }, cost: 500, materials: { shovel: 1, axe: 1, saw: 1 } },
+    { id: 'expansion_2', rect: { x: 10, y: 22, w: 12, h: 5 }, cost: 2000, materials: { shovel: 2, axe: 2, saw: 2 } },
+    { id: 'expansion_3', rect: { x: 5, y: 10, w: 5, h: 12 }, cost: 6000, materials: { shovel: 3, axe: 3, saw: 3 } },
+    { id: 'expansion_4', rect: { x: 10, y: 5, w: 12, h: 5 }, cost: 15000, materials: { shovel: 4, axe: 4, saw: 4 } },
+    { id: 'expansion_5', rect: { x: 22, y: 22, w: 5, h: 5 }, cost: 30000, materials: { shovel: 6, axe: 5, saw: 5 } },
+    { id: 'expansion_6', rect: { x: 5, y: 22, w: 5, h: 5 }, cost: 50000, materials: { shovel: 7, axe: 6, saw: 6 } },
+    { id: 'expansion_7', rect: { x: 5, y: 5, w: 5, h: 5 }, cost: 80000, materials: { shovel: 8, axe: 8, saw: 7 } },
+    { id: 'expansion_8', rect: { x: 22, y: 5, w: 5, h: 5 }, cost: 120000, materials: { shovel: 10, axe: 9, saw: 9 } },
+    { id: 'expansion_9', rect: { x: 27, y: 5, w: 5, h: 22 }, cost: 200000, materials: { shovel: 12, axe: 12, saw: 12 } },
+    { id: 'expansion_10', rect: { x: 5, y: 27, w: 27, h: 5 }, cost: 320000, materials: { shovel: 15, axe: 14, saw: 14 } },
+    { id: 'expansion_11', rect: { x: 5, y: 0, w: 27, h: 5 }, cost: 500000, materials: { shovel: 18, axe: 17, saw: 16 } },
+    { id: 'expansion_12', rect: { x: 0, y: 0, w: 5, h: 32 }, cost: 800000, materials: { shovel: 22, axe: 20, saw: 19 } },
+    { id: 'expansion_13', rect: { x: 32, y: 0, w: 8, h: 32 }, cost: 1200000, materials: { shovel: 26, axe: 24, saw: 23 } },
+    { id: 'expansion_14', rect: { x: 0, y: 32, w: 40, h: 4 }, cost: 1800000, materials: { shovel: 31, axe: 29, saw: 27 } },
+    { id: 'expansion_15', rect: { x: 0, y: 36, w: 40, h: 4 }, cost: 2600000, materials: { shovel: 36, axe: 34, saw: 32 } },
   ],
   fieldCost: 25, // per new field plot
 };

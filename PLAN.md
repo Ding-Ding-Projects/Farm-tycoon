@@ -140,6 +140,25 @@ Applies to **Phase B**: the game is implemented **fully, start to finish, in a s
 - **Juice** (`effects.js`): coin/XP pop-ups, harvest sparkles, bounce ease on placements, progress rings over busy plots/buildings.
 - **HUD/UI** (`ui.js` + DOM overlay): top bar (coins, level+XP bar), bottom toolbar (build/shop/orders/fishing), side panels rendered as styled DOM over the canvas — DOM for menus, canvas for the world.
 
+
+### Hay Day reference notes (wiki research, Phase A.3)
+
+Visual ground truth (hayday.fandom.com + Hay Day's established identity):
+- The ground is a **continuous soft meadow — no visible grid or checkerboard** in normal
+  play. Subtle low-frequency tonal mottling, sparse grass tufts, tiny flowers; painted
+  look, no outlines. The placement grid appears **only in edit/placement mode**.
+- **Fields are raised soil slabs**: rounded diamonds with a light top-edge highlight and a
+  darker visible side thickness; furrows on top; crops render as dense rows.
+- The farm is **framed**: a dirt road along the front (the roadside shop sits on it),
+  fence lines, forest/tree borders on unexpanded land, expansion plots marked with posts.
+- Perspective is ~2:1 dimetric with soft blob shadows.
+
+Mechanics confirmed by the wiki: 1 planted crop → 2 harvested (matches our rule); fields
+cost ~1 coin, are unlimited, and are granted with levels; farm expansion (their L22+)
+consumes **land deeds + mallets + marker stakes** rather than coins. *Phase B fidelity
+option:* switch our expansions from coin costs to expansion materials earned from orders,
+chests and the boat — keep coins as the simple default until then.
+
 ## Look & feel — modern, not retro
 
 The target aesthetic is a **modern casual game** (think current Hay Day / township-style polish), not an old-school or pixel game:

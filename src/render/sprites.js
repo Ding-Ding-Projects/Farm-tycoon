@@ -3,9 +3,17 @@
 // soft shadows. Contract: draw<Thing>(ctx, x, y, size, stageOrFrame) where (x,y) is the
 // tile anchor in screen space and `size` the tile width at current zoom.
 //
+// GROUND RULE (Hay Day reference): the world ground renders as a CONTINUOUS soft meadow —
+// base green with low-frequency tonal mottling, sparse tufts and tiny flowers. The logical
+// placement grid is NEVER drawn during normal play; grid squares appear only in placement /
+// edit mode (renderer.drawFrame draws them under the placement ghost). Fields and buildings
+// are free-standing raised slabs with a lighter top edge and darker side thickness.
+//
 // Shared palette (must match DESIGN_BRIEF.md tokens):
 export const PALETTE = {
   grass: '#8cc63e', grassLight: '#9ed44f', grassDark: '#76b32f',
+  grassMottleLight: 'rgba(190, 226, 110, 0.35)', grassMottleDark: 'rgba(100, 160, 45, 0.30)',
+  flowerWhite: '#fff8ee', flowerYellow: '#ffd94d',
   soil: '#9c6b3d', soilDark: '#7d5028', soilRow: '#6b4423',
   water: '#4db3e6', wood: '#b07b45', woodDark: '#8a5a2e', woodLight: '#cf9a5e',
   roof: '#d94f43', roofDark: '#b53c32', roofAlt: '#4e8fe0',

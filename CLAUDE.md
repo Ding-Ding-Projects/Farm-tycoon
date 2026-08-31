@@ -55,6 +55,8 @@ API contract with `/* Phase B */` stub bodies — implement to those contracts.
   the version and adds a migration in `load()`. Never break existing saves.
 - **UI class names and CSS tokens** in `index.html`/`styles.css` are a contract with
   `DESIGN_BRIEF.md` — don't rename them; restyle by changing token values.
+- **World ground renders as a continuous meadow** (mottling, tufts, flowers) — grid
+  squares are drawn only during placement/edit mode. Fields/buildings are raised slabs.
 - Economy invariants: coins/diamonds never negative; silo/barn caps always respected;
   harvest returns 2x seeds; every consume-then-fail path must refund.
 

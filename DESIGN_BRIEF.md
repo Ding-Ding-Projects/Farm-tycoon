@@ -7,8 +7,9 @@ already defines the DOM structure (`index.html`), design tokens and component cl
 ## Art direction
 
 **Hay Day's look, at modern polish level.** Warm, tactile, glossy cartoon — the UI should
-feel hand-built from the farm's own materials, and the world is isometric (2:1 diamond
-tiles). Explicitly **not frosted glass, not flat corporate, not retro/pixel**.
+feel hand-built from the farm's own materials, and the world is a ~2:1 dimetric
+**continuous meadow — the grid is invisible** outside placement/edit mode; fields and
+buildings sit on it as raised slabs with soft blob shadows. Explicitly **not frosted glass, not flat corporate, not retro/pixel**.
 
 - **Surfaces:** wood-plank frames and boards (layered CSS gradients on `--color-wood*`
   tokens — no image textures), cream **parchment** cards (`--panel-bg`), dark

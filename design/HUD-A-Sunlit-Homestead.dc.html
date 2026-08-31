@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; background: #1d1710; }
+  a { color: #b9832f; } a:hover { color: #e0a84a; }
+  @keyframes pulseA { 50% { transform: scale(1.07); } }
+  @keyframes floatA { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-26px); opacity: 0; } }
+  @keyframes shineA { 0% { transform: translateX(-120%) skewX(-18deg); } 60%, 100% { transform: translateX(320%) skewX(-18deg); } }
+  @keyframes bobA { 50% { transform: translateY(-7px); } }
+  @keyframes ringA { 0% { transform: scale(0.9); opacity: 0.9; } 100% { transform: scale(1.5); opacity: 0; } }
+</style>
+</helmet>
+<svg width="0" height="0" aria-hidden="true" style="position: absolute;"><defs>
+<symbol id="a-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#f0b52e"></circle><circle cx="12" cy="12" r="6.4" fill="none" stroke="rgba(0,0,0,0.24)" stroke-width="2"></circle><path d="M12 8v8M9.6 10h4.8M9.6 14h4.8" fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="1.9" stroke-linecap="round"></path></symbol>
+<symbol id="a-gem" viewBox="0 0 24 24"><path d="M12 2.5l8 5.5-8 13.5-8-13.5z" fill="#46b8e8"></path><path d="M4 8h16M12 2.5L8.5 8l3.5 13.5M12 2.5L15.5 8 12 21.5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.4"></path></symbol>
+<symbol id="a-wheat" viewBox="0 0 24 24"><path d="M12 22V9" fill="none" stroke="#e8b53a" stroke-width="2.4" stroke-linecap="round"></path><g fill="#e8b53a"><ellipse cx="12" cy="4.6" rx="2.5" ry="3.4"></ellipse><ellipse cx="8.2" cy="8.4" rx="2.4" ry="3.2" transform="rotate(-28 8.2 8.4)"></ellipse><ellipse cx="15.8" cy="8.4" rx="2.4" ry="3.2" transform="rotate(28 15.8 8.4)"></ellipse><ellipse cx="8.2" cy="13.4" rx="2.4" ry="3.2" transform="rotate(-28 8.2 13.4)"></ellipse><ellipse cx="15.8" cy="13.4" rx="2.4" ry="3.2" transform="rotate(28 15.8 13.4)"></ellipse></g></symbol>
+<symbol id="a-crate" viewBox="0 0 24 24"><path d="M3 7h18v14H3z" fill="#cf8f4d"></path><path d="M3 7l3-4h12l3 4z" fill="rgba(255,255,255,0.32)"></path><path d="M3 11h18M9 7v14M15 7v14" fill="none" stroke="rgba(0,0,0,0.26)" stroke-width="1.8"></path></symbol>
+<symbol id="a-hammer" viewBox="0 0 24 24"><path d="M3.5 19.2l8.2-8.2 2.3 2.3-8.2 8.2z" fill="#b07b45"></path><path d="M11.8 4.4l7.8 5.2-2.9 3.2-7.5-5.4z" fill="#b07b45"></path></symbol>
+<symbol id="a-barn" viewBox="0 0 24 24"><path d="M3 11l9-6 9 6v10H3z" fill="#c4553f"></path><path d="M9.5 14h5v7h-5z" fill="rgba(0,0,0,0.3)"></path></symbol>
+<symbol id="a-shop" viewBox="0 0 24 24"><path d="M4 10h16v11H4z" fill="#4a9ed4"></path><path d="M2.5 9.5L5 4h14l2.5 5.5z" fill="#4a9ed4" opacity="0.72"></path><path d="M8 14h8v7H8z" fill="rgba(0,0,0,0.26)"></path></symbol>
+<symbol id="a-orders" viewBox="0 0 24 24"><rect x="4.5" y="4" width="15" height="17.5" rx="2.4" fill="#5a9e26"></rect><rect x="9" y="2" width="6" height="4" rx="1.6" fill="rgba(0,0,0,0.3)"></rect><path d="M8 11h8M8 15h8M8 18.5h5" fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="1.8" stroke-linecap="round"></path></symbol>
+<symbol id="a-truck" viewBox="0 0 24 24"><path d="M1.5 7h12v9h-12z" fill="#8a5a2e"></path><path d="M13.5 10h3.6l3.4 3.4V16h-7z" fill="#8a5a2e" opacity="0.78"></path><g fill="rgba(0,0,0,0.34)"><circle cx="6" cy="18" r="2.6"></circle><circle cx="16.6" cy="18" r="2.6"></circle></g></symbol>
+<symbol id="a-star" viewBox="0 0 24 24"><path d="M12 2l3 6.4 7 .9-5.1 4.8 1.3 6.9L12 17.6 5.8 21l1.3-6.9L2 9.3l7-.9z" fill="#e8b53a"></path></symbol>
+<symbol id="a-gear" viewBox="0 0 24 24"><path d="M12 1.8l2.4 1.4 2.6-.6 1.4 2.3 2.4 1.1-.2 2.7.2 2.7-2.4 1.1-1.4 2.3-2.6-.6L12 22.2l-2.4-1.4-2.6.6-1.4-2.3-2.4-1.1.2-2.7-.2-2.7 2.4-1.1 1.4-2.3 2.6.6z" fill="#7a6a52"></path><circle cx="12" cy="12" r="3.6" fill="rgba(0,0,0,0.36)"></circle></symbol>
+<symbol id="a-orders-light" viewBox="0 0 24 24"><rect x="4.5" y="4" width="15" height="17.5" rx="2.4" fill="#fffaea"></rect><rect x="9" y="2" width="6" height="4" rx="1.6" fill="rgba(0,0,0,0.3)"></rect><path d="M8 11h8M8 15h8M8 18.5h5" fill="none" stroke="rgba(0,0,0,0.3)" stroke-width="1.8" stroke-linecap="round"></path></symbol></defs></svg>
+
+<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; box-sizing: border-box; font-family: 'Nunito', system-ui, sans-serif; background: #7fb63a;">
+  <canvas ref="{{ canvasRef }}" style="position: absolute; inset: 0; width: 1280px; height: 800px; display: block;"></canvas>
+
+  <div style="position: absolute; left: 690px; top: 300px; width: 96px; height: 96px; border-radius: 50%; border: 5px solid rgba(255,247,214,0.9); box-shadow: 0 0 0 4px rgba(120,70,20,0.35), 0 0 28px rgba(255,225,140,0.7); animation: ringA 1.9s ease-out infinite;"></div>
+  <div style="position: absolute; left: 700px; top: 250px; display: flex; align-items: center; gap: 6px; padding: 7px 14px 7px 10px; border-radius: 999px; background: linear-gradient(#fffaea, #f7e5bd); border: 3px solid #8a5a2e; box-shadow: 0 6px 0 rgba(120,72,26,0.55), 0 12px 22px rgba(40,24,8,0.35); font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 20px; color: #7a4a18; animation: floatA 2.4s ease-out infinite;">
+    <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; color: #e8b53a;"><use href="#a-wheat"></use></svg>
+    <span>+12</span>
+  </div>
+
+  <header style="position: absolute; top: 0; left: 0; right: 0; height: 92px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px 0 150px; box-sizing: border-box; background: linear-gradient(180deg, #d09a5c 0%, #bd8449 42%, #a97038 58%, #8e5a2b 100%); border-bottom: 5px solid #6f4520; box-shadow: 0 10px 26px rgba(30,18,6,0.42), inset 0 3px 0 rgba(255,232,190,0.5); background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 2px, rgba(0,0,0,0.06) 2px 4px), linear-gradient(180deg, #d09a5c 0%, #bd8449 42%, #a97038 58%, #8e5a2b 100%);">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="padding: 8px 20px; border-radius: 12px; background: rgba(60,34,12,0.35); border: 2px solid rgba(255,232,190,0.28); font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 21px; letter-spacing: 0.04em; color: #ffeec4; text-shadow: 0 2px 0 rgba(0,0,0,0.45);">Willowbrook Farm</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="position: relative; overflow: hidden; display: flex; align-items: center; gap: 9px; padding: 9px 20px 9px 12px; border-radius: 999px; background: linear-gradient(#fffaea, #f4dfb2); border: 3px solid #7a4a18; box-shadow: 0 5px 0 rgba(90,52,18,0.6), 0 10px 18px rgba(30,18,6,0.35), inset 0 2px 0 rgba(255,255,255,0.9); font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 22px; color: #6d3f14;">
+        <svg viewBox="0 0 24 24" style="width: 30px; height: 30px; color: #f0b52e; filter: drop-shadow(0 2px 0 rgba(140,84,20,0.5));"><use href="#a-coin"></use></svg>
+        <span>4,820</span>
+        <span style="position: absolute; top: 0; left: 0; width: 34%; height: 100%; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0) 100%); animation: shineA 3.4s ease-in-out infinite;"></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 9px; padding: 9px 20px 9px 12px; border-radius: 999px; background: linear-gradient(#fffaea, #f4dfb2); border: 3px solid #7a4a18; box-shadow: 0 5px 0 rgba(90,52,18,0.6), 0 10px 18px rgba(30,18,6,0.35), inset 0 2px 0 rgba(255,255,255,0.9); font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 22px; color: #6d3f14;">
+        <svg viewBox="0 0 24 24" style="width: 28px; height: 28px; color: #46b8e8; filter: drop-shadow(0 2px 0 rgba(30,110,150,0.45));"><use href="#a-gem"></use></svg>
+        <span>36</span>
+      </div>
+      <div style="width: 3px; height: 42px; border-radius: 2px; background: rgba(60,34,12,0.35); box-shadow: 1px 0 0 rgba(255,232,190,0.22);"></div>
+      <div style="display: flex; flex-direction: column; gap: 3px; padding: 8px 16px 7px 12px; border-radius: 14px; background: rgba(60,34,12,0.32); border: 2px solid rgba(255,232,190,0.26);">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 14px; color: #ffeec4;">
+          <svg viewBox="0 0 24 24" style="width: 19px; height: 19px; color: #e8c14d;"><use href="#a-wheat"></use></svg>
+          <span>Silo</span><span style="margin-left: auto; opacity: 0.85;">312/500</span>
+        </div>
+        <div style="width: 132px; height: 9px; border-radius: 999px; background: rgba(20,10,4,0.45); overflow: hidden; box-shadow: inset 0 2px 3px rgba(0,0,0,0.4);">
+          <div style="width: 62%; height: 100%; border-radius: 999px; background: linear-gradient(#f6d266, #dba62c); box-shadow: inset 0 2px 0 rgba(255,255,255,0.55);"></div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px; padding: 8px 16px 7px 12px; border-radius: 14px; background: rgba(60,34,12,0.32); border: 2px solid rgba(255,232,190,0.26);">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 14px; color: #ffeec4;">
+          <svg viewBox="0 0 24 24" style="width: 19px; height: 19px; color: #d3a25f;"><use href="#a-crate"></use></svg>
+          <span>Barn</span><span style="margin-left: auto; opacity: 0.85;">148/300</span>
+        </div>
+        <div style="width: 132px; height: 9px; border-radius: 999px; background: rgba(20,10,4,0.45); overflow: hidden; box-shadow: inset 0 2px 3px rgba(0,0,0,0.4);">
+          <div style="width: 49%; height: 100%; border-radius: 999px; background: linear-gradient(#a8dc63, #62a52c); box-shadow: inset 0 2px 0 rgba(255,255,255,0.5);"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div style="position: absolute; top: 18px; left: 26px; width: 108px; display: flex; flex-direction: column; align-items: center; gap: 7px;">
+    <div style="position: relative; width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle at 34% 26%, #fff3c4, #f0ad2a 62%, #d1861a 100%); border: 5px solid #fffaea; box-shadow: 0 0 0 5px #7a4a18, 0 10px 20px rgba(30,18,6,0.5), inset 0 -6px 12px rgba(150,80,10,0.5); display: grid; place-items: center;">
+      <span style="font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 42px; line-height: 1; color: #fff; text-shadow: 0 3px 0 rgba(150,84,14,0.85), 0 0 14px rgba(255,220,140,0.6);">14</span>
+      <span style="position: absolute; bottom: -8px; padding: 2px 12px; border-radius: 999px; background: linear-gradient(#8e5a2b, #6b4018); border: 2px solid #fffaea; font-weight: 900; font-size: 11px; letter-spacing: 0.14em; color: #ffeec4; text-transform: uppercase;">Level</span>
+    </div>
+    <div style="width: 104px; height: 12px; margin-top: 6px; border-radius: 999px; background: rgba(20,10,4,0.5); border: 2px solid rgba(255,247,214,0.55); overflow: hidden;">
+      <div style="width: 72%; height: 100%; background: linear-gradient(#9fe06a, #4f9c24); box-shadow: inset 0 2px 0 rgba(255,255,255,0.5);"></div>
+    </div>
+  </div>
+
+  <aside style="position: absolute; top: 122px; left: 26px; width: 250px; padding: 16px; box-sizing: border-box; border-radius: 20px; background: linear-gradient(#fffaea, #f3e2bd); border: 4px solid #8a5a2e; box-shadow: 0 8px 0 rgba(110,66,24,0.55), 0 18px 34px rgba(30,18,6,0.4), inset 0 3px 0 rgba(255,255,255,0.9);">
+    <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 12px;">
+      <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; color: #b07b45;"><use href="#a-orders"></use></svg>
+      <span style="font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 20px; color: #6d3f14;">Orders</span>
+      <span style="margin-left: auto; padding: 2px 10px; border-radius: 999px; background: #d94f43; border: 2px solid #fffaea; font-weight: 900; font-size: 13px; color: #fff; box-shadow: 0 3px 0 rgba(140,40,32,0.7); animation: pulseA 1.5s ease-in-out infinite;">3</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="padding: 11px; border-radius: 14px; background: #fff7e4; border: 3px solid #e0c48f; box-shadow: inset 0 2px 0 rgba(255,255,255,0.9), 0 3px 0 rgba(180,140,86,0.35);">
+        <div style="display: flex; gap: 8px; margin-bottom: 9px;">
+          <div style="width: 42px; height: 42px; border-radius: 11px; background: linear-gradient(#fdf0d0, #f0dbaa); border: 2px solid #d9bd88; display: grid; place-items: center; position: relative;">
+            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; color: #e8b53a;"><use href="#a-wheat"></use></svg>
+            <span style="position: absolute; right: -5px; bottom: -5px; padding: 0 6px; border-radius: 999px; background: #6d3f14; border: 2px solid #fffaea; font-weight: 900; font-size: 11px; color: #ffeec4;">8</span>
+          </div>
+          <div style="width: 42px; height: 42px; border-radius: 11px; background: linear-gradient(#fdf0d0, #f0dbaa); border: 2px solid #d9bd88; display: grid; place-items: center; position: relative;">
+            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; color: #cf8f4d;"><use href="#a-crate"></use></svg>
+            <span style="position: absolute; right: -5px; bottom: -5px; padding: 0 6px; border-radius: 999px; background: #6d3f14; border: 2px solid #fffaea; font-weight: 900; font-size: 11px; color: #ffeec4;">2</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="display: flex; align-items: center; gap: 5px; font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 17px; color: #a5761f;">
+            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; color: #f0b52e;"><use href="#a-coin"></use></svg>340
+          </span>
+          <span style="display: flex; align-items: center; gap: 5px; font-weight: 900; font-size: 14px; color: #5f8a2e;">
+            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;"><use href="#a-star"></use></svg>18
+          </span>
+          <button style="margin-left: auto; padding: 7px 16px; border-radius: 12px; cursor: pointer; font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 15px; color: #fff; text-shadow: 0 2px 0 rgba(40,80,20,0.6); background: linear-gradient(#8dd44a, #5a9e26); border: 3px solid #43781c; box-shadow: 0 4px 0 #3d6c1a, inset 0 2px 0 rgba(255,255,255,0.55);" style-hover="filter: brightness(1.08); transform: translateY(-2px)" style-active="transform: translateY(2px); box-shadow: 0 1px 0 #3d6c1a">Ship</button>
+        </div>
+      </div>
+      <div style="padding: 11px; border-radius: 14px; background: #fff7e4; border: 3px solid #e0c48f; opacity: 0.72;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="width: 34px; height: 34px; border-radius: 10px; background: #f0dbaa; border: 2px solid #d9bd88; display: grid; place-items: center;">
+            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; color: #cf8f4d;"><use href="#a-crate"></use></svg>
+          </div>
+          <span style="font-weight: 800; font-size: 14px; color: #8a6a3a;">Bread ×4 · Wool ×2</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div style="position: absolute; top: 122px; right: 26px; display: flex; flex-direction: column; gap: 12px; align-items: flex-end;">
+    <div style="display: flex; align-items: center; gap: 11px; padding: 10px 16px 10px 12px; border-radius: 16px; background: linear-gradient(#d94f43, #b0392f); border: 4px solid #fffaea; box-shadow: 0 6px 0 rgba(120,34,26,0.7), 0 14px 26px rgba(30,18,6,0.42); animation: bobA 2.8s ease-in-out infinite;">
+      <svg viewBox="0 0 24 24" style="width: 30px; height: 30px; color: #ffe9a8;"><use href="#a-star"></use></svg>
+      <div style="display: flex; flex-direction: column; line-height: 1.15;">
+        <span style="font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 18px; color: #fff; text-shadow: 0 2px 0 rgba(90,24,18,0.7);">Harvest Fair</span>
+        <span style="font-weight: 800; font-size: 13px; color: #ffd7c2;">Ends in 2d 14h</span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 9px 16px 9px 11px; border-radius: 16px; background: linear-gradient(#fffaea, #f3e2bd); border: 3px solid #8a5a2e; box-shadow: 0 5px 0 rgba(110,66,24,0.5), 0 12px 20px rgba(30,18,6,0.32);">
+      <svg viewBox="0 0 24 24" style="width: 26px; height: 26px; color: #b07b45;"><use href="#a-truck"></use></svg>
+      <div style="display: flex; flex-direction: column; line-height: 1.15;">
+        <span style="font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 16px; color: #6d3f14;">Truck ready</span>
+        <span style="font-weight: 800; font-size: 12px; color: #a5761f;">2 crates loaded</span>
+      </div>
+    </div>
+  </div>
+
+  <nav style="position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 10px; padding: 12px 16px; border-radius: 26px; background: linear-gradient(180deg, #d09a5c 0%, #bd8449 44%, #a97038 56%, #8e5a2b 100%); border: 5px solid #6f4520; box-shadow: 0 12px 0 rgba(80,48,18,0.5), 0 26px 44px rgba(20,12,4,0.5), inset 0 3px 0 rgba(255,232,190,0.5);">
+    <button style="position: relative; width: 74px; height: 74px; border-radius: 18px; cursor: pointer; display: grid; place-items: center; gap: 0; background: linear-gradient(#fffaea, #f2debc); border: 3px solid #7a4a18; box-shadow: 0 5px 0 #7a4a18, inset 0 3px 0 rgba(255,255,255,0.9);" style-hover="transform: translateY(-6px) scale(1.05); filter: brightness(1.05)" style-active="transform: translateY(2px); box-shadow: 0 1px 0 #7a4a18">
+      <svg viewBox="0 0 24 24" style="width: 36px; height: 36px; color: #b07b45;"><use href="#a-hammer"></use></svg>
+    </button>
+    <button style="position: relative; width: 74px; height: 74px; border-radius: 18px; cursor: pointer; display: grid; place-items: center; background: linear-gradient(#fffaea, #f2debc); border: 3px solid #7a4a18; box-shadow: 0 5px 0 #7a4a18, inset 0 3px 0 rgba(255,255,255,0.9);" style-hover="transform: translateY(-6px) scale(1.05); filter: brightness(1.05)" style-active="transform: translateY(2px); box-shadow: 0 1px 0 #7a4a18">
+      <svg viewBox="0 0 24 24" style="width: 36px; height: 36px; color: #c4553f;"><use href="#a-barn"></use></svg>
+    </button>
+    <button style="position: relative; width: 86px; height: 86px; border-radius: 22px; cursor: pointer; display: grid; place-items: center; background: linear-gradient(#8dd44a, #5a9e26); border: 4px solid #43781c; box-shadow: 0 6px 0 #3d6c1a, inset 0 3px 0 rgba(255,255,255,0.5), 0 0 22px rgba(160,230,90,0.4);" style-hover="transform: translateY(-6px) scale(1.05); filter: brightness(1.07)" style-active="transform: translateY(2px); box-shadow: 0 1px 0 #3d6c1a">
+      <svg viewBox="0 0 24 24" style="width: 44px; height: 44px; color: #fffaea; filter: drop-shadow(0 2px 0 rgba(40,80,20,0.55));"><use href="#a-orders-light"></use></svg>
+      <span style="position: absolute; top: -8px; right: -8px; min-width: 26px; height: 26px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #d94f43; border: 3px solid #fffaea; display: grid; place-items: center; font-weight: 900; font-size: 14px; color: #fff; box-shadow: 0 3px 0 rgba(140,40,32,0.7); animation: pulseA 1.4s ease-in-out infinite;">3</span>
+    </button>
+    <button style="position: relative; width: 74px; height: 74px; border-radius: 18px; cursor: pointer; display: grid; place-items: center; background: linear-gradient(#fffaea, #f2debc); border: 3px solid #7a4a18; box-shadow: 0 5px 0 #7a4a18, inset 0 3px 0 rgba(255,255,255,0.9);" style-hover="transform: translateY(-6px) scale(1.05); filter: brightness(1.05)" style-active="transform: translateY(2px); box-shadow: 0 1px 0 #7a4a18">
+      <svg viewBox="0 0 24 24" style="width: 36px; height: 36px; color: #4a9ed4;"><use href="#a-shop"></use></svg>
+    </button>
+    <button style="position: relative; width: 74px; height: 74px; border-radius: 18px; cursor: pointer; display: grid; place-items: center; background: linear-gradient(#fffaea, #f2debc); border: 3px solid #7a4a18; box-shadow: 0 5px 0 #7a4a18, inset 0 3px 0 rgba(255,255,255,0.9);" style-hover="transform: translateY(-6px) scale(1.05); filter: brightness(1.05)" style-active="transform: translateY(2px); box-shadow: 0 1px 0 #7a4a18">
+      <svg viewBox="0 0 24 24" style="width: 36px; height: 36px; color: #8a5a2e;"><use href="#a-truck"></use></svg>
+    </button>
+    <button style="position: relative; width: 74px; height: 74px; border-radius: 18px; cursor: pointer; display: grid; place-items: center; background: linear-gradient(#fffaea, #f2debc); border: 3px solid #7a4a18; box-shadow: 0 5px 0 #7a4a18, inset 0 3px 0 rgba(255,255,255,0.9);" style-hover="transform: translateY(-6px) scale(1.05); filter: brightness(1.05)" style-active="transform: translateY(2px); box-shadow: 0 1px 0 #7a4a18">
+      <svg viewBox="0 0 24 24" style="width: 34px; height: 34px; color: #7a6a52;"><use href="#a-gear"></use></svg>
+    </button>
+  </nav>
+
+  <span style="position: absolute; bottom: 26px; left: 26px; padding: 8px 16px; border-radius: 12px; background: rgba(60,34,12,0.55); border: 2px solid rgba(255,232,190,0.3); font-family: 'Baloo 2', cursive; font-weight: 700; font-size: 15px; color: #ffeec4;">A · Sunlit Homestead</span>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:800}}">
+class Component extends DCLogic {
+  canvasRef = React.createRef();
+  async componentDidMount() {
+    const { drawWorld } = await import('./farm-world.js');
+    if (!this.canvasRef.current) return;
+    drawWorld(this.canvasRef.current, {
+      grassLight: '#a3d857', grass: '#8cc63e', grassDark: '#6ea62c',
+      mottleLight: 'rgba(200,232,120,0.4)', mottleDark: 'rgba(100,160,45,0.3)',
+      tuft: 'rgba(72,132,32,0.6)',
+      flowerA: '#fff8ee', flowerB: '#ffd94d', flowerC: '#f4a0b8', flowerHeart: '#f5a623',
+      soilLight: '#b0834f', soil: '#9c6b3d', soilDark: '#75481f', soilRow: 'rgba(92,56,26,0.5)', soilRim: 'rgba(255,232,180,0.55)',
+      road: '#dcb377', roadEdge: 'rgba(150,110,60,0.4)', roadLight: 'rgba(244,214,158,0.7)', roadPebble: 'rgba(140,102,54,0.3)',
+      water: '#3fa8de', waterLight: '#7fd0f0', waterEdge: '#8a6a3a', reed: '#579a30',
+      wood: '#b07b45', woodDark: '#7f5227', woodLight: '#d1a068',
+      roof: '#d94f43', roofDark: '#b0392f', roofTop: '#9c4034', roofAlt: '#4e8fe0',
+      trimLight: '#fffaea', wall: '#f6e5c2', window: '#8fd4f0', chimney: '#a8674a',
+      silo: '#dcd2be', siloLight: '#f4ecdc', siloDark: '#b6a992', siloRib: 'rgba(120,100,70,0.28)',
+      awning: '#d94f43', crate: '#a8752f', fruit: '#e8574a',
+      trunk: '#7f5227', canopy: '#5aa032', canopyLight: 'rgba(190,232,120,0.5)',
+      leaf: '#4f8f2c', leafLight: '#7ec244', wheat: '#f0cc5e', wheatStem: '#d4a83a', corn: '#f5d24a',
+      chicken: '#fff8ee', comb: '#e0503f', beak: '#f5a623',
+      cow: '#fff8ee', cowSpot: '#5b4028', muzzle: '#f2b8b0',
+      shadow: 'rgba(40,70,20,0.22)', outline: '#5b3a1e', outlineWidth: 0,
+      sun: 'rgba(255,238,170,0.3)', vignette: 'rgba(50,70,20,0.26)',
+    }, { w: 1280, h: 800, tile: 104 });
+  }
+  renderVals() { return { canvasRef: this.canvasRef }; }
+}
+
+</script>
+</body>
+</html>

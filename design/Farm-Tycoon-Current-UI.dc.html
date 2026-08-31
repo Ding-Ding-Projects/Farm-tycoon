@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; background: #2b2118; }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
+  @keyframes arrow-bounce { 50% { transform: translateY(-12px); } }
+  a { color: #4c9420; }
+  a:hover { color: #6abe30; }
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; font-family: 'Nunito', system-ui, -apple-system, sans-serif; color: #5b3a1e; background: linear-gradient(#8fd3ff, #b8e88a); box-sizing: border-box;">
+
+  <canvas ref="{{ canvasRef }}" style="position: absolute; inset: 0; width: 1280px; height: 800px; display: block;"></canvas>
+
+  <div style="position: absolute; top: 16px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+    <div style="position: relative; width: 66px; height: 66px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe9a8, #f5a623 70%); border: 3px solid #fff; outline: 3px solid #8a5a2e; box-shadow: 0 4px 10px rgba(60,35,10,0.3), inset 0 2px 0 rgba(255,255,255,0.45); display: grid; place-items: center; font-weight: 800; font-size: 26px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35);">
+      <svg viewBox="0 0 64 64" aria-hidden="true" style="position: absolute; inset: -6px;"></svg>
+      <span>1</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <div title="Coins" style="display: flex; align-items: center; gap: 8px; background: linear-gradient(#7d5630, #5d3d1e); border: 2px solid #8a5a2e; border-radius: 999px; padding: 8px 16px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); box-shadow: 0 4px 10px rgba(60,35,10,0.3), inset 0 2px 0 rgba(255,255,255,0.45);"><span>🪙</span><span>0</span></div>
+      <div title="Diamonds" style="display: flex; align-items: center; gap: 8px; background: linear-gradient(#7d5630, #5d3d1e); border: 2px solid #8a5a2e; border-radius: 999px; padding: 8px 16px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); box-shadow: 0 4px 10px rgba(60,35,10,0.3), inset 0 2px 0 rgba(255,255,255,0.45);"><span>💎</span><span>0</span></div>
+      <div title="Silo" style="display: flex; align-items: center; gap: 8px; background: linear-gradient(#7d5630, #5d3d1e); border: 2px solid #8a5a2e; border-radius: 999px; padding: 8px 16px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); box-shadow: 0 4px 10px rgba(60,35,10,0.3), inset 0 2px 0 rgba(255,255,255,0.45);"><span>🌾</span><span>0/50</span></div>
+      <div title="Barn" style="display: flex; align-items: center; gap: 8px; background: linear-gradient(#7d5630, #5d3d1e); border: 2px solid #8a5a2e; border-radius: 999px; padding: 8px 16px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); box-shadow: 0 4px 10px rgba(60,35,10,0.3), inset 0 2px 0 rgba(255,255,255,0.45);"><span>📦</span><span>0/50</span></div>
+    </div>
+  </div>
+
+  <p style="position: absolute; bottom: 96px; left: 0; width: 100%; margin: 0; text-align: center; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); pointer-events: none;">Scaffold build — gameplay arrives in Phase B</p>
+
+  <nav style="position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px 12px; background: linear-gradient(#c08a50 0%, #b07b45 45%, #a06c38 55%, #8a5a2e 100%); border: 3px solid #8a5a2e; border-radius: 18px; box-shadow: 0 10px 28px rgba(60,35,10,0.35), inset 0 2px 0 rgba(255,255,255,0.45);">
+    <button title="Build" style="width: 58px; height: 58px; font-size: 26px; cursor: pointer; border-radius: 14px; background: linear-gradient(#fdf6e3, #f0debb); border: 2px solid #8a5a2e; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.22); position: relative;" style-hover="filter: brightness(1.06); transform: translateY(-4px) scale(1.08)">🔨</button>
+    <button title="Barn &amp; Silo" style="width: 58px; height: 58px; font-size: 26px; cursor: pointer; border-radius: 14px; background: linear-gradient(#fdf6e3, #f0debb); border: 2px solid #8a5a2e; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.22); position: relative;" style-hover="filter: brightness(1.06); transform: translateY(-4px) scale(1.08)">🏠</button>
+    <button title="Roadside Shop" style="width: 58px; height: 58px; font-size: 26px; cursor: pointer; border-radius: 14px; background: linear-gradient(#fdf6e3, #f0debb); border: 2px solid #8a5a2e; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.22); position: relative;" style-hover="filter: brightness(1.06); transform: translateY(-4px) scale(1.08)">🏪</button>
+    <button title="Order Board" style="width: 58px; height: 58px; font-size: 26px; cursor: pointer; border-radius: 14px; background: linear-gradient(#fdf6e3, #f0debb); border: 2px solid #8a5a2e; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.22); position: relative;" style-hover="filter: brightness(1.06); transform: translateY(-4px) scale(1.08)">📋</button>
+    <button title="Truck" style="width: 58px; height: 58px; font-size: 26px; cursor: pointer; border-radius: 14px; background: linear-gradient(#fdf6e3, #f0debb); border: 2px solid #8a5a2e; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.22); position: relative;" style-hover="filter: brightness(1.06); transform: translateY(-4px) scale(1.08)">🚚</button>
+    <button title="More" style="width: 58px; height: 58px; font-size: 26px; cursor: pointer; border-radius: 14px; background: linear-gradient(#fdf6e3, #f0debb); border: 2px solid #8a5a2e; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.22); position: relative;" style-hover="filter: brightness(1.06); transform: translateY(-4px) scale(1.08)">⭐</button>
+    <button title="Settings" style="width: 58px; height: 58px; font-size: 26px; cursor: pointer; border-radius: 14px; background: linear-gradient(#fdf6e3, #f0debb); border: 2px solid #8a5a2e; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.22); position: relative;" style-hover="filter: brightness(1.06); transform: translateY(-4px) scale(1.08)">⚙️</button>
+  </nav>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:800}}">
+class Component extends DCLogic {
+  canvasRef = React.createRef();
+  componentDidMount() { this.draw(); }
+  draw() {
+    const canvas = this.canvasRef.current;
+    if (!canvas) return;
+    // PALETTE — verbatim from src/render/sprites.js
+    const PALETTE = {
+      grass: '#8cc63e', grassLight: '#9ed44f', grassDark: '#76b32f',
+      grassMottleLight: 'rgba(190, 226, 110, 0.35)', grassMottleDark: 'rgba(100, 160, 45, 0.30)',
+      flowerWhite: '#fff8ee', flowerYellow: '#ffd94d',
+      soil: '#9c6b3d', soilDark: '#7d5028', soilRow: '#6b4423',
+      water: '#4db3e6', wood: '#b07b45', woodDark: '#8a5a2e', woodLight: '#cf9a5e',
+      roof: '#d94f43', roofDark: '#b53c32', roofAlt: '#4e8fe0',
+      gold: '#f5b52e', cream: '#fdf3dc', wheatGold: '#e8c14d',
+      shadow: 'rgba(30,50,20,0.18)',
+    };
+    // drawSplash — ported verbatim from src/main.js, fixed 1280x800 artboard
+    const dpr = 2, w = 1280, h = 800;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const T = Math.max(56, w / 18);
+    const ox = w / 2, oy = h * 0.3;
+    const iso = (tx, ty) => [ox + (tx - ty) * T, oy + (tx + ty) * (T / 2)];
+    const rand = (i, salt = 0) => {
+      const x = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    ctx.fillStyle = PALETTE.grass;
+    ctx.fillRect(0, 0, w, h);
+
+    for (let i = 0; i < 14; i++) {
+      const px = rand(i, 1) * w, py = rand(i, 2) * h;
+      const rx = (0.1 + rand(i, 3) * 0.16) * w, ry = rx * (0.35 + rand(i, 4) * 0.2);
+      const g = ctx.createRadialGradient(px, py, 0, px, py, rx);
+      const tone = i % 2 ? PALETTE.grassMottleLight : PALETTE.grassMottleDark;
+      g.addColorStop(0, tone); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.save(); ctx.translate(px, py); ctx.scale(1, ry / rx);
+      ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    { // dirt road
+      const [ax, ay] = iso(-8, 2.5), [bx, by] = iso(20, 2.5);
+      ctx.save(); ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(160, 120, 70, 0.35)'; ctx.lineWidth = T * 1.25;
+      ctx.beginPath(); ctx.moveTo(ax, ay + T / 2); ctx.lineTo(bx, by + T / 2); ctx.stroke();
+      ctx.strokeStyle = '#d9b072'; ctx.lineWidth = T * 1.0;
+      ctx.beginPath(); ctx.moveTo(ax, ay + T / 2); ctx.lineTo(bx, by + T / 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(238, 205, 140, 0.7)'; ctx.lineWidth = T * 0.3;
+      ctx.beginPath(); ctx.moveTo(ax, ay + T / 2); ctx.lineTo(bx, by + T / 2); ctx.stroke();
+      ctx.restore();
+    }
+
+    for (let i = 0; i < 60; i++) {
+      const px = rand(i, 5) * w, py = 90 + rand(i, 6) * (h - 110);
+      ctx.strokeStyle = 'rgba(70, 130, 30, 0.55)'; ctx.lineWidth = 2;
+      for (const dx of [-4, 0, 4]) {
+        ctx.beginPath(); ctx.moveTo(px + dx, py + 5);
+        ctx.quadraticCurveTo(px + dx * 1.4, py - 2, px + dx * 1.8, py - 7); ctx.stroke();
+      }
+    }
+    for (let i = 0; i < 8; i++) {
+      const px = rand(i, 7) * w, py = 100 + rand(i, 8) * (h - 130);
+      ctx.fillStyle = i % 2 ? PALETTE.flowerWhite : PALETTE.flowerYellow;
+      for (let p = 0; p < 5; p++) {
+        const a = (p / 5) * Math.PI * 2;
+        ctx.beginPath(); ctx.arc(px + Math.cos(a) * 4, py + Math.sin(a) * 4, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = '#f5a623';
+      ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+
+    const plot = (tx, ty, kind) => {
+      const [x, y] = iso(tx, ty);
+      const R = T * 0.13, D = 8;
+      const top = [[x, y], [x + T, y + T / 2], [x, y + T], [x - T, y + T / 2]];
+      const roundedDiamond = (yOff) => {
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const [cx, cy] = top[i], [nx, ny] = top[(i + 1) % 4];
+          const len = Math.hypot(nx - cx, ny - cy);
+          const ux = (nx - cx) / len, uy = (ny - cy) / len;
+          if (i === 0) ctx.moveTo(cx + ux * R, cy + yOff + uy * R);
+          else ctx.lineTo(cx + ux * R, cy + yOff + uy * R);
+          ctx.lineTo(nx - ux * R, ny + yOff - uy * R);
+          const [mx2, my2] = top[(i + 2) % 4];
+          const l2 = Math.hypot(mx2 - nx, my2 - ny);
+          ctx.quadraticCurveTo(nx, ny + yOff, nx + ((mx2 - nx) / l2) * R, ny + yOff + ((my2 - ny) / l2) * R);
+        }
+        ctx.closePath();
+      };
+      ctx.fillStyle = 'rgba(40, 70, 20, 0.18)';
+      ctx.beginPath(); ctx.ellipse(x, y + T / 2 + D + 6, T * 1.02, T * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      roundedDiamond(D); ctx.fillStyle = PALETTE.soilDark; ctx.fill();
+      roundedDiamond(0);
+      const soil = ctx.createLinearGradient(x, y, x, y + T);
+      soil.addColorStop(0, '#a97a48'); soil.addColorStop(1, PALETTE.soil);
+      ctx.fillStyle = soil; ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 230, 180, 0.5)'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.save(); roundedDiamond(0); ctx.clip();
+      ctx.strokeStyle = 'rgba(90, 55, 25, 0.5)'; ctx.lineWidth = 3;
+      for (let f = 0.25; f < 1; f += 0.25) {
+        ctx.beginPath(); ctx.moveTo(x - T, y + T * f); ctx.lineTo(x + T, y + T * f); ctx.stroke();
+      }
+      ctx.restore();
+      if (kind === 'wheat') {
+        for (let i = 0; i < 12; i++) {
+          const px = x + (Math.sin(i * 2.7) * 0.7) * T * 0.7;
+          const py = y + T * 0.25 + ((i % 4) / 4) * T * 0.55;
+          ctx.strokeStyle = PALETTE.wheatGold; ctx.lineWidth = 3.5;
+          ctx.beginPath(); ctx.moveTo(px, py + 12); ctx.quadraticCurveTo(px + 3, py + 2, px, py - 8); ctx.stroke();
+          ctx.fillStyle = '#f7d268';
+          ctx.beginPath(); ctx.ellipse(px, py - 10, 3.5, 7, 0.15, 0, Math.PI * 2); ctx.fill();
+        }
+      } else if (kind === 'sprout') {
+        for (let i = 0; i < 7; i++) {
+          const px = x + Math.sin(i * 2.1) * T * 0.55;
+          const py = y + T * 0.35 + ((i % 3) / 3) * T * 0.4;
+          ctx.fillStyle = '#5fae2e';
+          ctx.beginPath(); ctx.ellipse(px, py, 3, 6, 0, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    };
+    plot(2, 5, 'wheat'); plot(3, 5, 'wheat'); plot(2, 6, 'sprout'); plot(3, 6, 'empty');
+
+    { // fence
+      const posts = [];
+      for (let i = 0; i < 6; i++) posts.push(iso(1 + i * 0.7, 4.35));
+      ctx.strokeStyle = PALETTE.woodDark; ctx.lineWidth = 4;
+      for (let i = 0; i < posts.length - 1; i++) {
+        for (const railY of [-16, -8]) {
+          ctx.beginPath();
+          ctx.moveTo(posts[i][0], posts[i][1] + railY);
+          ctx.lineTo(posts[i + 1][0], posts[i + 1][1] + railY);
+          ctx.stroke();
+        }
+      }
+      for (const [fx, fy] of posts) {
+        ctx.fillStyle = PALETTE.wood; ctx.fillRect(fx - 3.5, fy - 24, 7, 26);
+        ctx.strokeStyle = PALETTE.woodDark; ctx.lineWidth = 1.5; ctx.strokeRect(fx - 3.5, fy - 24, 7, 26);
+      }
+    }
+
+    { // tree
+      const [tx0, ty0] = iso(1.0, 0.2);
+      ctx.fillStyle = 'rgba(30,50,20,0.2)';
+      ctx.beginPath(); ctx.ellipse(tx0, ty0 + T * 0.5, T * 0.55, T * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.woodDark; ctx.fillRect(tx0 - 7, ty0 - T * 0.5, 14, T);
+      for (const [oxx, oyy, r] of [[-24, -T * 0.75, 34], [24, -T * 0.75, 34], [0, -T * 1.05, 40]]) {
+        ctx.fillStyle = '#5aa032';
+        ctx.beginPath(); ctx.arc(tx0 + oxx, ty0 + oyy, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath(); ctx.arc(tx0 - 10, ty0 - T * 1.15, 24, 0, Math.PI * 2); ctx.fill();
+    }
+
+    { // barn
+      const [bx, by] = iso(5.2, 4.8);
+      const BW = T * 1.9, BH = T * 1.15;
+      ctx.fillStyle = 'rgba(30,50,20,0.22)';
+      ctx.beginPath(); ctx.ellipse(bx, by + BH * 0.62, BW * 0.72, BH * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+      const body = ctx.createLinearGradient(bx - BW / 2, 0, bx + BW / 2, 0);
+      body.addColorStop(0, PALETTE.roof); body.addColorStop(1, PALETTE.roofDark);
+      ctx.fillStyle = body; ctx.fillRect(bx - BW / 2, by - BH * 0.35, BW, BH);
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.strokeRect(bx - BW / 2, by - BH * 0.35, BW, BH);
+      ctx.fillStyle = '#8a4a3a';
+      ctx.beginPath();
+      ctx.moveTo(bx - BW * 0.62, by - BH * 0.32);
+      ctx.lineTo(bx - BW * 0.34, by - BH * 0.85);
+      ctx.lineTo(bx, by - BH * 1.0);
+      ctx.lineTo(bx + BW * 0.34, by - BH * 0.85);
+      ctx.lineTo(bx + BW * 0.62, by - BH * 0.32);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(bx, by - BH * 0.62, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.woodDark; ctx.beginPath(); ctx.arc(bx, by - BH * 0.62, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillRect(bx - 24, by + BH * 0.13, 48, BH * 0.52);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(bx - 20, by + BH * 0.17, 18, BH * 0.44);
+      ctx.fillRect(bx + 2, by + BH * 0.17, 18, BH * 0.44);
+    }
+
+    { // roadside shop stand
+      const [sx, sy] = iso(9.5, 1.6);
+      ctx.fillStyle = 'rgba(30,50,20,0.2)';
+      ctx.beginPath(); ctx.ellipse(sx, sy + 34, 52, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.wood; ctx.fillRect(sx - 42, sy - 12, 84, 44);
+      ctx.strokeStyle = PALETTE.woodDark; ctx.lineWidth = 3; ctx.strokeRect(sx - 42, sy - 12, 84, 44);
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = i % 2 ? '#fff' : PALETTE.roof;
+        ctx.beginPath();
+        ctx.moveTo(sx - 48 + i * 16, sy - 34);
+        ctx.lineTo(sx - 32 + i * 16, sy - 34);
+        ctx.lineTo(sx - 32 + i * 16, sy - 16);
+        ctx.lineTo(sx - 48 + i * 16, sy - 16);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    ctx.fillStyle = 'rgba(40, 80, 30, 0.08)';
+    for (const [sx, sy, r] of [[0.3, 0.75, 90], [0.65, 0.6, 70], [0.15, 0.55, 60]]) {
+      ctx.beginPath(); ctx.ellipse(w * sx, h * sy, r * 1.6, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  renderVals() { return { canvasRef: this.canvasRef }; }
+}
+
+</script>
+</body>
+</html>

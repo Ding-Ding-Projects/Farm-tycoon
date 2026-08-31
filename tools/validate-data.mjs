@@ -65,6 +65,32 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
       errors.push(`building ${bid} is in neither the kit list nor the coin-only list - classify it`);
 }
 
+// Per-factory minigames. The hand-written list matters more than the rules: a rule alone
+// passes happily on a building that simply has no minigame field, so the thing that would
+// actually go wrong (somebody adds a factory and forgets its game) needs an explicit roster.
+{
+  const MUST_HAVE_MINIGAME = Object.keys(d.BUILDINGS);
+  const seenEffect = new Map();
+  for (const bid of MUST_HAVE_MINIGAME) {
+    const b = d.BUILDINGS[bid];
+    if (!b.minigame) { errors.push(`building ${bid} has no minigame`); continue; }
+    const g = d.MINIGAMES[b.minigame];
+    if (!g) { errors.push(`building ${bid}: minigame '${b.minigame}' not in MINIGAMES`); continue; }
+    if (g.building !== bid) errors.push(`minigame ${b.minigame} says it belongs to ${g.building}, but ${bid} claims it`);
+  }
+  for (const [gid, g] of Object.entries(d.MINIGAMES)) {
+    if (!d.BUILDINGS[g.building]) errors.push(`minigame ${gid}: unknown building '${g.building}'`);
+    if (!d.EFFECT_KEYS.includes(g.effect)) errors.push(`minigame ${gid}: effect '${g.effect}' is not in EFFECT_KEYS`);
+    if (!(g.cap > 0) || g.cap > 1) errors.push(`minigame ${gid}: cap must be between 0 and 1 so a bonus cannot be farmed without bound`);
+    if (!g.name || !g.purpose) errors.push(`minigame ${gid}: needs a name and a stated purpose`);
+    // Distinct purpose per factory was an explicit design decision, so two factories
+    // sharing an effect key is a design regression, not a harmless duplicate.
+    if (seenEffect.has(g.effect)) errors.push(`minigames ${seenEffect.get(g.effect)} and ${gid} share effect '${g.effect}'`);
+    seenEffect.set(g.effect, gid);
+  }
+  if (new Set(d.EFFECT_KEYS).size !== d.EFFECT_KEYS.length) errors.push('EFFECT_KEYS contains duplicates');
+}
+
 // Animals: product in GOODS, feed is a feed-mill recipe (or null for bees).
 const feedIds = new Set(d.BUILDINGS.feed_mill.recipes.map((r) => r.id));
 for (const [aid, a] of Object.entries(d.ANIMALS)) {

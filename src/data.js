@@ -171,7 +171,7 @@ export const GOODS = {
 // so the opening hour of the game never depends on a supply chain that does not exist yet.
 export const BUILDINGS = {
   feed_mill: {
-    name: 'Feed Mill', unlockLevel: 5, cost: 300, size: [2, 2], queueSlots: 3,
+    name: 'Feed Mill', unlockLevel: 5, cost: 300, size: [2, 2], minigame: 'grain_sort', queueSlots: 3,
     recipes: [
       { id: 'chicken_feed', inputs: { wheat: 2, corn: 1 },      time: 300,  xp: 2 },
       { id: 'cow_feed',     inputs: { corn: 2, soybean: 1 },    time: 600,  xp: 3 },
@@ -181,7 +181,7 @@ export const BUILDINGS = {
     ],
   },
   bakery: {
-    name: 'Bakery', unlockLevel: 3, cost: 200, size: [2, 2], queueSlots: 3,
+    name: 'Bakery', unlockLevel: 3, cost: 200, size: [2, 2], minigame: 'knead_dough', queueSlots: 3,
     recipes: [
       { id: 'bread',      inputs: { wheat: 3 },            time: 300,   xp: 3 },
       { id: 'corn_bread', inputs: { corn: 2, egg: 1 },     time: 900,   xp: 4 },
@@ -190,7 +190,7 @@ export const BUILDINGS = {
     ],
   },
   dairy: {
-    name: 'Dairy', unlockLevel: 6, cost: 450, size: [2, 2], kit: 'kit_dairy', queueSlots: 3,
+    name: 'Dairy', unlockLevel: 6, cost: 450, size: [2, 2], kit: 'kit_dairy', minigame: 'churn_timing', queueSlots: 3,
     recipes: [
       { id: 'cream',       inputs: { milk: 1 },              time: 600,  xp: 3 },
       { id: 'butter',      inputs: { cream: 1, milk: 1 },    time: 1500, xp: 5 },
@@ -199,7 +199,7 @@ export const BUILDINGS = {
     ],
   },
   sugar_mill: {
-    name: 'Sugar Mill', unlockLevel: 8, cost: 600, size: [2, 2], kit: 'kit_sugar_mill', queueSlots: 3,
+    name: 'Sugar Mill', unlockLevel: 8, cost: 600, size: [2, 2], kit: 'kit_sugar_mill', minigame: 'press_pressure', queueSlots: 3,
     recipes: [
       { id: 'sugar',       inputs: { sugarcane: 1 },           time: 600,  xp: 3 },
       { id: 'brown_sugar', inputs: { sugarcane: 2 },           time: 1200, xp: 4 },
@@ -207,7 +207,7 @@ export const BUILDINGS = {
     ],
   },
   popcorn_pot: {
-    name: 'Popcorn Pot', unlockLevel: 9, cost: 750, size: [2, 2], kit: 'kit_popcorn_pot', queueSlots: 3,
+    name: 'Popcorn Pot', unlockLevel: 9, cost: 750, size: [2, 2], kit: 'kit_popcorn_pot', minigame: 'pop_catch', queueSlots: 3,
     recipes: [
       { id: 'popcorn',          inputs: { corn: 2 },                time: 450,  xp: 3 },
       { id: 'buttered_popcorn', inputs: { corn: 2, butter: 1 },     time: 1800, xp: 7 },
@@ -215,7 +215,7 @@ export const BUILDINGS = {
     ],
   },
   grill: {
-    name: 'Grill', unlockLevel: 12, cost: 1100, size: [2, 2], kit: 'kit_grill', queueSlots: 3,
+    name: 'Grill', unlockLevel: 12, cost: 1100, size: [2, 2], kit: 'kit_grill', minigame: 'flip_timing', queueSlots: 3,
     recipes: [
       { id: 'bacon_eggs',   inputs: { bacon: 1, egg: 2 },               time: 1200, xp: 5 },
       { id: 'pancakes',     inputs: { wheat: 2, egg: 1, syrup: 1 },     time: 1800, xp: 7 },
@@ -224,7 +224,7 @@ export const BUILDINGS = {
     ],
   },
   pie_oven: {
-    name: 'Pie Oven', unlockLevel: 16, cost: 1800, size: [2, 2], kit: 'kit_pie_oven', queueSlots: 3,
+    name: 'Pie Oven', unlockLevel: 16, cost: 1800, size: [2, 2], kit: 'kit_pie_oven', minigame: 'crimp_pattern', queueSlots: 3,
     recipes: [
       { id: 'carrot_pie',     inputs: { carrot: 3, wheat: 2, egg: 1 },      time: 2400, xp: 8 },
       { id: 'pumpkin_pie',    inputs: { pumpkin: 1, wheat: 2, egg: 2 },     time: 3600, xp: 10 },
@@ -233,14 +233,14 @@ export const BUILDINGS = {
     ],
   },
   loom: {
-    name: 'Loom', unlockLevel: 14, cost: 1500, size: [2, 2], kit: 'kit_loom', queueSlots: 3,
+    name: 'Loom', unlockLevel: 14, cost: 1500, size: [2, 2], kit: 'kit_loom', minigame: 'weave_trace', queueSlots: 3,
     recipes: [
       { id: 'cotton_fabric', inputs: { cotton: 3 },        time: 1800, xp: 6 },
       { id: 'sweater',       inputs: { wool: 2 },          time: 3600, xp: 9 },
     ],
   },
   sewing_machine: {
-    name: 'Sewing Machine', unlockLevel: 20, cost: 2800, size: [2, 2], kit: 'kit_sewing_machine', queueSlots: 3,
+    name: 'Sewing Machine', unlockLevel: 20, cost: 2800, size: [2, 2], kit: 'kit_sewing_machine', minigame: 'stitch_line', queueSlots: 3,
     recipes: [
       { id: 'cotton_shirt', inputs: { cotton_fabric: 2 },            time: 3600, xp: 10 },
       { id: 'wooly_hat',    inputs: { wool: 1, cotton_fabric: 1 },   time: 4500, xp: 11 },
@@ -248,7 +248,7 @@ export const BUILDINGS = {
     ],
   },
   juice_press: {
-    name: 'Juice Press', unlockLevel: 15, cost: 1700, size: [2, 2], kit: 'kit_juice_press', queueSlots: 3,
+    name: 'Juice Press', unlockLevel: 15, cost: 1700, size: [2, 2], kit: 'kit_juice_press', minigame: 'press_peak', queueSlots: 3,
     recipes: [
       { id: 'carrot_juice', inputs: { carrot: 3 },                 time: 1200, xp: 5 },
       { id: 'tomato_juice', inputs: { tomato: 2 },                 time: 2400, xp: 7 },
@@ -257,7 +257,7 @@ export const BUILDINGS = {
     ],
   },
   jam_maker: {
-    name: 'Jam Maker', unlockLevel: 22, cost: 3600, size: [2, 2], kit: 'kit_jam_maker', queueSlots: 3,
+    name: 'Jam Maker', unlockLevel: 22, cost: 3600, size: [2, 2], kit: 'kit_jam_maker', minigame: 'heat_band', queueSlots: 3,
     recipes: [
       { id: 'strawberry_jam', inputs: { strawberry: 3, sugar: 1 }, time: 4500, xp: 11 },
       { id: 'honey_jam',      inputs: { honey: 1, sugar: 2 },      time: 5400, xp: 13 },
@@ -265,7 +265,7 @@ export const BUILDINGS = {
     ],
   },
   coffee_kiosk: {
-    name: 'Coffee Kiosk', unlockLevel: 30, cost: 6500, size: [2, 2], kit: 'kit_coffee_kiosk', queueSlots: 3,
+    name: 'Coffee Kiosk', unlockLevel: 30, cost: 6500, size: [2, 2], kit: 'kit_coffee_kiosk', minigame: 'shot_timing', queueSlots: 3,
     recipes: [
       { id: 'espresso',     inputs: { coffee: 2 },              time: 3600, xp: 10 },
       { id: 'latte',        inputs: { coffee: 2, milk: 1 },     time: 4500, xp: 12 },
@@ -273,7 +273,7 @@ export const BUILDINGS = {
     ],
   },
   candy_machine: {
-    name: 'Candy Machine', unlockLevel: 26, cost: 5000, size: [2, 2], kit: 'kit_candy_machine', queueSlots: 3,
+    name: 'Candy Machine', unlockLevel: 26, cost: 5000, size: [2, 2], kit: 'kit_candy_machine', minigame: 'mould_pour', queueSlots: 3,
     recipes: [
       { id: 'caramel',      inputs: { sugar: 2, cream: 1 },        time: 3600, xp: 9 },
       { id: 'honey_toffee', inputs: { honey: 1, brown_sugar: 1 },  time: 5400, xp: 12 },
@@ -281,7 +281,7 @@ export const BUILDINGS = {
     ],
   },
   tropical_cafe: {
-    name: 'Tropical Café', unlockLevel: 36, cost: 12000, size: [2, 2], kit: 'kit_tropical_cafe', queueSlots: 3,
+    name: 'Tropical Café', unlockLevel: 36, cost: 12000, size: [2, 2], kit: 'kit_tropical_cafe', minigame: 'garnish_stack', queueSlots: 3,
     recipes: [
       { id: 'banana_split',  inputs: { banana: 2, cream: 1, sugar: 1 },   time: 5400, xp: 14 },
       { id: 'pina_smoothie', inputs: { pineapple: 2, milk: 1 },           time: 6300, xp: 15 },
@@ -290,7 +290,7 @@ export const BUILDINGS = {
     ],
   },
   smelter: {
-    name: 'Smelter', unlockLevel: 24, cost: 4200, size: [2, 2], kit: 'kit_smelter', queueSlots: 2,
+    name: 'Smelter', unlockLevel: 24, cost: 4200, size: [2, 2], kit: 'kit_smelter', minigame: 'bellows_timing', queueSlots: 2,
     recipes: [
       { id: 'silver_bar',   inputs: { ore_silver: 2 },   time: 3600,  xp: 9 },
       { id: 'gold_bar',     inputs: { ore_gold: 2 },     time: 5400,  xp: 12 },
@@ -302,7 +302,7 @@ export const BUILDINGS = {
   // and the kit is consumed to place its building (BUILDINGS[x].kit). It is itself
   // coin-only, as are feed_mill and bakery, so the tutorial never dead-ends.
   build_workshop: {
-    name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], queueSlots: 3,
+    name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
     minigame: 'workshop_fit',
     recipes: [
       { id: 'shingle',              inputs: { slab: 1, nails: 1 },                              time: 600,   xp: 3 },
@@ -329,6 +329,54 @@ export const BUILDINGS = {
     ],
   },
 };
+
+/**
+ * Per-factory minigames. Every production building has ONE, and each does something only
+ * that factory would plausibly do - this is not one minigame reskinned sixteen times.
+ *
+ * They are an OPTIONAL BONUS LAYER and that is load-bearing: production runs normally
+ * whether or not the player ever touches one. Gating a recipe behind hand-eye skill would
+ * break the idle contract and punish offline play, which the absolute-readyAt timestamp
+ * model exists to protect.
+ *
+ * effect keys come from EFFECT_KEYS, shared with the Laboratory, so bonuses from a
+ * minigame and a research node compose through one code path instead of two.
+ * cap is the maximum bonus a perfect run can grant, so no bonus is farmable without bound.
+ */
+export const MINIGAMES = {
+  grain_sort:      { name: 'Grain Sort',         building: 'feed_mill',       effect: 'seedRefundChance',   cap: 0.25, purpose: 'Sort the good grain from the chaff. Clean batches hand seed back.' },
+  knead_dough:     { name: 'Knead the Dough',    building: 'bakery',          effect: 'bonusYield',         cap: 0.3,  purpose: 'Knead to the rhythm. Well-worked dough rises into an extra loaf.' },
+  churn_timing:    { name: 'Churn Timing',       building: 'dairy',           effect: 'speedMult',          cap: 0.2,  purpose: 'Hold the churn at the right speed to finish the batch sooner.' },
+  press_pressure:  { name: 'Press Pressure',     building: 'sugar_mill',      effect: 'extraOutput',        cap: 0.25, purpose: 'Lean on the press without cracking it. More cane, more sugar.' },
+  pop_catch:       { name: 'Catch the Pops',     building: 'popcorn_pot',     effect: 'byproductChance',    cap: 0.35, purpose: 'Catch kernels as they fly. Strays become a second snack.' },
+  flip_timing:     { name: 'Flip Timing',        building: 'grill',           effect: 'sellPriceMult',      cap: 0.2,  purpose: 'Flip at the sear, not after. Char sells for more.' },
+  crimp_pattern:   { name: 'Crimp the Crust',    building: 'pie_oven',        effect: 'xpMult',             cap: 0.3,  purpose: 'Trace the crimp around the rim. A neat pie teaches a neat baker.' },
+  weave_trace:     { name: 'Weave the Pattern',  building: 'loom',            effect: 'rarityTier',         cap: 0.2,  purpose: 'Follow the pattern thread. A clean weave lifts the cloth a tier.' },
+  stitch_line:     { name: 'Hold the Seam',      building: 'sewing_machine',  effect: 'fabricSaveChance',   cap: 0.25, purpose: 'Keep the seam straight and the offcut is big enough to reuse.' },
+  press_peak:      { name: 'Press at Peak',      building: 'juice_press',     effect: 'juiceYieldBonus',    cap: 0.3,  purpose: 'Stop the press at peak flow. Overpressing bruises the fruit.' },
+  heat_band:       { name: 'Hold the Heat',      building: 'jam_maker',       effect: 'setQualityBonus',    cap: 0.25, purpose: 'Keep the pot inside the setting band. A firm set fills an extra jar.' },
+  shot_timing:     { name: 'Pull the Shot',      building: 'coffee_kiosk',    effect: 'rushHourChance',     cap: 0.3,  purpose: 'Pull to the timing window. A good crema brings the morning rush.' },
+  mould_pour:      { name: 'Pour the Moulds',    building: 'candy_machine',   effect: 'mouldPrecision',     cap: 0.25, purpose: 'Pour clean into every mould. Spillage sets into offcut sweets.' },
+  garnish_stack:   { name: 'Stack the Garnish',  building: 'tropical_cafe',   effect: 'tipChance',          cap: 0.35, purpose: 'Balance the garnish. A drink that looks the part earns a tip.' },
+  bellows_timing:  { name: 'Work the Bellows',   building: 'smelter',         effect: 'purityChance',       cap: 0.2,  purpose: 'Time the bellows to hold the heat. Hotter metal pours purer.' },
+  workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
+};
+
+/**
+ * The closed set of effect keys a bonus may carry. Shared by MINIGAMES and (later) the
+ * Laboratory research tree, so every multiplier in the game resolves through one merge
+ * point. Adding a key here is a deliberate act; the validator refuses anything else.
+ */
+export const EFFECT_KEYS = [
+  'seedRefundChance', 'bonusYield', 'speedMult', 'extraOutput',
+  'byproductChance', 'sellPriceMult', 'xpMult', 'rarityTier',
+  'fabricSaveChance', 'juiceYieldBonus', 'setQualityBonus', 'rushHourChance',
+  'mouldPrecision', 'tipChance', 'purityChance', 'materialRefund',
+  // reserved for Laboratory research (step 7); listed now so both consumers share one set
+  'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
+  'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
+  'mineYieldBonus', 'fishRareChance', 'zooIncomeMult',
+];
 
 /** Fishing: species pool weighted by rarity + chest odds. Cast uses a timing minigame. */
 export const FISHING = {

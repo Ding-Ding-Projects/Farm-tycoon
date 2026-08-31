@@ -313,6 +313,90 @@ for (const [spid, sp] of Object.entries(d.EXPEDITIONS.specialists)) {
   }
 }
 
+// Mine depths. The tools alias must stay identical to depths[0].tools by IDENTITY, not by
+// looking similar: src/mine.js and the orphan audit both read MINE.tools, and a copy that
+// drifts from what it aliases would be invisible until the two disagreed in play.
+{
+  if (d.MINE.tools !== d.MINE.depths[0].tools)
+    errors.push('MINE.tools is no longer the same object as depths[0].tools - the alias has drifted');
+  let prev = -Infinity;
+  for (const dep of d.MINE.depths) {
+    if (!(dep.unlockLevel > prev)) errors.push(`mine depth ${dep.id}: unlockLevel must increase (got ${dep.unlockLevel} after ${prev})`);
+    prev = dep.unlockLevel;
+    if (dep.requires) checkMaterials(`mine depth ${dep.id}`, dep.requires.materials);
+    if (!(dep.artifactChance >= 0 && dep.artifactChance <= 1)) errors.push(`mine depth ${dep.id}: artifactChance out of range`);
+    for (const aid of dep.artifactPool || []) if (!d.ARTIFACTS[aid]) errors.push(`mine depth ${dep.id}: unknown artifact '${aid}'`);
+    for (const [tid, t] of Object.entries(dep.tools))
+      for (const y of t.yields) {
+        if (!d.GOODS[y.item]) errors.push(`mine depth ${dep.id}/${tid}: yield '${y.item}' unknown`);
+        if (!(y.weight > 0)) errors.push(`mine depth ${dep.id}/${tid}: weight must be positive`);
+      }
+  }
+  // The surface seam must stay artifact-free, or the museum opens before the player has any
+  // reason to have found the mine's depths at all.
+  if (d.MINE.depths[0].artifactChance !== 0) errors.push('mine depth 1 must not drop artifacts');
+}
+
+// Laboratory: a research tree that must be finishable. Acyclic is the load-bearing check -
+// a cycle is not a slow tree, it is a permanently unreachable branch, and nothing else notices.
+{
+  const tree = d.LAB.tree;
+  for (const [nid, n] of Object.entries(tree)) {
+    for (const r of n.requires || []) if (!tree[r]) errors.push(`lab ${nid}: requires unknown node '${r}'`);
+    for (const k of Object.keys(n.effect || {}))
+      if (!d.EFFECT_KEYS.includes(k)) errors.push(`lab ${nid}: effect '${k}' is not in EFFECT_KEYS`);
+    if (!(n.time > 0)) errors.push(`lab ${nid}: bad research time`);
+    if (!(n.cost && n.cost.coins > 0)) errors.push(`lab ${nid}: bad cost`);
+    for (const k of Object.keys((n.cost && n.cost.items) || {}))
+      if (!recipeInput(k)) errors.push(`lab ${nid}: cost item '${k}' unknown`);
+  }
+  if (!Object.values(tree).some((n) => !n.requires || n.requires.length === 0))
+    errors.push('LAB: no root node - nothing can ever be researched first');
+  // Depth-first cycle detection.
+  const state = new Map();
+  const walk = (nid, path) => {
+    if (state.get(nid) === 'done') return;
+    if (state.get(nid) === 'open') { errors.push(`LAB: requires cycle ${[...path, nid].join(' -> ')}`); return; }
+    state.set(nid, 'open');
+    for (const r of tree[nid].requires || []) if (tree[r]) walk(r, [...path, nid]);
+    state.set(nid, 'done');
+  };
+  for (const nid of Object.keys(tree)) walk(nid, []);
+  checkMaterials('LAB buildCost', d.LAB.buildCost.materials);
+}
+
+// Helicopter tuning.
+if (!(d.HELICOPTER.departureWindow < d.HELICOPTER.interval))
+  errors.push('HELICOPTER: departureWindow must be shorter than interval, or a flight never leaves');
+if (!(d.HELICOPTER.crates > 0) || !(d.HELICOPTER.fuel.max > 0) || !(d.HELICOPTER.fuel.regenSeconds > 0))
+  errors.push('HELICOPTER: bad crate or fuel tuning');
+if (!(d.HELICOPTER.rewards.materialsPerFlight[0] <= d.HELICOPTER.rewards.materialsPerFlight[1]))
+  errors.push('HELICOPTER: materialsPerFlight range inverted');
+
+// Placed structures. Every system opened by clicking the world needs a footprint and a
+// position, in bounds and not overlapping another structure - otherwise two panels answer
+// the same click and which one wins is down to iteration order.
+{
+  const N = d.FARM.gridSize;
+  const list = Object.entries(d.STRUCTURES);
+  for (const [sid, s] of list) {
+    if (!Array.isArray(s.size) || !(s.size[0] > 0) || !(s.size[1] > 0)) errors.push(`structure ${sid}: bad size`);
+    if (!s.pos || s.pos.x < 0 || s.pos.y < 0 || s.pos.x + s.size[0] > N || s.pos.y + s.size[1] > N)
+      errors.push(`structure ${sid}: out of bounds for gridSize ${N}`);
+    if (!s.panel) errors.push(`structure ${sid}: no panel to open - it would be a decoration, not a structure`);
+    if (s.unlockLevel > d.LEVELS.maxLevel) errors.push(`structure ${sid}: unlocks at ${s.unlockLevel}, above maxLevel`);
+  }
+  for (let i = 0; i < list.length; i++)
+    for (let j = i + 1; j < list.length; j++) {
+      const [ai, a] = list[i], [bi, b] = list[j];
+      if (a.pos.x < b.pos.x + b.size[0] && b.pos.x < a.pos.x + a.size[0] &&
+          a.pos.y < b.pos.y + b.size[1] && b.pos.y < a.pos.y + a.size[1])
+        errors.push(`structure ${ai} overlaps ${bi}`);
+    }
+  const panels = list.map(([, s]) => s.panel);
+  if (new Set(panels).size !== panels.length) errors.push('STRUCTURES: two structures open the same panel');
+}
+
 // LEVELS.unlocks ids resolve to known content or feature flags.
 const features = new Set([
   'field', 'orders_board', 'truck', 'boat', 'fishing', 'mine', 'pets', 'merge_meadow',
@@ -361,7 +445,55 @@ const STAT_KEYS = new Set([
   'cropsHarvested', 'goodsProduced', 'ordersFulfilled', 'trucksCompleted', 'truckBundles',
   'boatsCompleted', 'boatCrates', 'fishCaught', 'uniqueFishCaught', 'mineDigs',
   'animalCollections', 'shopSales', 'merges', 'feedMade', 'coinsEarned', 'level',
+  // new counters for the expansion subsystems
+  'coopHelps', 'coopTasksDone', 'requestsFilled', 'regattaPoints', 'regattaTasks',
+  'trainsCompleted', 'planesCompleted', 'helicopterFlights', 'materialsEarned',
+  'expeditionsCompleted', 'artifactsFound', 'exhibitsCompleted', 'researchCompleted',
+  'zooSouvenirs', 'foraged', 'componentsCrafted',
 ]);
+
+// Co-op and regatta task pools.
+{
+  const checkPool = (label, pool, minSize) => {
+    const ids = new Set();
+    for (const t of pool) {
+      if (!STAT_KEYS.has(t.stat)) errors.push(`${label} ${t.id}: unknown stat '${t.stat}'`);
+      if (!(t.target > 0) || !(t.points > 0)) errors.push(`${label} ${t.id}: bad target or points`);
+      if (ids.has(t.id)) errors.push(`${label}: duplicate task id '${t.id}'`);
+      ids.add(t.id);
+    }
+    if (pool.length < minSize) errors.push(`${label}: pool of ${pool.length} cannot fill ${minSize} slots`);
+  };
+  checkPool('coop task', d.COOP.taskPool, d.COOP.dailyTasks.count);
+  checkPool('regatta task', d.REGATTA.taskPool, d.REGATTA.taskSlots);
+
+  const ELIGIBLE = ['crops', 'goods', 'materials'];
+  for (const e of d.COOP.requestBoard.eligible) if (!ELIGIBLE.includes(e)) errors.push(`COOP requestBoard: unknown eligible class '${e}'`);
+  let pp = -Infinity;
+  for (const perk of d.COOP.perks) {
+    if (!(perk.points > pp)) errors.push(`coop perk ${perk.id}: points must ascend`);
+    pp = perk.points;
+    for (const k of Object.keys(perk.effect || {}))
+      if (!d.EFFECT_KEYS.includes(k)) errors.push(`coop perk ${perk.id}: effect '${k}' is not in EFFECT_KEYS`);
+  }
+  let ml = -Infinity;
+  for (const lg of d.REGATTA.leagues) {
+    if (!(lg.minSeasonsWon > ml)) errors.push(`regatta league ${lg.id}: minSeasonsWon must ascend`);
+    ml = lg.minSeasonsWon;
+  }
+  for (let i = 1; i < d.REGATTA.pointsGoal.length; i++)
+    if (!(d.REGATTA.pointsGoal[i] > d.REGATTA.pointsGoal[i - 1])) errors.push('REGATTA: pointsGoal must ascend');
+  if (d.REGATTA.rewards.placement.length !== d.REGATTA.laneCount)
+    errors.push(`REGATTA: ${d.REGATTA.rewards.placement.length} placement rewards for ${d.REGATTA.laneCount} lanes`);
+  let pc = Infinity;
+  for (const pl of d.REGATTA.rewards.placement) {
+    if (!(pl.coins <= pc)) errors.push(`regatta placement ${pl.place}: coins must not increase down the table`);
+    pc = pl.coins;
+    checkMaterials(`regatta placement ${pl.place}`, pl.materials);
+    if (pl.decoration && !d.DECORATIONS[pl.decoration]) errors.push(`regatta placement ${pl.place}: unknown decoration '${pl.decoration}'`);
+  }
+}
+
 const checkReward = (ctx, rw) => {
   if (rw.item && !d.GOODS[rw.item]) errors.push(`${ctx}: reward item '${rw.item}' unknown`);
   if (rw.decoration && !d.DECORATIONS[rw.decoration]) errors.push(`${ctx}: reward decoration '${rw.decoration}' unknown`);

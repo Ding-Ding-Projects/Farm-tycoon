@@ -628,6 +628,8 @@ export const EFFECT_KEYS = [
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
   'mineYieldBonus', 'fishRareChance', 'zooIncomeMult',
+  // used by co-op perks; kept here so perks, research and minigames share one set
+  'truckIntervalMult',
 ];
 
 /** Fishing: species pool weighted by rarity + chest odds. Cast uses a timing minigame. */
@@ -645,13 +647,53 @@ export const FISHING = {
   ],
 };
 
-/** Mine: tool → yield table. */
+/**
+ * The Mine, in tiered depths. Each depth costs coins and materials to open and yields richer
+ * ore; artifacts only appear below the surface seam.
+ *
+ * MINE.tools is kept as a live alias onto depths[0].tools rather than being deleted, because
+ * src/mine.js and the validator both read it. Removing it would break both at once, and the
+ * validator asserts the identity so the alias cannot silently drift from what it aliases.
+ */
 export const MINE = {
   unlockLevel: 24,
-  tools: {
-    pickaxe:  { yields: [{ item: 'ore_silver', qty: [1, 2], weight: 60 }, { item: 'ore_gold', qty: [1, 1], weight: 30 }, { item: 'ore_platinum', qty: [1, 1], weight: 9 }, { item: 'gem', qty: [1, 1], weight: 1 }] },
-    dynamite: { yields: [{ item: 'ore_silver', qty: [2, 4], weight: 40 }, { item: 'ore_gold', qty: [1, 3], weight: 35 }, { item: 'ore_platinum', qty: [1, 2], weight: 20 }, { item: 'gem', qty: [1, 1], weight: 5 }] },
-  },
+  depths: [
+    { id: 'mine_depth_1', name: 'Surface Seam', unlockLevel: 24, requires: null, artifactChance: 0,
+      tools: {
+      pickaxe:  { yields: [{ item: 'ore_silver', qty: [1, 2], weight: 60 }, { item: 'ore_gold', qty: [1, 1], weight: 30 }, { item: 'ore_platinum', qty: [1, 1], weight: 9 }, { item: 'gem', qty: [1, 1], weight: 1 }] },
+      dynamite: { yields: [{ item: 'ore_silver', qty: [2, 4], weight: 40 }, { item: 'ore_gold', qty: [1, 3], weight: 35 }, { item: 'ore_platinum', qty: [1, 2], weight: 20 }, { item: 'gem', qty: [1, 1], weight: 5 }] },
+    }, },
+    { id: 'mine_depth_2', name: 'Iron Gallery', unlockLevel: 56,
+      requires: { coins: 60000, materials: { rope: 5, timber: 4 } }, artifactChance: 0.06,
+      artifactPool: ['clay_shard', 'flint_blade'],
+      tools: {
+        pickaxe:  { yields: [{ item: 'ore_silver', qty: [2, 4], weight: 45 }, { item: 'ore_gold', qty: [1, 2], weight: 35 }, { item: 'gem', qty: [1, 1], weight: 20 }] },
+        dynamite: { yields: [{ item: 'ore_gold', qty: [2, 4], weight: 50 }, { item: 'ore_platinum', qty: [1, 2], weight: 30 }, { item: 'gem', qty: [1, 1], weight: 20 }] },
+      } },
+    { id: 'mine_depth_3', name: 'Crystal Vault', unlockLevel: 68,
+      requires: { coins: 140000, materials: { jackhammer: 3, timber: 8 } }, artifactChance: 0.09,
+      artifactPool: ['quartz_cluster', 'bronze_coin'],
+      tools: {
+        pickaxe:  { yields: [{ item: 'ore_gold', qty: [2, 5], weight: 40 }, { item: 'ore_platinum', qty: [1, 3], weight: 35 }, { item: 'gem', qty: [1, 2], weight: 25 }] },
+        dynamite: { yields: [{ item: 'ore_platinum', qty: [2, 4], weight: 45 }, { item: 'gem', qty: [1, 3], weight: 35 }, { item: 'ore_gold', qty: [2, 4], weight: 20 }] },
+      } },
+    { id: 'mine_depth_4', name: 'Fossil Bed', unlockLevel: 79,
+      requires: { coins: 300000, materials: { drill: 4, cement: 10 } }, artifactChance: 0.12,
+      artifactPool: ['ammonite', 'silver_denarius'],
+      tools: {
+        pickaxe:  { yields: [{ item: 'ore_platinum', qty: [2, 4], weight: 40 }, { item: 'gem', qty: [1, 3], weight: 40 }, { item: 'ore_gold', qty: [3, 6], weight: 20 }] },
+        dynamite: { yields: [{ item: 'gem', qty: [2, 4], weight: 50 }, { item: 'ore_platinum', qty: [3, 5], weight: 35 }, { item: 'ore_gold', qty: [3, 6], weight: 15 }] },
+      } },
+    { id: 'mine_depth_5', name: 'The Deep', unlockLevel: 90,
+      requires: { coins: 600000, materials: { jackhammer: 6, drill: 6, electric_saw: 4 } }, artifactChance: 0.15,
+      artifactPool: ['star_sapphire', 'raptor_claw', 'pearl_casket'],
+      tools: {
+        pickaxe:  { yields: [{ item: 'gem', qty: [2, 4], weight: 45 }, { item: 'ore_platinum', qty: [3, 6], weight: 35 }, { item: 'ore_gold', qty: [4, 8], weight: 20 }] },
+        dynamite: { yields: [{ item: 'gem', qty: [3, 6], weight: 50 }, { item: 'ore_platinum', qty: [4, 7], weight: 35 }, { item: 'ore_gold', qty: [5, 9], weight: 15 }] },
+      } },
+  ],
+  /** Legacy alias - src/mine.js and the validator both read MINE.tools. */
+  get tools() { return this.depths[0].tools; },
 };
 
 /**
@@ -1427,6 +1469,193 @@ export const EXPEDITIONS = {
                     loot: [{ item: 'gem', qty: [3, 6], weight: 22 }, { artifact: 'pearl_casket', weight: 28 },
                            { material: 'jackhammer', qty: [2, 4], weight: 16 }, { coins: [30000, 55000], weight: 34 }] },
   },
+};
+
+/**
+ * The Laboratory: PERMANENT research, not Township's timed boosters. Township's lab rents you
+ * a two-day speed-up for gems; this one is a one-way tree, so a late player's farm is
+ * measurably better than an early player's rather than merely better-stocked.
+ *
+ * Every effect key comes from EFFECT_KEYS, shared with MINIGAMES and building Mastery, so all
+ * three merge through one code path instead of three that will eventually disagree.
+ * One research runs at a time; the tree is strictly acyclic and the validator proves it.
+ */
+export const LAB = {
+  unlockLevel: 54,
+  slots: 1,
+  buildCost: { coins: 120000, materials: { glass: 12, wire: 8, cement: 6 } },
+  tree: {
+    irrigation_1: { name: 'Irrigation I', tier: 1, requires: [], time: 7200, cost: { coins: 40000, items: { wheat: 60, cotton: 20 } }, effect: { cropGrowMult: 0.95 } },
+    irrigation_2: { name: 'Irrigation II', tier: 2, requires: ['irrigation_1'], time: 14400, cost: { coins: 90000, items: { rice: 30, olive: 20 } }, effect: { cropGrowMult: 0.9 } },
+    irrigation_3: { name: 'Irrigation III', tier: 3, requires: ['irrigation_2'], time: 28800, cost: { coins: 180000, items: { tea_leaf: 25, peony: 20 } }, effect: { cropGrowMult: 0.85 } },
+    irrigation_4: { name: 'Irrigation IV', tier: 4, requires: ['irrigation_3'], time: 57600, cost: { coins: 340000, items: { mint: 30, lavender: 25 } }, effect: { cropGrowMult: 0.8 } },
+    automation_1: { name: 'Automation I', tier: 1, requires: [], time: 9000, cost: { coins: 55000, items: { beam: 4, fitting: 2 } }, effect: { productionTimeMult: 0.95 } },
+    automation_2: { name: 'Automation II', tier: 2, requires: ['automation_1'], time: 18000, cost: { coins: 120000, items: { panel: 6, glazing: 3 } }, effect: { productionTimeMult: 0.9 } },
+    automation_3: { name: 'Automation III', tier: 3, requires: ['automation_2'], time: 36000, cost: { coins: 240000, items: { wiring_loom: 4, plumbing: 3 } }, effect: { productionTimeMult: 0.85 } },
+    automation_4: { name: 'Automation IV', tier: 4, requires: ['automation_3'], time: 64800, cost: { coins: 420000, items: { glazing: 8, wiring_loom: 6 } }, effect: { productionTimeMult: 0.8 } },
+    husbandry_1: { name: 'Husbandry I', tier: 1, requires: [], time: 9000, cost: { coins: 50000, items: { cow_feed: 20, milk: 15 } }, effect: { animalProduceMult: 0.95 } },
+    husbandry_2: { name: 'Husbandry II', tier: 2, requires: ['husbandry_1'], time: 18000, cost: { coins: 110000, items: { goat_feed: 20, wool: 12 } }, effect: { animalProduceMult: 0.9 } },
+    husbandry_3: { name: 'Husbandry III', tier: 3, requires: ['husbandry_2'], time: 36000, cost: { coins: 220000, items: { lamb_feed: 20, alpaca_wool: 8 } }, effect: { animalProduceMult: 0.85 } },
+    husbandry_4: { name: 'Husbandry IV', tier: 4, requires: ['husbandry_3'], time: 64800, cost: { coins: 400000, items: { turkey_feed: 20, pearls: 4 } }, effect: { animalProduceMult: 0.8 } },
+    logistics_1: { name: 'Logistics I', tier: 1, requires: [], time: 10800, cost: { coins: 70000, items: { bread: 20, cheese: 10 } }, effect: { orderPayoutMult: 1.05 } },
+    logistics_2: { name: 'Logistics II', tier: 2, requires: ['logistics_1'], time: 21600, cost: { coins: 150000, items: { sushi_roll: 8, green_tea: 10 } }, effect: { orderPayoutMult: 1.1 } },
+    logistics_3: { name: 'Logistics III', tier: 3, requires: ['logistics_2'], time: 43200, cost: { coins: 300000, items: { lasagna: 6, perfume: 4 } }, effect: { orderPayoutMult: 1.15 } },
+    logistics_4: { name: 'Logistics IV', tier: 4, requires: ['logistics_3'], time: 72000, cost: { coins: 520000, items: { gold_ring: 2, caviar_tin: 2 } }, effect: { orderPayoutMult: 1.2 } },
+    cellars_1: { name: 'Cellars I', tier: 1, requires: [], time: 10800, cost: { coins: 60000, items: { plank: 6, bolt: 6 } }, effect: { barnCapBonus: 25 } },
+    cellars_2: { name: 'Cellars II', tier: 2, requires: ['cellars_1'], time: 21600, cost: { coins: 130000, items: { duct_tape: 8, plank: 8 } }, effect: { barnCapBonus: 50 } },
+    cellars_3: { name: 'Cellars III', tier: 3, requires: ['cellars_2'], time: 43200, cost: { coins: 260000, items: { bolt: 12, plank: 12 } }, effect: { barnCapBonus: 80 } },
+    cellars_4: { name: 'Cellars IV', tier: 4, requires: ['cellars_3'], time: 72000, cost: { coins: 460000, items: { duct_tape: 16, bolt: 16 } }, effect: { barnCapBonus: 120 } },
+    granary_1: { name: 'Granary I', tier: 1, requires: [], time: 10800, cost: { coins: 60000, items: { screw: 6, wood_panel: 6 } }, effect: { siloCapBonus: 25 } },
+    granary_2: { name: 'Granary II', tier: 2, requires: ['granary_1'], time: 21600, cost: { coins: 130000, items: { bracket: 8, screw: 8 } }, effect: { siloCapBonus: 50 } },
+    granary_3: { name: 'Granary III', tier: 3, requires: ['granary_2'], time: 43200, cost: { coins: 260000, items: { wood_panel: 12, bracket: 12 } }, effect: { siloCapBonus: 80 } },
+    granary_4: { name: 'Granary IV', tier: 4, requires: ['granary_3'], time: 72000, cost: { coins: 460000, items: { screw: 16, wood_panel: 16 } }, effect: { siloCapBonus: 120 } },
+    prospecting_1: { name: 'Prospecting I', tier: 1, requires: [], time: 14400, cost: { coins: 90000, items: { pickaxe: 6, ore_silver: 20 } }, effect: { mineYieldBonus: 0.1 } },
+    prospecting_2: { name: 'Prospecting II', tier: 2, requires: ['prospecting_1'], time: 28800, cost: { coins: 190000, items: { dynamite: 6, ore_gold: 15 } }, effect: { mineYieldBonus: 0.2 } },
+    prospecting_3: { name: 'Prospecting III', tier: 3, requires: ['prospecting_2'], time: 57600, cost: { coins: 380000, items: { silver_bar: 6, gem: 2 } }, effect: { mineYieldBonus: 0.3 } },
+    prospecting_4: { name: 'Prospecting IV', tier: 4, requires: ['prospecting_3'], time: 86400, cost: { coins: 640000, items: { platinum_bar: 6, gem: 4 } }, effect: { mineYieldBonus: 0.45 } },
+  },
+};
+
+/**
+ * The Helicopter pad. Township's helicopter is available from the start and is its first
+ * coin loop; ours arrives once the town exists, because before that there is nobody to fly
+ * for. It is the fastest MATERIALS channel, which is what makes the crafting spine tractable.
+ */
+export const HELICOPTER = {
+  unlockLevel: 22,
+  interval: 5400,
+  departureWindow: 3600,
+  crates: 3,
+  fuel: { max: 5, regenSeconds: 3600, costPerDispatch: 1 },
+  rewards: { xpPerCrate: 40, materialsPerFlight: [2, 4], fullBonusCoins: 3500, coopPoints: 25 },
+};
+
+/**
+ * The co-op, and its request board. Members come from NEIGHBOURS - this module generates
+ * nobody. Requests are the supply valve: when one missing input blocks a recipe, asking a
+ * neighbour is the answer that does not require waiting out a grow timer.
+ */
+export const COOP = {
+  unlockLevel: 52,
+  maxMembers: 20,
+  requestBoard: {
+    slots: 6,
+    ownRequestSlots: 2,
+    requestSizeRange: [1, 10],
+    cooldownAfterFill: 600,
+    eligible: ['crops', 'goods', 'materials'],   // closed set - validated
+    helpReward: { coinsPerItem: 20, xp: 3, coopPoints: 5 },
+  },
+  dailyTasks: { count: 3, refreshHourLocal: 5 },
+  taskPool: [
+    { id: 'coop_harvest',  desc: 'Harvest crops',            stat: 'cropsHarvested',  target: 120, points: 40, rewards: { coins: 6000,  xp: 60 } },
+    { id: 'coop_produce',  desc: 'Produce goods',            stat: 'goodsProduced',   target: 30,  points: 45, rewards: { coins: 7000,  xp: 70 } },
+    { id: 'coop_orders',   desc: 'Fill orders',              stat: 'ordersFulfilled', target: 10,  points: 50, rewards: { coins: 8000,  xp: 80 } },
+    { id: 'coop_help',     desc: 'Help with requests',       stat: 'coopHelps',       target: 8,   points: 55, rewards: { coins: 9000,  xp: 90 } },
+    { id: 'coop_trains',   desc: 'Send trains',              stat: 'trainsCompleted', target: 4,   points: 50, rewards: { materials: { brick: 3 }, coins: 5000, xp: 60 } },
+    { id: 'coop_heli',     desc: 'Send helicopter flights',  stat: 'helicopterFlights', target: 5, points: 45, rewards: { materials: { glass: 3 }, coins: 5000, xp: 55 } },
+    { id: 'coop_fish',     desc: 'Catch fish',               stat: 'fishCaught',      target: 25,  points: 40, rewards: { coins: 6000,  xp: 60 } },
+    { id: 'coop_dig',      desc: 'Dig in the mine',          stat: 'mineDigs',        target: 15,  points: 45, rewards: { coins: 7000,  xp: 65 } },
+    { id: 'coop_forage',   desc: 'Gather forage',            stat: 'foraged',         target: 30,  points: 35, rewards: { coins: 4500,  xp: 45 } },
+    { id: 'coop_animals',  desc: 'Collect from animals',     stat: 'animalCollections', target: 40, points: 40, rewards: { coins: 6000, xp: 60 } },
+    { id: 'coop_craft',    desc: 'Craft build components',   stat: 'componentsCrafted', target: 8, points: 55, rewards: { materials: { cement: 2 }, coins: 8000, xp: 85 } },
+    { id: 'coop_requests', desc: 'Fill your own requests',   stat: 'requestsFilled',  target: 5,   points: 40, rewards: { coins: 5500,  xp: 55 } },
+  ],
+  perks: [
+    { points: 500,   id: 'coop_truck_speed', name: 'Standing Orders', desc: 'Trucks arrive sooner.',       effect: { truckIntervalMult: 0.9 } },
+    { points: 1500,  id: 'coop_payout',      name: 'Fair Dealing',    desc: 'Orders pay more.',            effect: { orderPayoutMult: 1.08 } },
+    { points: 3500,  id: 'coop_yield',       name: 'Shared Know-how', desc: 'Fields yield a little more.', effect: { cropGrowMult: 0.96 } },
+    { points: 7000,  id: 'coop_mine',        name: 'Deep Contacts',   desc: 'The mine gives up more ore.', effect: { mineYieldBonus: 0.12 } },
+    { points: 12000, id: 'coop_barn',        name: 'Communal Store',  desc: 'A larger barn.',              effect: { barnCapBonus: 60 } },
+  ],
+};
+
+/**
+ * The regatta. A weekly race against five simulated crews drawn from NEIGHBOURS, whose scores
+ * advance on wall-clock time while the app is closed - so returning after a day shows a race
+ * that plainly continued without you, rather than one frozen where you left it.
+ */
+export const REGATTA = {
+  unlockLevel: 55,
+  seasonDurationDays: 7,
+  laneCount: 6,
+  taskSlots: 9,
+  taskDurationHours: 24,
+  pointsGoal: [3000, 6000, 10000],
+  leagues: [
+    { id: 'wooden_league', name: 'Wooden League', minSeasonsWon: 0, rewardMult: 1.0 },
+    { id: 'copper_league', name: 'Copper League', minSeasonsWon: 2, rewardMult: 1.25 },
+    { id: 'steel_league',  name: 'Steel League',  minSeasonsWon: 5, rewardMult: 1.6 },
+    { id: 'silver_league', name: 'Silver League', minSeasonsWon: 9, rewardMult: 2.0 },
+    { id: 'golden_league', name: 'Golden League', minSeasonsWon: 14, rewardMult: 2.5 },
+  ],
+  taskPool: [
+    { id: 'reg_harvest',   desc: 'Harvest crops',           stat: 'cropsHarvested',    target: 200, points: 90,  difficulty: 1 },
+    { id: 'reg_produce',   desc: 'Produce goods',           stat: 'goodsProduced',     target: 45,  points: 100, difficulty: 1 },
+    { id: 'reg_orders',    desc: 'Fill orders',             stat: 'ordersFulfilled',   target: 16,  points: 110, difficulty: 2 },
+    { id: 'reg_trucks',    desc: 'Complete truck runs',     stat: 'trucksCompleted',   target: 9,   points: 105, difficulty: 2 },
+    { id: 'reg_boats',     desc: 'Load boats',              stat: 'boatsCompleted',    target: 4,   points: 120, difficulty: 2 },
+    { id: 'reg_trains',    desc: 'Send trains',             stat: 'trainsCompleted',   target: 6,   points: 115, difficulty: 2 },
+    { id: 'reg_planes',    desc: 'Send planes',             stat: 'planesCompleted',   target: 4,   points: 125, difficulty: 3 },
+    { id: 'reg_heli',      desc: 'Send helicopter flights', stat: 'helicopterFlights', target: 8,   points: 100, difficulty: 1 },
+    { id: 'reg_fish',      desc: 'Catch fish',              stat: 'fishCaught',        target: 40,  points: 95,  difficulty: 1 },
+    { id: 'reg_dig',       desc: 'Dig in the mine',         stat: 'mineDigs',          target: 25,  points: 105, difficulty: 2 },
+    { id: 'reg_expedition',desc: 'Complete expeditions',    stat: 'expeditionsCompleted', target: 3, points: 135, difficulty: 3 },
+    { id: 'reg_artifacts', desc: 'Find artifacts',          stat: 'artifactsFound',    target: 2,   points: 145, difficulty: 3 },
+    { id: 'reg_research',  desc: 'Complete research',       stat: 'researchCompleted', target: 1,   points: 140, difficulty: 3 },
+    { id: 'reg_zoo',       desc: 'Collect zoo souvenirs',   stat: 'zooSouvenirs',      target: 10,  points: 115, difficulty: 2 },
+    { id: 'reg_forage',    desc: 'Gather forage',           stat: 'foraged',           target: 50,  points: 85,  difficulty: 1 },
+    { id: 'reg_craft',     desc: 'Craft build components',  stat: 'componentsCrafted', target: 12,  points: 130, difficulty: 3 },
+    { id: 'reg_merges',    desc: 'Merge in the meadow',     stat: 'merges',            target: 60,  points: 90,  difficulty: 1 },
+    { id: 'reg_shop',      desc: 'Sell from the shop',      stat: 'shopSales',         target: 20,  points: 95,  difficulty: 1 },
+  ],
+  rewards: {
+    perTask: { coins: 4000, xp: 90 },
+    placement: [
+      { place: 1, coins: 120000, diamonds: 25, materials: { cement: 8, tile: 6 }, decoration: 'regatta_buoy' },
+      { place: 2, coins: 85000,  diamonds: 18, materials: { cement: 6, tile: 4 } },
+      { place: 3, coins: 60000,  diamonds: 12, materials: { brick: 8 } },
+      { place: 4, coins: 40000,  diamonds: 8,  materials: { brick: 5 } },
+      { place: 5, coins: 25000,  diamonds: 5,  materials: { glass: 4 } },
+      { place: 6, coins: 15000,  diamonds: 3,  materials: { glass: 2 } },
+    ],
+  },
+};
+
+/**
+ * Placed world structures. Every system with a physical presence is opened by CLICKING IT IN
+ * THE WORLD, never from a HUD or dock button, so each needs a footprint and a position or
+ * there is literally nothing to click.
+ *
+ * Locked structures are derelict and visible from level 1 rather than hidden: that is what
+ * makes a level-90 system discoverable at level 5 and turns the map into the roadmap.
+ *
+ * Positions sit outside FARM.startZone so the opening farm is not crowded; the validator
+ * checks they are in bounds and do not overlap each other.
+ */
+export const STRUCTURES = {
+  order_board:   { name: 'Order Board',       size: [1, 1], pos: { x: 12, y: 22 }, unlockLevel: 3,  panel: 'orders' },
+  truck_bay:     { name: 'Truck Bay',         size: [2, 1], pos: { x: 15, y: 22 }, unlockLevel: 8,  panel: 'truck' },
+  barn:          { name: 'Barn',              size: [2, 2], pos: { x: 18, y: 22 }, unlockLevel: 1,  panel: 'barn' },
+  silo:          { name: 'Silo',              size: [1, 2], pos: { x: 21, y: 22 }, unlockLevel: 1,  panel: 'silo' },
+  shop_stand:    { name: 'Roadside Shop',     size: [2, 1], pos: { x: 12, y: 8  }, unlockLevel: 4,  panel: 'shop' },
+  boat_dock:     { name: 'Boat Dock',         size: [3, 2], pos: { x: 5,  y: 26 }, unlockLevel: 17, panel: 'boat' },
+  lake:          { name: 'Fishing Lake',      size: [4, 3], pos: { x: 5,  y: 22 }, unlockLevel: 12, panel: 'fishing' },
+  mine_entrance: { name: 'Mine Entrance',     size: [2, 2], pos: { x: 27, y: 8  }, unlockLevel: 24, panel: 'mine' },
+  merge_plot:    { name: 'Merge Meadow',      size: [3, 3], pos: { x: 5,  y: 5  }, unlockLevel: 28, panel: 'merge' },
+  market_stall:  { name: 'Market Stall',      size: [2, 1], pos: { x: 15, y: 8  }, unlockLevel: 9,  panel: 'market' },
+  train_station: { name: 'Train Station',     size: [4, 2], pos: { x: 22, y: 27 }, unlockLevel: 30, panel: 'trains' },
+  airport:       { name: 'Airport',           size: [4, 3], pos: { x: 27, y: 22 }, unlockLevel: 38, panel: 'airport' },
+  helipad:       { name: 'Helicopter Pad',    size: [2, 2], pos: { x: 22, y: 8  }, unlockLevel: 22, panel: 'helicopter' },
+  workshop_yard: { name: 'Building Workshop', size: [3, 2], pos: { x: 8,  y: 8  }, unlockLevel: 6,  panel: 'workshop' },
+  museum_hall:   { name: 'Museum',            size: [3, 2], pos: { x: 32, y: 12 }, unlockLevel: 60, panel: 'museum' },
+  laboratory:    { name: 'Laboratory',        size: [2, 2], pos: { x: 32, y: 16 }, unlockLevel: 54, panel: 'lab' },
+  expedition_camp:{ name: 'Expedition Camp',  size: [3, 2], pos: { x: 32, y: 5  }, unlockLevel: 57, panel: 'expeditions' },
+  town_gate:     { name: 'Road to Town',      size: [2, 2], pos: { x: 18, y: 5  }, unlockLevel: 20, panel: 'town' },
+  zoo_gate:      { name: 'Road to the Zoo',   size: [2, 2], pos: { x: 27, y: 5  }, unlockLevel: 34, panel: 'zoo' },
+  mailbox:       { name: 'Mailbox',           size: [1, 1], pos: { x: 12, y: 5  }, unlockLevel: 7,  panel: 'newspaper' },
+  bookshelf:     { name: 'Collections Shelf', size: [1, 1], pos: { x: 14, y: 5  }, unlockLevel: 10, panel: 'collections' },
+  tripod:        { name: 'Camera Tripod',     size: [1, 1], pos: { x: 16, y: 5  }, unlockLevel: 15, panel: 'photo' },
 };
 
 export const TUTORIAL = {

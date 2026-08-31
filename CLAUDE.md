@@ -1,14 +1,30 @@
 # CLAUDE.md — Farm Tycoon
 
-A Hay Day-style farm management game: vanilla JS + Canvas, packaged for Windows with
-Electron. **Read `PLAN.md` first** — it is the full game design (content, systems,
-balance, delivery phases). `DESIGN_BRIEF.md` is the UI design contract.
+A farm-and-town management game — **Hay Day + Township combined**: vanilla JS + Canvas,
+packaged for Windows with Electron. **Read `PLAN.md` first** — it is the full game design
+(content, systems, balance, delivery phases). `DESIGN_BRIEF.md` is the UI design contract.
 
-## Current status
+## Current status & handoff
 
-**Phase A (scaffold) is done; Phase B (full implementation) has not started.**
-`src/data.js` is complete, final content. Every other `src/` module is a documented
-API contract with `/* Phase B */` stub bodies — implement to those contracts.
+**Phase A (scaffold) is COMPLETE and lives on `main`; Phase B (full implementation) has
+not started.** State of the world for whoever picks this up:
+
+- `src/data.js` is **complete, final content** (validated by `npm test`): 14 crops,
+  7 animals, 15 buildings / 52 recipes, 85 goods, 9 construction materials, Merge Meadow,
+  full event system (weekend/mini/Farm Fair/holidays), Township layer (town, trains,
+  airport, zoo, islands, market), tutorial steps, 50 levels with an unlock at every one.
+- Every other `src/` module is a **documented API contract** with `/* Phase B */` stub
+  bodies — implement to those contracts; do not redesign them casually.
+- `index.html`/`styles.css` carry the real DOM structure + Hay Day-style theme (wood/
+  parchment/gloss). The splash in `main.js` is placeholder art that Phase B's renderer
+  replaces.
+- **Expected sequence:** (1) the user may land a Claude Design UI pass that restyles
+  tokens/classes per `DESIGN_BRIEF.md` — absorb it, don't fight it; (2) when the user
+  says **"start developing"**, execute Phase B as ONE complete pass (see PLAN.md
+  "One-shot delivery requirement"): implement every module fully — no stubs or TODOs
+  left — on branch **`claude/windows-hay-day-game-cfctdb`**, verified with the
+  `playtest` skill, pushed, with a **draft PR**. Scaffold work so far was pushed
+  straight to `main` at the user's explicit request; Phase B goes through the branch+PR.
 
 ## Running
 

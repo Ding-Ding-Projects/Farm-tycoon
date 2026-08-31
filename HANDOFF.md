@@ -94,6 +94,45 @@ Two verification lessons from that work, recorded because both produce false con
 registered, so it cannot be trusted alone; and a `FontFace` probe reported a network error only
 because the filename had been guessed rather than read off disk.
 
+## Audit findings — read this before trusting the content
+
+An adversarial audit ran 99 mutation probes against the validator. **51 guards fired correctly**,
+including every one named in the commit messages: material sets, expansion geometry, storage
+trios, kit integrity, minigame integrity, the orphan/sink audit, the museum bijection in both
+directions, expedition loot arity, mine depths, lab acyclicity, structure placement, and the
+co-op/regatta pools. The `MINE.tools` identity check is genuinely load-bearing — the audit's own
+deep clone tripped it on the first control run.
+
+It also found real defects, ranked:
+
+1. **Nine of 23 materials had no source anywhere** — the whole expansion set (`shovel`, `axe`,
+   `saw`) and the whole storage set (`bolt`, `plank`, `duct_tape`, `screw`, `wood_panel`,
+   `bracket`). `TRAINS`, `AIRPORT` and `HELICOPTER` carry material *counts* with no pool naming
+   which material arrives. Consequence: **every farm expansion and every storage upgrade was
+   permanently unbuyable, so the farm could never grow past the start zone.** Independently
+   confirmed before being acted on.
+2. **No structure stood on land the player owns.** `barn` and `silo` sat on row 22 — inside
+   `expansion_2`, which unlocks at level 13 — so a level-1 player could not reach their own barn.
+   `workshop_yard` unlocked at 6 and sat in level-35 land. Two structures straddled zone
+   boundaries.
+3. **The guard for #1 lied.** `tools/validate-data.mjs` said "a material with no source is a
+   wall" while implementing only the spend side. That comment is worse than none: it tells the
+   next reader a check exists, so nobody looks again. This is the second time in this project a
+   comment has asserted a safety property that was never implemented.
+4. `checkMaterials` accepts a `requiredSet` but is called with `null` for houses, community
+   buildings, zoo enclosures and milestones — so 4 of 6 consumers are unchecked.
+5. Three buildings are inert on the level they unlock (`build_workshop` for 15 levels,
+   `tea_house` 6, `oil_press` 3), and 70 recipes are unlockable before their inputs are. Recipes
+   carry no `unlockLevel` of their own, so they are gated only by input availability.
+6. 45 of 128 recipes have a non-positive margin, and the Building Workshop's two halves disagree
+   in sign: components destroy value while late kits print it.
+
+Verified TRUE by the audit: the 16 rects tile the grid to exactly 100% with zero gaps and zero
+overlaps; 22 structures; every crop has a sink; 26 factories with 26 distinct minigame effects;
+no duplicate ids; no recipe input cycles; `unlockLevel` agrees with `LEVELS.unlocks` everywhere.
+
+Items 1–4 are being fixed. **5 and 6 are open** and are design questions rather than bugs.
+
 ## Not done — the honest list
 
 - **The visual overhaul is only partly integrated.** Fonts and the icon are done. The palette,

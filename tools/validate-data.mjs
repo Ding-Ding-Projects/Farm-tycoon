@@ -221,6 +221,28 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   }
 }
 
+// Advanced-material gating: MATERIALS.<x>.set === 'advanced' is reserved for tools
+// (jackhammer/drill/electric_saw) that ONLY come from Tool Exchange / expedition loot,
+// never from trains or the airport - see the MATERIALS doc comment and TRAINS.materialPool.
+// The whole point of that tier is that a player cannot reach it before expeditions open
+// (EXPEDITIONS.unlockLevel = 57). This guard is the direct sanity check for the bug that
+// prompted it: timber/wire/rope were once wrongly tagged 'advanced', which - despite every
+// other guard passing - silently walled off the Building Workshop's entire early crafting
+// spine for 55 levels. It re-asserts the tier's own promise independently of the recursive
+// fixed-point above: any recipe that consumes an advanced material must itself be gated no
+// earlier than N = EXPEDITIONS.unlockLevel, regardless of how early its owning building
+// (the Workshop opens at Level 6) unlocks.
+{
+  const N = d.EXPEDITIONS.unlockLevel;
+  for (const [bid, b] of Object.entries(d.BUILDINGS)) {
+    for (const r of b.recipes) {
+      const usesAdvanced = Object.keys(r.inputs).some((iid) => d.MATERIALS[iid] && d.MATERIALS[iid].set === 'advanced');
+      if (usesAdvanced && r.unlockLevel < N)
+        errors.push(`${bid}/${r.id}: uses an advanced-tier material but unlocks at ${r.unlockLevel}, before expeditions open at ${N} - advanced materials have no earlier source`);
+    }
+  }
+}
+
 // Margin: a non-sink recipe's output must sell for more than the sum of its inputs, or a
 // player is strictly better off selling the raw ingredients. Recipes that are deliberate
 // sinks (feed, and every Building Workshop component/kit) are tagged sink: true and are

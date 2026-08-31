@@ -544,32 +544,32 @@ export const BUILDINGS = {
     recipes: [
       { id: 'shingle',              inputs: { slab: 1, nails: 1 },                              time: 600,   xp: 3, unlockLevel: 21, sink: true },
       { id: 'beam',                 inputs: { brick: 1, nails: 2 },                             time: 900,   xp: 4, unlockLevel: 21, sink: true },
-      { id: 'frame',                inputs: { timber: 1, nails: 2 },                            time: 1200,  xp: 5, unlockLevel: 70, sink: true },
+      { id: 'frame',                inputs: { timber: 1, nails: 2 },                            time: 1200,  xp: 5, unlockLevel: 21, sink: true },
       { id: 'panel',                inputs: { slab: 2, paint: 1 },                              time: 1500,  xp: 6, unlockLevel: 21, sink: true },
-      { id: 'fitting',              inputs: { hammer: 1, wire: 1 },                             time: 1800,  xp: 7, unlockLevel: 61, sink: true },
-      { id: 'glazing',              inputs: { glass: 2, fitting: 1 },                           time: 2400,  xp: 9, unlockLevel: 61, sink: true },
-      { id: 'wiring_loom',          inputs: { wire: 2, rope: 1 },                               time: 3000,  xp: 11, unlockLevel: 65, sink: true },
-      { id: 'plumbing',             inputs: { cement: 1, fitting: 2 },                          time: 3600,  xp: 13, unlockLevel: 61, sink: true },
-      { id: 'kit_dairy',            inputs: { frame: 2, panel: 2, shingle: 3 },                 time: 5400,  xp: 20, unlockLevel: 70, sink: true },
-      { id: 'kit_sugar_mill',       inputs: { beam: 2, frame: 2, shingle: 3 },                  time: 6300,  xp: 23, unlockLevel: 70, sink: true },
-      { id: 'kit_popcorn_pot',      inputs: { beam: 2, panel: 3, fitting: 1 },                  time: 7200,  xp: 26, unlockLevel: 61, sink: true },
-      { id: 'kit_grill',            inputs: { beam: 3, fitting: 2, shingle: 4 },                time: 8100,  xp: 29, unlockLevel: 61, sink: true },
-      { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 61, sink: true },
-      { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 70, sink: true },
-      { id: 'kit_sewing_machine',   inputs: { frame: 4, fitting: 3, wiring_loom: 1 },           time: 12600, xp: 42, unlockLevel: 70, sink: true },
-      { id: 'kit_juice_press',      inputs: { beam: 4, plumbing: 2, glazing: 2 },               time: 14400, xp: 47, unlockLevel: 61, sink: true },
-      { id: 'kit_jam_maker',        inputs: { panel: 5, glazing: 2, plumbing: 2 },              time: 16200, xp: 53, unlockLevel: 61, sink: true },
-      { id: 'kit_coffee_kiosk',     inputs: { glazing: 3, wiring_loom: 2, panel: 4 },           time: 18000, xp: 59, unlockLevel: 65, sink: true },
-      { id: 'kit_candy_machine',    inputs: { fitting: 5, wiring_loom: 3, beam: 4 },            time: 21600, xp: 66, unlockLevel: 65, sink: true },
-      { id: 'kit_tropical_cafe',    inputs: { glazing: 4, plumbing: 3, frame: 6 },              time: 25200, xp: 74, unlockLevel: 70, sink: true },
-      { id: 'kit_smelter',          inputs: { beam: 8, cement: 4, plumbing: 3 },                time: 28800, xp: 84, unlockLevel: 61, sink: true },
-      { id: 'kit_oil_press',          inputs: { beam: 3, plumbing: 2, panel: 3 },             time: 32400, xp: 92, unlockLevel: 61, sink: true },
-      { id: 'kit_tea_house',          inputs: { frame: 4, glazing: 3, shingle: 5, tile: 4 },           time: 36300, xp: 103, unlockLevel: 70, sink: true },
-      { id: 'kit_sushi_bar',          inputs: { panel: 5, glazing: 3, fitting: 3 },           time: 40680, xp: 115, unlockLevel: 61, sink: true },
-      { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 65, sink: true },
-      { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 70, sink: true },
-      { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 61, sink: true },
-      { id: 'kit_fondue_pot',         inputs: { fitting: 6, wiring_loom: 3, cement: 3 },      time: 63960, xp: 180, unlockLevel: 65, sink: true },
+      { id: 'fitting',              inputs: { hammer: 1, wire: 1 },                             time: 1800,  xp: 7, unlockLevel: 21, sink: true },
+      { id: 'glazing',              inputs: { glass: 2, fitting: 1 },                           time: 2400,  xp: 9, unlockLevel: 21, sink: true },
+      { id: 'wiring_loom',          inputs: { wire: 2, rope: 1 },                               time: 3000,  xp: 11, unlockLevel: 21, sink: true },
+      { id: 'plumbing',             inputs: { cement: 1, fitting: 2 },                          time: 3600,  xp: 13, unlockLevel: 21, sink: true },
+      { id: 'kit_dairy',            inputs: { frame: 2, panel: 2, shingle: 3 },                 time: 5400,  xp: 20, unlockLevel: 21, sink: true },
+      { id: 'kit_sugar_mill',       inputs: { beam: 2, frame: 2, shingle: 3 },                  time: 6300,  xp: 23, unlockLevel: 21, sink: true },
+      { id: 'kit_popcorn_pot',      inputs: { beam: 2, panel: 3, fitting: 1 },                  time: 7200,  xp: 26, unlockLevel: 21, sink: true },
+      { id: 'kit_grill',            inputs: { beam: 3, fitting: 2, shingle: 4 },                time: 8100,  xp: 29, unlockLevel: 21, sink: true },
+      { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 21, sink: true },
+      { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 21, sink: true },
+      { id: 'kit_sewing_machine',   inputs: { frame: 4, fitting: 3, wiring_loom: 1 },           time: 12600, xp: 42, unlockLevel: 21, sink: true },
+      { id: 'kit_juice_press',      inputs: { beam: 4, plumbing: 2, glazing: 2 },               time: 14400, xp: 47, unlockLevel: 21, sink: true },
+      { id: 'kit_jam_maker',        inputs: { panel: 5, glazing: 2, plumbing: 2 },              time: 16200, xp: 53, unlockLevel: 21, sink: true },
+      { id: 'kit_coffee_kiosk',     inputs: { glazing: 3, wiring_loom: 2, panel: 4 },           time: 18000, xp: 59, unlockLevel: 21, sink: true },
+      { id: 'kit_candy_machine',    inputs: { fitting: 5, wiring_loom: 3, beam: 4 },            time: 21600, xp: 66, unlockLevel: 21, sink: true },
+      { id: 'kit_tropical_cafe',    inputs: { glazing: 4, plumbing: 3, frame: 6 },              time: 25200, xp: 74, unlockLevel: 21, sink: true },
+      { id: 'kit_smelter',          inputs: { beam: 8, cement: 4, plumbing: 3 },                time: 28800, xp: 84, unlockLevel: 21, sink: true },
+      { id: 'kit_oil_press',          inputs: { beam: 3, plumbing: 2, panel: 3 },             time: 32400, xp: 92, unlockLevel: 21, sink: true },
+      { id: 'kit_tea_house',          inputs: { frame: 4, glazing: 3, shingle: 5, tile: 4 },           time: 36300, xp: 103, unlockLevel: 21, sink: true },
+      { id: 'kit_sushi_bar',          inputs: { panel: 5, glazing: 3, fitting: 3 },           time: 40680, xp: 115, unlockLevel: 21, sink: true },
+      { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
+      { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
+      { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
+      { id: 'kit_fondue_pot',         inputs: { fitting: 6, wiring_loom: 3, cement: 3 },      time: 63960, xp: 180, unlockLevel: 21, sink: true },
       { id: 'kit_preservation_station', inputs: { glazing: 6, plumbing: 4, beam: 5, electric_saw: 2 },           time: 71640, xp: 202, unlockLevel: 80, sink: true },
       { id: 'kit_jeweler',            inputs: { glazing: 7, fitting: 6, wiring_loom: 4, jackhammer: 2 },     time: 80220, xp: 226, unlockLevel: 75, sink: true },
       { id: 'kit_yogurt_maker',       inputs: { plumbing: 5, panel: 7, wiring_loom: 4, drill: 3 },      time: 89820, xp: 253, unlockLevel: 86, sink: true },
@@ -969,10 +969,14 @@ export const SHOP = {
  * Construction materials, split into four purpose-scoped SETS (the Township model - the
  * game keeps separate material economies rather than one undifferentiated pile):
  *
- *   building  - town houses, community buildings, zoo enclosures
+ *   building  - town houses, community buildings, zoo enclosures, and the ordinary
+ *               construction supplies the Building Workshop turns into components/kits
  *   expansion - farm land expansions and island unlocks
  *   storage   - silo and barn capacity upgrades (Hay Day: three types per upgrade)
- *   advanced  - late-tier buildings; Tool Exchange only, never from trains
+ *   advanced  - genuinely late-tier tools; Tool Exchange/expedition loot only, never
+ *               from trains. Reserved for jackhammer/drill/electric_saw - ordinary
+ *               supplies like wire, rope and timber belong in 'building', not here,
+ *               since Workshop's whole crafting spine (Level 6) leans on them.
  *
  * Stored in the barn. Sources: trains, airport, helicopter, mine chests, expeditions,
  * event rewards. Every material must appear in at least one source pool AND at least one
@@ -988,6 +992,9 @@ export const MATERIALS = {
   nails:        { name: 'Nails',        set: 'building',  sellPrice: 25 },
   cement:       { name: 'Cement',       set: 'building',  sellPrice: 45 },
   tile:         { name: 'Roof Tile',    set: 'building',  sellPrice: 45 },
+  wire:         { name: 'Wire',         set: 'building',  sellPrice: 90 },
+  rope:         { name: 'Rope',         set: 'building',  sellPrice: 90 },
+  timber:       { name: 'Timber',       set: 'building',  sellPrice: 90 },
   // expansion (Township: shovel / axe / saw)
   shovel:       { name: 'Shovel',       set: 'expansion', sellPrice: 60 },
   axe:          { name: 'Axe',          set: 'expansion', sellPrice: 60 },
@@ -999,13 +1006,10 @@ export const MATERIALS = {
   screw:        { name: 'Screw',        set: 'storage',   sellPrice: 40 },
   wood_panel:   { name: 'Wood Panel',   set: 'storage',   sellPrice: 40 },
   bracket:      { name: 'Bracket',      set: 'storage',   sellPrice: 40 },
-  // advanced (Tool Exchange only, never from trains)
+  // advanced (Tool Exchange/expedition loot only, never from trains)
   jackhammer:   { name: 'Jackhammer',   set: 'advanced',  sellPrice: 140 },
   drill:        { name: 'Drill',        set: 'advanced',  sellPrice: 140 },
   electric_saw: { name: 'Electric Saw', set: 'advanced',  sellPrice: 140 },
-  wire:         { name: 'Wire',         set: 'advanced',  sellPrice: 90 },
-  rope:         { name: 'Rope',         set: 'advanced',  sellPrice: 90 },
-  timber:       { name: 'Timber',       set: 'advanced',  sellPrice: 90 },
 };
 
 /** The four material sets. Closed enum - validated. */
@@ -1077,10 +1081,11 @@ export const TRAINS = {
   materialsPerTrip: [4, 8], // how MANY material items return; materialPool decides WHICH
   xpPerWagon: 12,
   /**
-   * The workhorse pool: the building set the town runs on, plus the expansion tools that buy
-   * land. Weighted draws, the same { material, qty, weight } shape EXPEDITIONS.loot uses, so
-   * one roll helper serves every pool in the file. The advanced set is deliberately absent -
-   * jackhammers, drills and electric saws are Tool Exchange and expedition loot only.
+   * The workhorse pool: the building set the town (and the Building Workshop) runs on, plus
+   * the expansion tools that buy land. Weighted draws, the same { material, qty, weight }
+   * shape EXPEDITIONS.loot uses, so one roll helper serves every pool in the file. The
+   * advanced set is deliberately absent - jackhammers, drills and electric saws are Tool
+   * Exchange and expedition loot only, never trains.
    */
   materialPool: [
     { material: 'brick',  qty: [1, 3], weight: 16 },
@@ -1089,6 +1094,9 @@ export const TRAINS = {
     { material: 'glass',  qty: [1, 2], weight: 12 },
     { material: 'paint',  qty: [1, 2], weight: 10 },
     { material: 'hammer', qty: [1, 2], weight: 10 },
+    { material: 'wire',   qty: [1, 2], weight: 8 },
+    { material: 'rope',   qty: [1, 2], weight: 8 },
+    { material: 'timber', qty: [1, 2], weight: 8 },
     { material: 'cement', qty: [1, 2], weight: 6 },
     { material: 'tile',   qty: [1, 2], weight: 6 },
     { material: 'shovel', qty: [1, 2], weight: 4 },

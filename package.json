@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "serve": "python3 -m http.server 8123",
-    "test": "node tools/validate-data.mjs && node tools/test-camera.mjs && node tools/test-core.mjs && node tools/test-logistics.mjs && node tools/test-crafting.mjs",
+    "test": "node tools/validate-data.mjs && node tools/test-camera.mjs && node tools/test-core.mjs && node tools/test-logistics.mjs && node tools/test-crafting.mjs && node tools/test-township.mjs",
     "dist": "electron-builder --win squirrel",
     "count": "node tools/count-lines.mjs"
   },

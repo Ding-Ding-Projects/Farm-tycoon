@@ -115,6 +115,25 @@ export const GOODS = {
   silver_bar:   { name: 'Silver Bar',   sellPrice: 220 },
   gold_bar:     { name: 'Gold Bar',     sellPrice: 360 },
   platinum_bar: { name: 'Platinum Bar', sellPrice: 560 },
+  // exotic goods (island expeditions) → Tropical Café
+  banana:     { name: 'Banana',     sellPrice: 60 },
+  pineapple:  { name: 'Pineapple',  sellPrice: 80 },
+  cocoa:      { name: 'Cocoa',      sellPrice: 100 },
+  vanilla:    { name: 'Vanilla',    sellPrice: 130 },
+  // tropical café
+  banana_split:  { name: 'Banana Split',       sellPrice: 280 },
+  choco_banana:  { name: 'Choco Banana',       sellPrice: 330 },
+  pina_smoothie: { name: 'Piña Smoothie',      sellPrice: 300 },
+  vanilla_ice:   { name: 'Vanilla Ice Cream',  sellPrice: 380 },
+  // zoo souvenirs
+  peacock_feather: { name: 'Peacock Feather',  sellPrice: 220 },
+  monkey_plush:    { name: 'Monkey Plush',     sellPrice: 260 },
+  penguin_badge:   { name: 'Penguin Badge',    sellPrice: 300 },
+  flamingo_pin:    { name: 'Flamingo Pin',     sellPrice: 320 },
+  lion_figurine:   { name: 'Lion Figurine',    sellPrice: 380 },
+  panda_souvenir:  { name: 'Panda Souvenir',   sellPrice: 420 },
+  giraffe_scarf:   { name: 'Giraffe Scarf',    sellPrice: 470 },
+  elephant_statue: { name: 'Elephant Statue',  sellPrice: 540 },
   // mine tools (consumed, obtainable from orders/fishing chests/shop)
   pickaxe:  { name: 'Pickaxe',  sellPrice: 40 },
   dynamite: { name: 'Dynamite', sellPrice: 90 },
@@ -235,6 +254,15 @@ export const BUILDINGS = {
       { id: 'chili_choc',   inputs: { chili: 1, sugar: 2, milk: 1 }, time: 7200, xp: 14 },
     ],
   },
+  tropical_cafe: {
+    name: 'Tropical Café', unlockLevel: 36, cost: 12000, size: [2, 2], queueSlots: 3,
+    recipes: [
+      { id: 'banana_split',  inputs: { banana: 2, cream: 1, sugar: 1 },   time: 5400, xp: 14 },
+      { id: 'pina_smoothie', inputs: { pineapple: 2, milk: 1 },           time: 6300, xp: 15 },
+      { id: 'choco_banana',  inputs: { banana: 2, cocoa: 1, sugar: 1 },   time: 7200, xp: 16 },
+      { id: 'vanilla_ice',   inputs: { vanilla: 1, cream: 2, sugar: 2 },  time: 9000, xp: 18 },
+    ],
+  },
   smelter: {
     name: 'Smelter', unlockLevel: 24, cost: 4200, size: [2, 2], queueSlots: 2,
     recipes: [
@@ -338,6 +366,7 @@ export const DECORATIONS = {
   trophy_bronze:   { name: 'Bronze Fair Trophy', eventOnly: true, size: [1, 1] },
   trophy_silver:   { name: 'Silver Fair Trophy', eventOnly: true, size: [1, 1] },
   trophy_gold:     { name: 'Golden Fair Trophy', eventOnly: true, size: [2, 2] },
+  golden_town_statue: { name: 'Golden Town Statue', eventOnly: true, size: [2, 2] },
   // holiday-limited (purchasable only in season; owned ones persist)
   snowman:        { name: 'Snowman',         cost: 600,  size: [1, 1], holiday: 'winter_holiday' },
   string_lights:  { name: 'String Lights',   cost: 400,  size: [1, 1], holiday: 'winter_holiday' },
@@ -348,7 +377,7 @@ export const DECORATIONS = {
 
 /** Level curve + per-level unlocks (levels 1–40, an unlock at every level). */
 export const LEVELS = {
-  maxLevel: 40,
+  maxLevel: 50,
   /** XP required to go from level n to n+1. */
   xpForLevel: (n) => Math.round(50 * Math.pow(n, 1.8)),
   /** Feature/content gates. Anything not listed unlocks via its own unlockLevel field. */
@@ -361,7 +390,7 @@ export const LEVELS = {
     6:  ['cow', 'dairy'],
     7:  ['sugarcane'],
     8:  ['truck', 'sugar_mill'],
-    9:  ['cotton', 'popcorn_pot'],
+    9:  ['cotton', 'popcorn_pot', 'market'],
     10: ['pig', 'pets'],
     11: ['tomato', 'merge_meadow'],
     12: ['fishing', 'grill'],
@@ -372,27 +401,37 @@ export const LEVELS = {
     17: ['boat'],
     18: ['pumpkin'],
     19: ['goat', 'expansion_3'],
-    20: ['sewing_machine'],
-    21: ['indigo'],
+    20: ['sewing_machine', 'town'],
+    21: ['indigo', 'trains'],
     22: ['jam_maker'],
     23: ['bee'],
     24: ['mine', 'smelter'],
     25: ['chili', 'expansion_4'],
     26: ['candy_machine'],
     27: ['duck'],
-    28: ['expansion_5'],
+    28: ['expansion_5', 'airport'],
     29: ['coffee'],
     30: ['coffee_kiosk'],
     31: ['expansion_6'],
     32: ['silo_mega_upgrade'],
     33: ['grapes'],
-    34: ['barn_mega_upgrade'],
+    34: ['barn_mega_upgrade', 'zoo', 'zoo_peacock', 'zoo_monkey'],
     35: ['expansion_7'],
-    36: ['golden_fields'],
+    36: ['golden_fields', 'islands', 'isle_palm', 'tropical_cafe'],
     37: ['expansion_8'],
     38: ['master_orders'],
     39: ['expansion_9'],
     40: ['golden_windmill'],
+    41: ['zoo_penguin'],
+    42: ['zoo_flamingo'],
+    43: ['isle_coral'],
+    44: ['zoo_lion'],
+    45: ['isle_lagoon'],
+    46: ['zoo_panda'],
+    47: ['isle_volcano'],
+    48: ['zoo_giraffe'],
+    49: ['town_mega_milestone'],
+    50: ['zoo_elephant', 'golden_town_statue'],
   },
 };
 
@@ -416,20 +455,153 @@ export const SHOP = {
   sellTimeBase: 120,            // seconds at max price; cheaper listings sell faster
 };
 
+// ============================== TOWNSHIP LAYER ==============================
+
+/**
+ * Construction materials (Township-style). Stored in the barn. Sources: trains, airport,
+ * mine chests, event rewards. Consumed by town houses/community buildings and farm
+ * expansions (land deed / mallet / marker stake — the Hay Day expansion trio).
+ */
+export const MATERIALS = {
+  brick:        { name: 'Brick',        sellPrice: 30 },
+  slab:         { name: 'Slab',         sellPrice: 30 },
+  glass:        { name: 'Glass',        sellPrice: 30 },
+  paint:        { name: 'Paint',        sellPrice: 35 },
+  hammer:       { name: 'Hammer',       sellPrice: 35 },
+  nails:        { name: 'Nails',        sellPrice: 25 },
+  land_deed:    { name: 'Land Deed',    sellPrice: 60 },
+  mallet:       { name: 'Mallet',       sellPrice: 60 },
+  marker_stake: { name: 'Marker Stake', sellPrice: 60 },
+};
+
+/**
+ * The Town (L20): a reserved district on the world grid. Houses grant population;
+ * community buildings raise the population cap; milestones pay rewards and gate tiers.
+ * Township's growth loop, offline/solo.
+ */
+export const TOWN = {
+  unlockLevel: 20,
+  district: { x: 27, y: 27, w: 5, h: 5 }, // town district zone (own expansion path later)
+  houses: {
+    cottage:     { name: 'Cottage',       cost: 1200,  materials: { brick: 2, nails: 2 },            population: 4,  size: [1, 1], tier: 1 },
+    cabin:       { name: 'Log Cabin',     cost: 2200,  materials: { slab: 3, nails: 2 },             population: 6,  size: [1, 1], tier: 1 },
+    bungalow:    { name: 'Bungalow',      cost: 4000,  materials: { brick: 3, glass: 2 },            population: 9,  size: [1, 1], tier: 2 },
+    duplex:      { name: 'Duplex',        cost: 7000,  materials: { brick: 4, slab: 3, paint: 2 },   population: 14, size: [2, 2], tier: 2 },
+    townhouse:   { name: 'Townhouse',     cost: 12000, materials: { brick: 5, glass: 4, hammer: 2 }, population: 20, size: [2, 2], tier: 3 },
+    cape_house:  { name: 'Cape House',    cost: 18000, materials: { slab: 6, paint: 4, nails: 4 },   population: 27, size: [2, 2], tier: 3 },
+    villa:       { name: 'Villa',         cost: 28000, materials: { brick: 8, glass: 6, paint: 4 },  population: 36, size: [2, 2], tier: 4 },
+    terrace_row: { name: 'Terrace Row',   cost: 40000, materials: { brick: 10, slab: 8, hammer: 4 }, population: 48, size: [2, 2], tier: 4 },
+    loft_block:  { name: 'Loft Block',    cost: 60000, materials: { glass: 12, slab: 10, paint: 6 }, population: 62, size: [2, 2], tier: 5 },
+    mansion:     { name: 'Mansion',       cost: 90000, materials: { brick: 14, glass: 10, hammer: 6, paint: 6 }, population: 80, size: [2, 2], tier: 5 },
+  },
+  communityBuildings: {
+    town_hall: { name: 'Town Hall',     cost: 5000,   materials: { brick: 4, slab: 4 },              capacity: 60,  size: [2, 2], tier: 1 },
+    school:    { name: 'School',        cost: 12000,  materials: { brick: 6, glass: 4, nails: 4 },   capacity: 90,  size: [2, 2], tier: 2 },
+    clinic:    { name: 'Clinic',        cost: 22000,  materials: { slab: 8, glass: 6, paint: 4 },    capacity: 120, size: [2, 2], tier: 3 },
+    cinema:    { name: 'Cinema',        cost: 38000,  materials: { brick: 10, glass: 8, hammer: 4 }, capacity: 160, size: [2, 2], tier: 4 },
+    pavilion:  { name: 'Park Pavilion', cost: 60000,  materials: { slab: 12, paint: 8, nails: 6 },   capacity: 210, size: [2, 2], tier: 4 },
+    museum:    { name: 'Museum',        cost: 95000,  materials: { brick: 16, glass: 12, paint: 8 }, capacity: 280, size: [2, 2], tier: 5 },
+  },
+  basePopulationCap: 30,
+  /** Milestones by total population; each pays once and unlocks the next house/community tier. */
+  milestones: [
+    { population: 20,  rewards: { coins: 2000, diamonds: 2 }, unlocksTier: 2 },
+    { population: 60,  rewards: { coins: 6000, diamonds: 3, materials: { brick: 4, slab: 4 } }, unlocksTier: 3 },
+    { population: 140, rewards: { coins: 15000, diamonds: 5, materials: { glass: 6, paint: 4 } }, unlocksTier: 4 },
+    { population: 260, rewards: { coins: 40000, diamonds: 8, materials: { hammer: 6, nails: 6 } }, unlocksTier: 5 },
+    { population: 400, rewards: { coins: 100000, diamonds: 15 }, unlocksTier: 5 },
+  ],
+};
+
+/**
+ * Trains (L21): cargo trains arrive with wagons requesting goods; filled trains depart
+ * and return with construction materials — the engine of the materials economy.
+ */
+export const TRAINS = {
+  unlockLevel: 21,
+  interval: 10800,          // s between arrivals
+  departureWindow: 7200,    // s before an unfilled train leaves without bonus
+  wagons: [3, 5],           // wagons per train, scales with level
+  tripTime: 3600,           // s away before returning with materials
+  materialsPerTrip: [4, 8], // total material items returned (weighted random from MATERIALS)
+  xpPerWagon: 12,
+};
+
+/**
+ * Airport (L28): a cargo plane with crates of high-tier goods; pays XP + materials
+ * (+ event points during Boat Race/production events). The Township materials/XP channel;
+ * the boat remains the Hay Day voucher channel.
+ */
+export const AIRPORT = {
+  unlockLevel: 28,
+  interval: 14400,
+  crates: 4,
+  departureWindow: 5400,
+  rewards: { xpPerCrate: 30, materialsPerFlight: [3, 6], fullBonusCoins: 5000 },
+};
+
+/**
+ * Zoo (L34): enclosures for exotic species, fed farm goods on timers to produce zoo
+ * souvenirs; visitors generate passive coin income; zoo orders mix zoo + farm goods.
+ */
+export const ZOO = {
+  unlockLevel: 34,
+  visitorIncomePerHour: (population) => Math.min(500, 40 + population * 2), // town pop drives visitors
+  orderSlots: 3,
+  enclosures: {
+    zoo_peacock:  { name: 'Peacock Aviary',     cost: 15000, materials: { glass: 4, nails: 4 },  feed: { wheat: 10 },            produceTime: 7200,  product: 'peacock_feather', unlockLevel: 34 },
+    zoo_monkey:   { name: 'Monkey Treehouse',   cost: 20000, materials: { slab: 5, nails: 4 },   feed: { banana: 3 },            produceTime: 9000,  product: 'monkey_plush',    unlockLevel: 34 },
+    zoo_penguin:  { name: 'Penguin Pool',       cost: 28000, materials: { glass: 6, slab: 4 },   feed: { fish_perch: 6 },        produceTime: 10800, product: 'penguin_badge',   unlockLevel: 41 },
+    zoo_flamingo: { name: 'Flamingo Lagoon',    cost: 34000, materials: { paint: 5, glass: 4 },  feed: { fish_trout: 5 },        produceTime: 10800, product: 'flamingo_pin',    unlockLevel: 42 },
+    zoo_lion:     { name: 'Lion Rock',          cost: 45000, materials: { brick: 8, hammer: 4 }, feed: { bacon: 5 },             produceTime: 14400, product: 'lion_figurine',   unlockLevel: 44 },
+    zoo_panda:    { name: 'Panda Grove',        cost: 60000, materials: { slab: 8, paint: 5 },   feed: { sugarcane: 12 },        produceTime: 14400, product: 'panda_souvenir',  unlockLevel: 46 },
+    zoo_giraffe:  { name: 'Giraffe Savanna',    cost: 80000, materials: { brick: 10, glass: 6 }, feed: { carrot: 15 },           produceTime: 18000, product: 'giraffe_scarf',   unlockLevel: 48 },
+    zoo_elephant: { name: 'Elephant Meadow',    cost: 110000, materials: { brick: 12, slab: 10 }, feed: { pumpkin: 6 },          produceTime: 21600, product: 'elephant_statue', unlockLevel: 50 },
+  },
+};
+
+/**
+ * Island expeditions (L36): send the boat to a destination; it returns after tripTime
+ * with exotic goods for the Tropical Café. Longer trips → rarer cargo.
+ */
+export const ISLANDS = {
+  unlockLevel: 36,
+  destinations: {
+    isle_palm:    { name: 'Palm Isle',    tripTime: 3600,  cargo: { banana: [3, 6] },    unlockLevel: 36 },
+    isle_coral:   { name: 'Coral Cove',   tripTime: 7200,  cargo: { pineapple: [3, 5] }, unlockLevel: 43 },
+    isle_lagoon:  { name: 'Blue Lagoon',  tripTime: 10800, cargo: { cocoa: [2, 5] },     unlockLevel: 45 },
+    isle_volcano: { name: 'Volcano Key',  tripTime: 14400, cargo: { vanilla: [2, 4] },   unlockLevel: 47 },
+  },
+};
+
+/**
+ * Market trader (L9): daily rotating stall selling goods/materials for coins at a premium.
+ * Slots are drawn deterministically from the day number; each can be bought once per day.
+ */
+export const MARKET = {
+  unlockLevel: 9,
+  slots: 6,
+  priceMultiplier: 1.4,        // over base sellPrice
+  materialChance: 0.25,        // slots that offer a construction material instead of a good
+  refreshHourLocal: 7,         // stall restocks at 7:00 local time
+};
+
 /** Farm grid + expansion zones. */
 export const FARM = {
   gridSize: 32,
   startZone: { x: 10, y: 10, w: 12, h: 12 },
+  // Expansions cost coins + the Hay Day material trio (land deeds / mallets / marker
+  // stakes from MATERIALS, earned via trains/airport/chests/events).
   expansions: [
-    { id: 'expansion_1', rect: { x: 22, y: 10, w: 5, h: 12 }, cost: 500 },
-    { id: 'expansion_2', rect: { x: 10, y: 22, w: 12, h: 5 }, cost: 2000 },
-    { id: 'expansion_3', rect: { x: 5,  y: 10, w: 5, h: 12 }, cost: 6000 },
-    { id: 'expansion_4', rect: { x: 10, y: 5,  w: 12, h: 5 }, cost: 15000 },
-    { id: 'expansion_5', rect: { x: 22, y: 22, w: 5, h: 5 },  cost: 30000 },
-    { id: 'expansion_6', rect: { x: 5,  y: 22, w: 5, h: 5 },  cost: 50000 },
-    { id: 'expansion_7', rect: { x: 5,  y: 5,  w: 5, h: 5 },  cost: 80000 },
-    { id: 'expansion_8', rect: { x: 22, y: 5,  w: 5, h: 5 },  cost: 120000 },
-    { id: 'expansion_9', rect: { x: 27, y: 5,  w: 5, h: 22 }, cost: 200000 },
+    { id: 'expansion_1', rect: { x: 22, y: 10, w: 5, h: 12 }, cost: 500,    materials: { land_deed: 1, mallet: 1, marker_stake: 1 } },
+    { id: 'expansion_2', rect: { x: 10, y: 22, w: 12, h: 5 }, cost: 2000,   materials: { land_deed: 2, mallet: 2, marker_stake: 2 } },
+    { id: 'expansion_3', rect: { x: 5,  y: 10, w: 5, h: 12 }, cost: 6000,   materials: { land_deed: 3, mallet: 3, marker_stake: 3 } },
+    { id: 'expansion_4', rect: { x: 10, y: 5,  w: 12, h: 5 }, cost: 15000,  materials: { land_deed: 4, mallet: 4, marker_stake: 4 } },
+    { id: 'expansion_5', rect: { x: 22, y: 22, w: 5, h: 5 },  cost: 30000,  materials: { land_deed: 6, mallet: 5, marker_stake: 5 } },
+    { id: 'expansion_6', rect: { x: 5,  y: 22, w: 5, h: 5 },  cost: 50000,  materials: { land_deed: 7, mallet: 6, marker_stake: 6 } },
+    { id: 'expansion_7', rect: { x: 5,  y: 5,  w: 5, h: 5 },  cost: 80000,  materials: { land_deed: 8, mallet: 8, marker_stake: 7 } },
+    { id: 'expansion_8', rect: { x: 22, y: 5,  w: 5, h: 5 },  cost: 120000, materials: { land_deed: 10, mallet: 9, marker_stake: 9 } },
+    { id: 'expansion_9', rect: { x: 27, y: 5,  w: 5, h: 22 }, cost: 200000, materials: { land_deed: 12, mallet: 12, marker_stake: 12 } },
   ],
   fieldCost: 25, // per new field plot
 };

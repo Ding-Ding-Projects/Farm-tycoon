@@ -54,6 +54,9 @@ Farm-tycoon/
 │   ├── boat.js             # boat orders (bulk crates, departure timer, vouchers)
 │   ├── mine.js             # mine digging (tools, ores) + smelter integration
 │   ├── merge.js            # Merge Meadow: Township-style merge board minigame
+│   ├── town.js             # Town: houses, population, community buildings, milestones
+│   ├── trains.js           # cargo trains + airport (materials economy)
+│   ├── zoo.js              # zoo enclosures, souvenirs, visitor income, zoo orders
 │   ├── extras.js           # achievements, daily wheel, NPC visitors, diamonds
 │   ├── render/
 │   │   ├── renderer.js     # camera (pan/zoom), tile grid, draw order, day tint
@@ -176,6 +179,42 @@ cost ~1 coin, are unlimited, and are granted with levels; farm expansion (their 
 consumes **land deeds + mallets + marker stakes** rather than coins. *Phase B fidelity
 option:* switch our expansions from coin costs to expansion materials earned from orders,
 chests and the boat — keep coins as the simple default until then.
+
+
+## Township layer (Hay Day + Township combined)
+
+Township's defining systems, adapted offline/solo, on top of the farm:
+
+- **The Town (L20, `src/town.js`):** a district on the world grid. **10 house types**
+  (cottage → mansion) cost coins + construction materials and grant **population**;
+  **6 community buildings** (town hall → museum) raise the population cap. **Population
+  milestones** pay rewards and unlock higher building tiers — Township's growth loop
+  without multiplayer. Data: `TOWN`.
+- **Construction materials (`MATERIALS`):** brick, slab, glass, paint, hammer, nails +
+  the Hay Day expansion trio (land deed, mallet, marker stake — `FARM.expansions` now
+  cost coins **and** materials). Earned from trains, the airport, mine chests and events;
+  stored in the barn.
+- **Trains (L21, `src/trains.js`):** cargo trains arrive every ~3 h with 3–5 wagons
+  requesting goods; filled trains depart and return with construction materials — the
+  engine of the materials economy. Data: `TRAINS`.
+- **Airport (L28, contract in `trains.js`):** a cargo plane with 4 crates of high-tier
+  goods every ~4 h; pays a big coin bonus + materials + XP. The boat stays the Hay Day
+  voucher channel; the plane is the Township materials/XP channel. Data: `AIRPORT`.
+- **Helicopter orders:** the order board is presented as the helicopter pad (Township
+  flavor; `orders.js` unchanged mechanically).
+- **Zoo (L34, `src/zoo.js`):** 8 enclosures (peacock → elephant) bought with coins +
+  materials; feed each species farm goods on timers to produce **zoo souvenir goods**;
+  passive visitor income scales with town population; a 3-slot zoo order board mixes zoo
+  + farm goods. Data: `ZOO`.
+- **Island expeditions (L36, contract in `boat.js`):** send the boat to 4 islands
+  (Palm Isle → Volcano Key); it returns with exotic goods (banana, pineapple, cocoa,
+  vanilla) consumed by the new **Tropical Café** building (4 recipes). Data: `ISLANDS`.
+- **Market trader (L9, contract in `shop.js`):** a daily rotating 6-slot stall selling
+  goods/materials for coins at a premium, restocking each morning. Data: `MARKET`.
+- **Regatta → Farm Fair:** Township's Regatta maps onto the existing monthly Farm Fair
+  task board (see Events).
+- **Levels extended to 50** to pace the Township content (zoo enclosures and islands
+  fill 41–50; still an unlock at every level).
 
 ## Look & feel — modern, not retro
 

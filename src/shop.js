@@ -13,3 +13,14 @@ export function collect(slotIndex) { /* Phase B */ }
 
 /** Advance sale timers; occasionally spawns an NPC premium offer (extras.js visitor). */
 export function tick(now) { /* Phase B */ }
+
+// ---- Market trader (Township layer, L9; MARKET in data.js) ----
+// A daily stall: MARKET.slots offers drawn deterministically from the day number
+// (goods at priceMultiplier over base, ~25% construction materials), each buyable once
+// per day; restocks at MARKET.refreshHourLocal.
+
+/** Today's market offers with bought flags: [{item, qty, price, bought}]. */
+export function marketOffers(now) { /* Phase B */ }
+
+/** Buy a market offer (coins → item into silo/barn; respects caps; once per day per slot). */
+export function buyOffer(index) { /* Phase B */ }

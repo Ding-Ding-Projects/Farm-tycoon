@@ -84,11 +84,20 @@ Defined in `styles.css :root`; restyle by changing values, keep the names:
     gold tier pins, countdown) + the event panel: weekend-event view (tier reward cards,
     claim buttons) and Farm Fair view (3×3 task card grid with progress bars, ribbon
     meter, Fair Pass trophy track)
+16. **Town view** — town district mood, house/community build cards showing coin +
+    material costs, population pill (current/cap), milestone track with claim buttons
+17. **Train station** — arriving train with 3–5 wagons (goods requests + fill states),
+    departure countdown, returning-delivery materials reveal; airport tab with 4 crates
+18. **Zoo** — enclosure cards (feed goods, souvenir timer), visitor income collector,
+    3 zoo order cards
+19. **Market stall** — 6 daily offers (good/material, price, bought state), restock timer
 
 ## Game content the UI shows (for realistic mockups)
 
 Real item names live in `src/data.js`: 14 crops (Wheat → Grapes), 7 animals
 (Chicken Coop → Duck Pond), 13 production buildings (Bakery, Dairy, Feed Mill, Sugar Mill,
 Popcorn Pot, Grill, Pie Oven, Loom, Sewing Machine, Juice Press, Jam Maker, Coffee Kiosk,
-Candy Machine, Smelter), ~45 goods, 8 fish, ores/bars, 15 decorations. Currencies: coins 🪙,
-diamonds 💎, boat vouchers 🎟️. Use these names/quantities in mockups so panels feel real.
+Candy Machine, Smelter, Tropical Café), ~60 goods, 8 fish, ores/bars, 9 construction
+materials (brick → marker stake), 10 town houses + 6 community buildings, 8 zoo
+enclosures, 4 expedition islands, 20+ decorations. Currencies: coins 🪙, diamonds 💎,
+boat vouchers 🎟️. Use these names/quantities in mockups so panels feel real.

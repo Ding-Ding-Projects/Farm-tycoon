@@ -21,6 +21,8 @@ Uses the debug hook `main.js` exposes: `window.__farmDebug = { timeSkip(ms), sta
    - `coins >= 0`, `diamonds >= 0`
    - silo/barn item totals ≤ capacity
    - no `production` entry references a missing object or recipe
+   - construction materials never negative; building a house consumes exactly its
+     listed materials; town population ≤ capacity
 5. **Events:** event invariants — `state.event.points` never negative; claiming a tier
    twice is a no-op; expired events settle without crash on load.
 6. **Orders:** fulfill one board order with stocked goods → coins and XP increase by the

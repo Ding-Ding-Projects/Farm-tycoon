@@ -1,6 +1,6 @@
 # 🚜 Farm Tycoon
 
-A cozy Hay Day-style farm management game — plant crops, raise animals, run production
+A cozy farm-and-town management game — Hay Day and Township combined — plant crops, raise animals, run production
 buildings, fill orders, fish, dig for gold, and grow from a wheat patch to a farming empire.
 Built with vanilla JS + Canvas (pure vector art, zero asset files), packaged for **Windows**
 with Electron, and playable in any modern browser.
@@ -19,8 +19,16 @@ with Electron, and playable in any modern browser.
 - 🎣 **Fishing pond** with a timing minigame, 8 species, and treasure chests
 - ⛏️ **Mine** for silver, gold, platinum and gems
 - 🧩 **Merge Meadow** — a Township-style merge-board minigame whose rewards feed your farm
+- 🏘️ **Build a town** — 10 houses and 6 community buildings grow your population through
+  reward milestones, Township-style
+- 🚂 **Trains & ✈️ airport** — ship goods out, get construction materials back
+- 🦚 **Zoo** — 8 exotic enclosures producing souvenirs, plus visitor income
+- 🏝️ **Island expeditions** — sail for bananas, cocoa, pineapple and vanilla for the
+  Tropical Café
+- 🛒 **Daily market** and 🎪 weekend events, mini-events, a monthly Farm Fair, and
+  holiday seasons
 - 💎 Diamonds, achievements, a daily prize wheel, pets, seasonal events, land expansion,
-  decorations — and **40 levels** with something new at every one
+  decorations — and **50 levels** with something new at every one
 
 ## Run it
 

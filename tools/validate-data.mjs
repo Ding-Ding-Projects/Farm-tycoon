@@ -5,6 +5,12 @@ import * as d from '../src/data.js';
 
 const errors = [];
 const item = (id) => d.CROPS[id] || d.GOODS[id];
+const checkMaterials = (ctx, mats) => {
+  for (const [m, q] of Object.entries(mats || {})) {
+    if (!d.MATERIALS[m]) errors.push(`${ctx}: unknown material '${m}'`);
+    if (!(q > 0)) errors.push(`${ctx}: bad material qty for '${m}'`);
+  }
+};
 
 // Every recipe output exists in GOODS; every input is a crop or good.
 for (const [bid, b] of Object.entries(d.BUILDINGS)) {
@@ -34,12 +40,45 @@ for (const [cid, c] of Object.entries(d.MERGE.chains)) {
   for (const rw of [c.topReward, ...Object.values(c.claims)]) if (rw.item && !d.GOODS[rw.item]) errors.push(`merge chain ${cid}: reward item '${rw.item}' unknown`);
 }
 
+// Township layer: town, trains/airport, zoo, islands, market, expansion materials.
+for (const [id, h] of Object.entries(d.TOWN.houses)) {
+  checkMaterials(`house ${id}`, h.materials);
+  if (!(h.population > 0) || !(h.cost > 0) || !(h.tier >= 1)) errors.push(`house ${id}: bad population/cost/tier`);
+}
+for (const [id, c] of Object.entries(d.TOWN.communityBuildings)) {
+  checkMaterials(`community ${id}`, c.materials);
+  if (!(c.capacity > 0)) errors.push(`community ${id}: bad capacity`);
+}
+{
+  let prev = 0;
+  for (const m of d.TOWN.milestones) {
+    if (m.population <= prev) errors.push('town milestones not ascending');
+    prev = m.population;
+    checkMaterials('town milestone', m.rewards.materials);
+  }
+}
+for (const [id, z] of Object.entries(d.ZOO.enclosures)) {
+  checkMaterials(`zoo ${id}`, z.materials);
+  if (!d.GOODS[z.product]) errors.push(`zoo ${id}: product '${z.product}' not in GOODS`);
+  for (const f of Object.keys(z.feed)) if (!item(f)) errors.push(`zoo ${id}: feed '${f}' unknown`);
+}
+for (const [id, isl] of Object.entries(d.ISLANDS.destinations)) {
+  for (const g of Object.keys(isl.cargo)) if (!d.GOODS[g]) errors.push(`island ${id}: cargo '${g}' not in GOODS`);
+  if (!(isl.tripTime > 0)) errors.push(`island ${id}: bad tripTime`);
+}
+for (const e of d.FARM.expansions) checkMaterials(`expansion ${e.id}`, e.materials);
+if (!(d.MARKET.slots > 0) || !(d.MARKET.priceMultiplier > 1)) errors.push('MARKET tuning invalid');
+if (!(d.TRAINS.wagons[0] <= d.TRAINS.wagons[1])) errors.push('TRAINS wagons range invalid');
+
 // LEVELS.unlocks ids resolve to known content or feature flags.
 const features = new Set([
   'field', 'orders_board', 'truck', 'boat', 'fishing', 'mine', 'pets', 'merge_meadow',
   'silo_mega_upgrade', 'barn_mega_upgrade', 'golden_fields', 'master_orders', 'golden_windmill',
+  'market', 'town', 'trains', 'airport', 'zoo', 'islands', 'town_mega_milestone',
 ]);
-const known = (id) => d.CROPS[id] || d.ANIMALS[id] || d.BUILDINGS[id] || features.has(id) || d.FARM.expansions.some((e) => e.id === id);
+const known = (id) => d.CROPS[id] || d.ANIMALS[id] || d.BUILDINGS[id] || features.has(id)
+  || d.FARM.expansions.some((e) => e.id === id) || d.ZOO.enclosures[id]
+  || d.ISLANDS.destinations[id] || d.DECORATIONS[id];
 for (const [lvl, ids] of Object.entries(d.LEVELS.unlocks)) {
   if (+lvl > d.LEVELS.maxLevel) errors.push(`unlocks at level ${lvl} beyond maxLevel`);
   for (const id of ids) if (!known(id)) errors.push(`level ${lvl}: unlock '${id}' unknown`);
@@ -103,5 +142,8 @@ console.log(
   `${Object.keys(d.BUILDINGS).length} buildings, ${Object.values(d.BUILDINGS).reduce((n, b) => n + b.recipes.length, 0)} recipes, ` +
   `${Object.keys(d.GOODS).length} goods, ${Object.keys(d.MERGE.chains).length} merge chains, ${d.ACHIEVEMENTS.length} achievements, ` +
   `${d.LEVELS.maxLevel} levels all with unlocks, ${d.EVENTS.weekend.rotation.length} weekend events + ` +
-  `${d.EVENTS.miniWeekday.rotation.length} mini-events + ${d.EVENTS.fair.taskPool.length} fair tasks + ${d.EVENTS.holidays.length} holidays`
+  `${d.EVENTS.miniWeekday.rotation.length} mini-events + ${d.EVENTS.fair.taskPool.length} fair tasks + ${d.EVENTS.holidays.length} holidays, ` +
+  `town: ${Object.keys(d.TOWN.houses).length} houses + ${Object.keys(d.TOWN.communityBuildings).length} community, ` +
+  `${Object.keys(d.ZOO.enclosures).length} zoo enclosures, ${Object.keys(d.ISLANDS.destinations).length} islands, ` +
+  `${Object.keys(d.MATERIALS).length} materials`
 );

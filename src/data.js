@@ -651,6 +651,12 @@ export const FISHING = {
     { diamonds: [1, 3], weight: 25 },
     { item: 'pickaxe', qty: [1, 2], weight: 10 },
     { item: 'dynamite', qty: [1, 1], weight: 5 },
+    // A second, mid-early 'building' material trickle alongside the daily wheel - fishing
+    // opens at Level 12, comfortably inside the Sugar Mill/Popcorn Pot/Grill window.
+    { material: 'brick', qty: [1, 2], weight: 8 },
+    { material: 'slab',  qty: [1, 2], weight: 8 },
+    { material: 'nails', qty: [1, 3], weight: 8 },
+    { material: 'timber', qty: [1, 2], weight: 6 },
   ],
 };
 
@@ -1271,10 +1277,23 @@ export const ACHIEVEMENTS = [
   { id: 'zookeeper',      name: 'Zookeeper',          desc: 'Collect 400 zoo souvenirs',      stat: 'zooSouvenirs',         target: 400,    diamonds: 22 },
 ];
 
-/** Daily wheel segments (one free spin per day, streak adds +10% coin values per day up to 5). */
+/**
+ * Daily wheel segments (one free spin per day, streak adds +10% coin values per day up to
+ * 5). No unlockLevel - it is on from the very first login, which makes it the earliest
+ * possible earn point in the game and the reason it also carries the first construction
+ * materials: the Building Workshop opens at Level 6 with nothing else awake yet to feed it
+ * (trains, the first material-bearing system, do not open until Level 21). A few 'building'
+ * set segments here - one spin's worth a day, small quantities - are what lets a player who
+ * has just unlocked the Workshop start banking toward its earliest kits instead of staring
+ * at an inert building for fifteen levels.
+ */
 export const DAILY_WHEEL = [
   { coins: 100 }, { coins: 250 }, { diamonds: 1 }, { coins: 500 },
   { item: 'pickaxe', qty: 1 }, { coins: 1000 }, { diamonds: 3 }, { coins: 2500 },
+  { material: 'nails', qty: 2 }, { material: 'slab', qty: 2 }, { material: 'timber', qty: 1 },
+  { material: 'brick', qty: 2 }, { material: 'paint', qty: 1 }, { material: 'hammer', qty: 1 },
+  { material: 'wire', qty: 1 }, { material: 'rope', qty: 1 }, { material: 'glass', qty: 1 },
+  { material: 'cement', qty: 1 },
 ];
 
 /** Pets: feed once per day for an XP bonus. */

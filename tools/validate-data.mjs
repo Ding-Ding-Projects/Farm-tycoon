@@ -184,6 +184,13 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   for (const i of Object.values(d.ISLANDS.destinations)) for (const g of Object.keys(i.cargo)) bump(g, i.unlockLevel);
   for (const p of d.TRAINS.materialPool) bump(p.material, d.TRAINS.unlockLevel);
   for (const p of d.AIRPORT.rewards.materialPool) bump(p.material, d.AIRPORT.unlockLevel);
+  // The daily wheel carries no unlockLevel of its own - it is live from the very first
+  // login - and fishing's chest loot is gated by FISHING.unlockLevel. Both were already
+  // required to be *earnable* by the matEarned check above; this is what actually lets that
+  // earnability reach the fixed point below, instead of every material still bottoming out
+  // at TRAINS.unlockLevel (21) regardless of how early a wheel/chest source claims to be.
+  for (const seg of d.DAILY_WHEEL) if (seg.material) bump(seg.material, 1);
+  for (const l of d.FISHING.chestLoot) if (l.material) bump(l.material, d.FISHING.unlockLevel);
   for (const s of Object.values(d.EXPEDITIONS.sites)) for (const l of s.loot) { if (l.material) bump(l.material, s.unlockLevel); if (l.item) bump(l.item, s.unlockLevel); }
   for (const c of Object.values(d.MERGE.chains)) {
     if (c.topReward && c.topReward.item) bump(c.topReward.item, d.MERGE.unlockLevel);
@@ -218,6 +225,20 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
       if (trueLevel != null && r.unlockLevel < trueLevel)
         errors.push(`${bid}/${r.id}: unlockLevel ${r.unlockLevel} is below the true earliest availability ${trueLevel} of its inputs`);
     }
+  }
+
+  // The last link: a building must not unlock before its OWN kit is actually craftable.
+  // The kit block above only checks that the kit is reachable in the Workshop at all and
+  // that the building doesn't open before the Workshop itself does - it never asked whether
+  // the Workshop could produce that specific kit yet. This is the fixed-point number that
+  // answers that, and is what caught (and now guards against) dairy/sugar_mill/popcorn_pot/
+  // grill/loom/juice_press/pie_oven/sewing_machine each unlocking 5-15 levels before their
+  // own kit's raw materials had any source at all.
+  for (const [bid, b] of Object.entries(d.BUILDINGS)) {
+    if (!b.kit) continue;
+    const kitLevel = recipeLevel.get(b.kit);
+    if (kitLevel != null && b.unlockLevel < kitLevel)
+      errors.push(`building ${bid} unlocks at ${b.unlockLevel} but its kit '${b.kit}' is not craftable until ${kitLevel} - the building would be unplaceable on unlock`);
   }
 }
 

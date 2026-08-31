@@ -21,6 +21,8 @@
 // sprite draw functions from sprites.js, neither of which exist yet.
 
 import { FARM } from '../data.js';
+import * as sprites from './sprites.js';
+import * as effects from './effects.js';
 
 // Base tile size in px at zoom 1 (see design/handoff/SPRITE-NOTES.md §8: T = 104).
 export const TILE_BASE = 104;
@@ -28,9 +30,45 @@ export const TILE_BASE = 104;
 const OY_RATIO = 0.2375;
 
 export const camera = { x: 0, y: 0, zoom: 1 }; // zoom clamped [0.5, 2.5], eased toward targets
+// Pan/zoom targets that input.js writes to; tickCamera eases camera.{x,y,zoom} toward these.
+export const cameraTarget = { x: 0, y: 0, zoom: 1 };
+const ZOOM_MIN = 0.5, ZOOM_MAX = 2.5;
+const EASE = 10; // higher = snappier
+
+let canvasRef = null;
+let ctxRef = null;
+let viewportW = 1280;
+let viewportH = 800;
+
+function resizeToWindow() {
+  if (!canvasRef) return;
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const w = (typeof window !== 'undefined' && window.innerWidth) || viewportW;
+  const h = (typeof window !== 'undefined' && window.innerHeight) || viewportH;
+  viewportW = w; viewportH = h;
+  canvasRef.width = Math.round(w * dpr);
+  canvasRef.height = Math.round(h * dpr);
+  canvasRef.style.width = `${w}px`;
+  canvasRef.style.height = `${h}px`;
+  ctxRef = canvasRef.getContext('2d');
+  ctxRef.setTransform(dpr, 0, 0, dpr, 0, 0);
+  clampCamera(viewportW, viewportH);
+}
 
 /** Attach to the canvas, size to window * devicePixelRatio, listen for resize. */
-export function init(canvas) { /* Phase B: needs a live DOM canvas + resize listener */ }
+export function init(canvas) {
+  canvasRef = canvas;
+  resizeToWindow();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', resizeToWindow);
+  }
+  return ctxRef;
+}
+
+/** Current live 2d context, if init() has run (used by input.js for hit-testing helpers). */
+export function getContext() { return ctxRef; }
+/** Current viewport size in CSS px (post-resize). */
+export function getViewport() { return { w: viewportW, h: viewportH }; }
 
 /**
  * World tile coords → screen px (through the camera).
@@ -151,8 +189,90 @@ export function sortedObjects(objects = []) {
   });
 }
 
-/** Draw one frame: ground, sorted objects (via sprites.js), progress rings, effects, lighting. */
-export function drawFrame(now) { /* Phase B: needs a live canvas ctx + sprites.js draw fns */ }
+// kind -> dispatch fn(ctx, x, y, size, obj). Keeps drawFrame() a plain loop instead of a
+// growing if/else ladder; add a new kind here, not inline below.
+const KIND_DISPATCH = {
+  crop: (ctx, x, y, size, obj) => {
+    const fn = sprites.CROP_DRAW[obj.type];
+    if (fn) fn(ctx, x, y, size, obj.growProgress ?? 1);
+    else sprites.drawPlaceholder(ctx, x, y, size, obj.type);
+  },
+  animal: (ctx, x, y, size, obj) => {
+    const fn = sprites.ANIMAL_DRAW[obj.type];
+    if (fn) fn(ctx, x, y, size, obj.idleFrame ?? 0);
+    else sprites.drawPlaceholder(ctx, x, y, size, obj.type);
+  },
+  pen: (ctx, x, y, size, obj) => sprites.drawPen(ctx, x, y, size, obj.type),
+  building: (ctx, x, y, size, obj) => sprites.drawBuilding(ctx, x, y, size, obj.type, { derelict: !!obj.derelict }),
+  structure: (ctx, x, y, size, obj) => sprites.drawStructure(ctx, obj.type, x, y, size, { derelict: !!obj.derelict }),
+  forage: (ctx, x, y, size, obj) => {
+    const fn = sprites.FORAGE_DRAW[obj.type];
+    if (fn) fn(ctx, x, y, size);
+    else sprites.drawPlaceholder(ctx, x, y, size, obj.type);
+  },
+  decoration: (ctx, x, y, size, obj) => sprites.drawDecoration(ctx, x, y, size, obj.type),
+  pet: (ctx, x, y, size, obj) => {
+    const fn = obj.type === 'cat' ? sprites.drawCat : sprites.drawDog;
+    fn(ctx, x, y, size, obj.idleFrame ?? 0);
+  },
+};
+
+/**
+ * Draw one frame: ground → sorted objects (via sprites.js) → progress rings → effects →
+ * the two lighting gradients (SPRITE-NOTES §3/§4).
+ *
+ * `world` is optional so this is callable (and useful for smoke-testing) before farm.js/
+ * state.js are wired up: { objects, showGrid, unlockedExpansionIds }. `objects` items are
+ * { id, kind, type, tx, ty, growProgress?, idleFrame?, derelict?, progress? } — the same
+ * shape farm.js documents objects in (kind/type/x/y), read here as tx/ty (tile coords).
+ */
+export function drawFrame(now, world = {}) {
+  if (!ctxRef) return;
+  const ctx = ctxRef;
+  const { objects = [], showGrid = false } = world;
+  const w = viewportW, h = viewportH;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // ground: continuous meadow, never a grid, except explicit placement/edit mode
+  sprites.drawMeadow(ctx, w, h);
+  sprites.drawGroundDetail(ctx, w, h);
+
+  if (showGrid) {
+    for (const obj of objects) {
+      const [x, y] = tileToScreen(obj.tx, obj.ty, w, h);
+      sprites.drawGrassTile(ctx, x, y, camera.zoom);
+    }
+  }
+
+  // sorted objects, back-to-front
+  const ordered = sortedObjects(objects);
+  for (const obj of ordered) {
+    const [x, y] = tileToScreen(obj.tx, obj.ty, w, h);
+    const size = camera.zoom * (obj.scale ?? 1);
+    const dispatch = KIND_DISPATCH[obj.kind];
+    if (dispatch) dispatch(ctx, x, y, size, obj);
+    else sprites.drawPlaceholder(ctx, x, y, size, obj.type || obj.kind);
+
+    if (typeof obj.progress === 'number' && obj.progress < 1) {
+      sprites.drawProgressRing(ctx, x, y - TILE_BASE * size * 0.4, TILE_BASE * size * 0.14, obj.progress);
+    }
+  }
+
+  // world-space particle effects (coin bursts, XP floaters, sparkles)
+  effects.tickAndDraw(ctx, now ?? 0);
+
+  // golden hour: two full-canvas gradients, after entities, before UI/DOM overlays
+  sprites.drawGoldenHour(ctx, w, h);
+}
 
 /** Smoothly ease camera pan/zoom toward targets, then clamp; called each frame. */
-export function tickCamera(dt) { /* Phase B: needs pan/zoom target state from input.js */ }
+export function tickCamera(dt) {
+  const t = Math.min(1, (dt ?? 1 / 60) * EASE);
+  camera.x += (cameraTarget.x - camera.x) * t;
+  camera.y += (cameraTarget.y - camera.y) * t;
+  cameraTarget.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cameraTarget.zoom));
+  camera.zoom += (cameraTarget.zoom - camera.zoom) * t;
+  clampCamera(viewportW, viewportH);
+  return camera;
+}

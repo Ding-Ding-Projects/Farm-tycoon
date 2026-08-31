@@ -6,8 +6,12 @@ packaged for Windows with Electron. **Read `PLAN.md` first** — it is the full 
 
 ## Current status & handoff
 
-**Phase A (scaffold) is COMPLETE and lives on `main`; Phase B (full implementation) has
-not started.** State of the world for whoever picks this up:
+**Phase B is complete and lives on `main`.** Every module contract in `src/` has a real
+implementation. `grep -r "/\* Phase B \*/" src/` returns nothing across all 37 files — the
+remaining textual "Phase B" mentions in `main.js`, `state.js`, `ui.js`, and
+`render/renderer.js` are historical/contextual comments, not stub markers. State of the
+world for whoever picks this up next (full detail and verification evidence in
+`HANDOFF.md`):
 
 - `src/data.js` is **complete, final content** (validated by `npm test`): 22 crops,
   12 animals, 26 buildings / 128 recipes, 192 goods, 23 construction materials in four
@@ -16,6 +20,10 @@ not started.** State of the world for whoever picks this up:
   (workshop kits, per-factory minigames, mine depths, artifacts + museum, expeditions,
   laboratory, helicopter, co-op, regatta, foraging, newspaper, collections, mastery),
   22 placed world structures, tutorial steps, and **95 levels** with an unlock at every one.
+- **Every other module is now implemented, not stubbed.** `npm test` runs the validator
+  plus eight gameplay-logic suites (camera, core, logistics, crafting, township, research,
+  dead-time, social) for 147 passing assertions, 0 failed. The game boots in a browser with
+  zero console errors; `window.__farmDebug` exposes real, mutating state.
 - **Two mechanics distinguish this from its sources.** Buildings are *crafted*, not bought:
   the Building Workshop turns materials into components, components into a kit, and the kit
   places the factory. And every production building has *its own* minigame with an effect
@@ -24,24 +32,30 @@ not started.** State of the world for whoever picks this up:
 - **Systems open from world objects, never the HUD or dock.** `STRUCTURES` gives each a
   footprint and position; `input.js` resolves a pick to a structure id. Locked ones are
   derelict but still clickable from level 1. The dock keeps only what has no place in the
-  world: settings, achievements, co-op/regatta, and decorating mode.
+  world: settings, achievements, co-op/regatta, and decorating mode. Verified: exactly four
+  dock buttons in `index.html`, 22 structures with zero placement overlaps.
 - `design/` holds the checked-in visual overhaul: four HUD directions, the screen board, a
-  reference renderer, and `handoff/SPRITE-NOTES.md`, which is the brief for rewriting
-  `src/render/sprites.js`. **Not yet integrated.** Read `design/README.md` first — it records
-  the one real defect (the handoff CSS names two fonts it does not ship, so the page silently
-  falls back to system-ui with no error).
-- Every other `src/` module is a **documented API contract** with `/* Phase B */` stub
-  bodies — implement to those contracts; do not redesign them casually.
-- `index.html`/`styles.css` carry the real DOM structure + Hay Day-style theme (wood/
-  parchment/gloss). The splash in `main.js` is placeholder art that Phase B's renderer
-  replaces.
-- **Expected sequence:** (1) the user may land a Claude Design UI pass that restyles
-  tokens/classes per `DESIGN_BRIEF.md` — absorb it, don't fight it; (2) when the user
-  says **"start developing"**, execute Phase B as ONE complete pass (see PLAN.md
-  "One-shot delivery requirement"): implement every module fully — no stubs or TODOs
-  left — on branch **`claude/windows-hay-day-game-cfctdb`**, verified with the
-  `playtest` skill, pushed, with a **draft PR**. Scaffold work so far was pushed
-  straight to `main` at the user's explicit request; Phase B goes through the branch+PR.
+  reference renderer, and `handoff/SPRITE-NOTES.md`. **It is now integrated**, not just a
+  reference — `styles.css` at the repository root matches `design/handoff/styles.css`
+  byte-for-byte (aside from line endings), and the sprite notes (palette, outline, golden-
+  hour lighting, depth sorting, derelict states) are implemented in
+  `src/render/sprites.js` and `src/render/renderer.js`. `design/README.md` records this as
+  closed; read it for the full inventory of what's still a reference-only board (the HUD
+  direction alternatives B/C/D, the prototype) versus what shipped (direction A).
+- `index.html`/`styles.css` carry the real DOM structure + the integrated design overhaul.
+  The canvas renders the real world through `renderer.js`/`sprites.js`, not placeholder art.
+- **What actually happened, for the record:** the original plan (below, and in `PLAN.md`)
+  called for Phase B to land on branch `claude/windows-hay-day-game-cfctdb` with a draft
+  PR. That did not happen — every Phase B commit landed directly on `main`, the same as the
+  scaffold. `git branch -a` on this checkout shows only `main`. If a next round of work
+  wants isolation, create a fresh branch; don't assume the old one exists.
+- **Original expected sequence, kept for history:** (1) the user may land a Claude Design UI
+  pass that restyles tokens/classes per `DESIGN_BRIEF.md` — absorb it, don't fight it; (2)
+  when the user says **"start developing"**, execute Phase B as ONE complete pass (see
+  PLAN.md "One-shot delivery requirement"): implement every module fully — no stubs or
+  TODOs left — verified with the `playtest` skill. Step (1) happened (the design overhaul
+  above). Step (2) happened, but pushed straight to `main` rather than through a branch+PR,
+  as noted above.
 
 ## Running
 

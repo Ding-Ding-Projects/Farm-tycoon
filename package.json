@@ -1,0 +1,33 @@
+{
+  "name": "farm-tycoon",
+  "version": "0.1.0",
+  "description": "A cozy Hay Day-style farm management game for Windows (Electron) and the browser.",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "serve": "python3 -m http.server 8123",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.farmtycoon.game",
+    "productName": "Farm Tycoon",
+    "files": [
+      "index.html",
+      "styles.css",
+      "src/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  }
+}

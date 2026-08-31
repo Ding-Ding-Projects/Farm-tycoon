@@ -1,0 +1,12 @@
+// boat.js — boat orders (L17): a boat docks every ORDERS.boat.interval with 6 bulk crates;
+// filling all crates before departureWindow expires pays bonusMultiplier + vouchers
+// (spent on exclusive decorations in DECORATIONS with voucherCost).
+
+/** Spawn/advance the boat lifecycle (docked → departed); called from the game loop. */
+export function tick(now) { /* Phase B */ }
+
+/** Fill one crate from storage. */
+export function fillCrate(index) { /* Phase B */ }
+
+/** Claim the full-boat bonus (coins + XP + vouchers) once every crate is filled. */
+export function claimBonus() { /* Phase B */ }

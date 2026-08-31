@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farm Tycoon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- The farm world: full-window canvas. All menus/HUD are DOM below. -->
+  <canvas id="world"></canvas>
+
+  <!-- HUD top bar -->
+  <div class="hud-top">
+    <div class="level-badge" id="level-badge">
+      <svg class="progress-ring" viewBox="0 0 64 64" aria-hidden="true"></svg>
+      <span id="level-number">1</span>
+    </div>
+    <div class="hud-counters">
+      <div class="pill-counter" id="coins-pill" title="Coins"><span class="pill-icon">🪙</span><span id="coins-value">0</span></div>
+      <div class="pill-counter" id="diamonds-pill" title="Diamonds"><span class="pill-icon">💎</span><span id="diamonds-value">0</span></div>
+      <div class="pill-counter" id="silo-pill" title="Silo"><span class="pill-icon">🌾</span><span id="silo-value">0/50</span></div>
+      <div class="pill-counter" id="barn-pill" title="Barn"><span class="pill-icon">📦</span><span id="barn-value">0/50</span></div>
+    </div>
+  </div>
+
+  <!-- Bottom dock -->
+  <nav class="dock" id="dock">
+    <button class="dock-btn" data-panel="build" title="Build">🔨</button>
+    <button class="dock-btn" data-panel="inventory" title="Barn &amp; Silo">🏠</button>
+    <button class="dock-btn" data-panel="shop" title="Roadside Shop">🏪</button>
+    <button class="dock-btn" data-panel="orders" title="Order Board">📋</button>
+    <button class="dock-btn" data-panel="truck" title="Truck">🚚</button>
+    <button class="dock-btn" data-panel="boat" title="Boat" hidden>⛵</button>
+    <button class="dock-btn" data-panel="fishing" title="Fishing" hidden>🎣</button>
+    <button class="dock-btn" data-panel="mine" title="Mine" hidden>⛏️</button>
+    <button class="dock-btn" data-panel="extras" title="More">⭐</button>
+    <button class="dock-btn" data-panel="settings" title="Settings">⚙️</button>
+  </nav>
+
+  <!-- Sliding sheet panels (ui.js fills content per panel) -->
+  <div class="sheet-panel" id="sheet" hidden>
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title" id="sheet-title"></h2>
+    <div class="sheet-content" id="sheet-content"></div>
+  </div>
+
+  <!-- Radial context menu, toasts, popups -->
+  <div class="radial-menu" id="radial" hidden></div>
+  <div class="toast-stack" id="toasts"></div>
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal-card" id="modal-card"></div>
+  </div>
+  <div class="tutorial-overlay" id="tutorial" hidden></div>
+
+  <p id="boot-status" class="boot-status"></p>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Farm Tycoon — a Hay Day + Township management game</title>
-<meta name="description" content="Farm Tycoon is a farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Currently a content-complete scaffold — not yet playable.">
+<meta name="description" content="Farm Tycoon is a farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Buildings are crafted, not bought, and every production building has its own minigame.">
 <meta property="og:title" content="Farm Tycoon">
-<meta property="og:description" content="A farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Content-complete scaffold, not yet playable — read the honest status before downloading.">
+<meta property="og:description" content="A farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Craft your buildings instead of buying them, and unlock a minigame for every factory you place.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#4c8f1c">
 <link rel="stylesheet" href="./styles.css">
@@ -37,8 +37,8 @@
 <section class="hero" id="top">
   <div class="wrap">
     <span class="eyebrow">
-      <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-hammer"></use></svg>
-      Content-complete scaffold — not yet playable
+      <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>
+      Implemented and verified — 147 passing tests, 0 failures
     </span>
     <h1 class="hero-title">Hay Day's farm.<br>Township's town.<br>One game.</h1>
     <p class="hero-sub">
@@ -55,33 +55,37 @@
         View source on GitHub
       </a>
     </div>
-    <p class="hero-note">Windows only, unsigned installer, and read the status below before you install it — the game does not play yet.</p>
+    <p class="hero-note">Windows only, unsigned installer (permanent no-signing policy — Windows will show an "unknown publisher" warning) — read the status below for exactly what has been verified.</p>
   </div>
 </section>
 
 <section id="status">
   <div class="wrap">
     <div class="status-card" role="note">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>
       <div>
-        <h2>Honest status: this is a content-complete scaffold, not a playable game</h2>
+        <h2>Honest status: it plays, and here's exactly what's been checked</h2>
         <p>
-          <strong>The game does not play yet.</strong> The installed application currently draws a
-          static placeholder splash scene, not the real world. There is no farm to plant on, no
-          town to build, and no minigames to click into — not because they are hidden, but because
-          the renderer that would draw them hasn't been written.
+          <strong>The game runs.</strong> Every module in the source tree is implemented — the
+          world renders, crops plant and harvest on real timers, buildings craft through the
+          Workshop, and the save file round-trips through <code>localStorage</code>. Loaded in a
+          browser it produces zero console errors and exposes real, mutating game state (coins,
+          diamonds, silo, barn, placed structures) through a debug hook, not a static readout.
         </p>
         <p>
-          What <em>is</em> real and finished: the entire content layer — every crop, animal,
-          building, recipe, good, level, and event — lives in a single validated data file and
-          passes an automated checker on every change. What remains is every other system:
-          production timers, the world renderer, input handling, and the UI wiring that would turn
-          that data into something you can play.
+          <code>npm test</code> runs a content validator plus eight gameplay-logic suites —
+          camera, core economy, logistics, crafting, township, research, dead-time systems, and
+          the social/co-op layer — for <strong>147 passing assertions across nine files, zero
+          failures</strong>. All 22 world structures are placed with zero overlaps; twenty of them
+          are locked at level 1 and still present in the world, derelict, and clickable.
         </p>
         <p>
-          Because the renderer is a stub, <strong>there are no gameplay screenshots on this page</strong> —
-          a picture of the placeholder splash would misrepresent what the project is. This section
-          will be replaced with real captures once Phase B implementation lands.
+          <strong>There are no gameplay screenshots on this page yet</strong> — not because
+          anything is missing, but because a dedicated capture pass hasn't landed. A picture of a
+          placeholder would misrepresent the project either way, so this section stays honest
+          until real captures of the real running game replace it. Two small design/balance
+          questions are also still open — see the repository's <code>HANDOFF.md</code> for the
+          exact numbers behind both.
         </p>
       </div>
     </div>
@@ -102,12 +106,12 @@
 <section class="alt-surface" id="features" aria-labelledby="features-title">
   <div class="wrap">
     <div class="section-header">
-      <span class="section-kicker">What it's designed to be</span>
-      <h2 class="section-title" id="features-title">Every system, documented and data-complete</h2>
+      <span class="section-kicker">What's implemented</span>
+      <h2 class="section-title" id="features-title">Every system, built and tested</h2>
       <p class="section-desc">
-        Each card below describes a designed system. The content behind it (numbers, names,
-        recipes) is real and validated; the code that runs it is a documented contract awaiting
-        its Phase B implementation — see the status note above.
+        Each card below describes a system that is implemented and exercised by
+        <code>npm test</code>'s gameplay-logic suites — not just data that's been validated for
+        shape. See the status note above for the exact test counts.
       </p>
     </div>
 
@@ -177,7 +181,9 @@
       <h2 class="section-title" id="modules-title">One module per system</h2>
       <p class="section-desc">
         No framework, no bundler, no build step for the game itself. Plain ES modules, DOM for
-        menus, canvas for the world. This is the real ownership map from the repository.
+        menus, canvas for the world. 37 modules in total (34 in <code>src/</code>, 3 under
+        <code>src/render/</code>), all implemented — this is a sample of the ownership map; see
+        the repository's <code>README.md</code> for the complete list.
       </p>
     </div>
 
@@ -210,7 +216,7 @@
 <section class="alt-surface">
   <div class="wrap">
     <div class="transparency">
-      <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>What's finished vs. what's a stub</h2>
+      <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>What's finished vs. what's still open</h2>
       <div class="transparency-grid">
         <div>
           <h3>Finished and validated</h3>
@@ -223,19 +229,20 @@
           <h3>Finished and validated</h3>
           <p>The Windows installer packaging (Squirrel.Windows, unsigned per this project's
           permanent no-signing policy), the application icon, and the vendored font set used on
-          this page and in the app.</p>
+          this page and in the app — all served from this repository, no CDN.</p>
         </div>
         <div>
-          <h3>Documented contracts, stub bodies</h3>
+          <h3>Finished and tested</h3>
           <p>Every other <code>src/</code> module — production timers, the renderer, input
-          handling, UI wiring, audio, tutorial — has final function signatures and doc comments,
-          but the implementation bodies are placeholders. Nothing runs the game loop yet.</p>
+          handling, UI wiring, audio, tutorial, and the full Township/social layer. All 37 modules
+          are implemented and exercised by <code>npm test</code>'s eight gameplay-logic suites,
+          147 passing assertions, 0 failures.</p>
         </div>
         <div>
-          <h3>Not started</h3>
-          <p>Phase B (full implementation) has not begun. See the repository's
-          <code>CLAUDE.md</code> and <code>HANDOFF.md</code> for the exact handoff state and
-          delivery sequence.</p>
+          <h3>Still open</h3>
+          <p>Gameplay screenshots and recordings — a dedicated capture pass hasn't landed yet —
+          plus two small design/balance questions in the Building Workshop. See the repository's
+          <code>HANDOFF.md</code> and <code>ROADMAP.md</code> for the exact, current list.</p>
         </div>
       </div>
     </div>
@@ -246,16 +253,17 @@
   <div class="wrap">
     <div class="section-header">
       <span class="section-kicker">Screenshots</span>
-      <h2 class="section-title" id="screens-title">No gameplay screenshots yet — on purpose</h2>
+      <h2 class="section-title" id="screens-title">No gameplay screenshots yet — a capture pass is next</h2>
     </div>
     <div class="screens-placeholder">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>
-      <h3>The renderer is a stub, so there is nothing honest to show</h3>
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-clock"></use></svg>
+      <h3>The game runs; this page just hasn't been given real captures yet</h3>
       <p>
-        The canvas currently draws a static placeholder splash, not the real farm or town.
-        Publishing a screenshot of that placeholder — or a mockup of what the game will look
-        like — would misrepresent the project's actual state. Real captures of a real, running
-        game will replace this panel once Phase B implementation lands.
+        The canvas renders the real farm and town — plant crops, place buildings through the
+        Workshop, click into any of the 22 world structures. What's missing here is a dedicated
+        capture pass through the built application, not the gameplay itself. A mockup or a
+        picture of an unrelated build would misrepresent the project just as badly as no picture
+        at all, so this panel stays honest until real captures replace it.
       </p>
     </div>
   </div>
@@ -267,8 +275,10 @@
       <span class="section-kicker">Get it</span>
       <h2 class="section-title" id="download-title">Download the installer</h2>
       <p class="section-desc">
-        This installs the current state of the project described above — a content-complete
-        scaffold with a placeholder splash screen, not a playable game.
+        This installs the real, playable state of the project described above. CI builds and
+        publishes a new release from every push; it is not a signed installer (see the note
+        below), and it does not run tests as a release gate — <code>npm test</code> is the
+        local gate, run before every push.
       </p>
     </div>
 
@@ -284,7 +294,7 @@
           Farm.Tycoon-Setup-0.1.0.exe · ~114 MB
         </span>
       </div>
-      <a class="btn btn-filled" href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases/download/v0.1.0-build3%2B06b0ec557d51/Farm.Tycoon-Setup-0.1.0.exe">
+      <a class="btn btn-filled" href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases/latest/download/Farm.Tycoon-Setup-0.1.0.exe">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-crate"></use></svg>
         Download Farm.Tycoon-Setup-0.1.0.exe
       </a>
@@ -315,8 +325,9 @@
       <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases">Releases</a>
       <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/issues">Issues</a>
     </div>
-    <p>Farm Tycoon is a content-complete scaffold, not a finished game. No dependencies, no
-    build step, no CDN assets — everything on this page is served from this repository.</p>
+    <p>Farm Tycoon is implemented and tested, not a finished commercial product. No
+    dependencies, no build step, no CDN assets — everything on this page is served from this
+    repository.</p>
   </div>
 </footer>
 

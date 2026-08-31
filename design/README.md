@@ -28,12 +28,16 @@ runtime is `index.html` + `src/`; this folder is what that runtime is being buil
 
 Recorded here so they are not rediscovered.
 
-- **`handoff/styles.css` names two fonts it does not ship.** It sets `--font-display: 'Baloo 2'`
-  and `--font-ui: 'Nunito'` with no `@font-face` and no font files. On a machine without them
-  installed the page silently falls back to `system-ui` — no error, no warning, every layout
-  intact, and the whole interface merely slightly wrong. The fonts must be vendored locally
-  (the project forbids CDN assets) and verified with `document.fonts.check` against the running
-  page, never by reading the CSS.
+- ~~**`handoff/styles.css` names two fonts it does not ship.**~~ **Fixed.** It set
+  `--font-display: 'Baloo 2'` and `--font-ui: 'Nunito'` with no `@font-face` and no font files,
+  which falls back to `system-ui` silently — no error, no warning, every layout intact, the whole
+  interface merely slightly wrong. Both are now vendored locally in `fonts/` by
+  `tools/vendor-fonts.mjs`: 27 faces, 947 KiB, weights and `unicode-range` preserved exactly.
+  Two things learned closing it, worth keeping: `document.fonts.check()` returned `true` for all
+  eight weights while **zero** faces were registered, so it is not a sufficient check on its own —
+  load a real `FontFace` and compare rendered metrics instead. And while verifying, `index.html`
+  turned out to have been loading Google Fonts over the network since the scaffold, against the
+  project's own no-CDN rule; that link is now gone.
 - **The `.dc.html` boards load Google Fonts over the network.** That is the design tool's
   preview wrapper, not the deliverable, and it is why the boards look correct while the handoff
   CSS alone would not. Do not copy that `<link>` into the game.

@@ -421,7 +421,6 @@ export const FARM = {
 };
 
 /** Achievements: condition is checked against lifetime stats counters in state.stats. */
-export const ACHIEVEEMENTS_DIAMOND_REWARD = 3;
 export const ACHIEVEMENTS = [
   { id: 'first_harvest',   name: 'Green Thumb',      desc: 'Harvest your first crop',            stat: 'cropsHarvested', target: 1,    diamonds: 1 },
   { id: 'harvest_100',     name: 'Field Hand',       desc: 'Harvest 100 crops',                  stat: 'cropsHarvested', target: 100,  diamonds: 3 },

@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farm Tycoon — a Hay Day + Township management game</title>
+<meta name="description" content="Farm Tycoon is a farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Currently a content-complete scaffold — not yet playable.">
+<meta property="og:title" content="Farm Tycoon">
+<meta property="og:description" content="A farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Content-complete scaffold, not yet playable — read the honest status before downloading.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#4c8f1c">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="top-bar">
+  <div class="wrap top-bar-inner">
+    <a class="brand" href="#top">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-wheat"></use></svg>
+      Farm Tycoon
+    </a>
+    <nav class="top-nav" aria-label="Section navigation">
+      <a href="#status">Status</a>
+      <a href="#features">Features</a>
+      <a href="#modules">Architecture</a>
+      <a href="#download">Download</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-pressed="false" aria-label="Toggle dark theme">
+      <span id="themeIcon" aria-hidden="true">🌙</span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" id="top">
+  <div class="wrap">
+    <span class="eyebrow">
+      <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-hammer"></use></svg>
+      Content-complete scaffold — not yet playable
+    </span>
+    <h1 class="hero-title">Hay Day's farm.<br>Township's town.<br>One game.</h1>
+    <p class="hero-sub">
+      Farm Tycoon combines a crop-and-animal production loop with a full town-building layer:
+      craft your buildings instead of buying them, and unlock a per-factory minigame for every
+      structure you place — fishing, mining, a merge board, and more.
+    </p>
+    <div class="hero-cta">
+      <a class="btn btn-filled" href="#download">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-crate"></use></svg>
+        Download for Windows
+      </a>
+      <a class="btn btn-outlined" href="https://github.com/Ding-Ding-Projects/Farm-tycoon" target="_blank" rel="noopener">
+        View source on GitHub
+      </a>
+    </div>
+    <p class="hero-note">Windows only, unsigned installer, and read the status below before you install it — the game does not play yet.</p>
+  </div>
+</section>
+
+<section id="status">
+  <div class="wrap">
+    <div class="status-card" role="note">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>
+      <div>
+        <h2>Honest status: this is a content-complete scaffold, not a playable game</h2>
+        <p>
+          <strong>The game does not play yet.</strong> The installed application currently draws a
+          static placeholder splash scene, not the real world. There is no farm to plant on, no
+          town to build, and no minigames to click into — not because they are hidden, but because
+          the renderer that would draw them hasn't been written.
+        </p>
+        <p>
+          What <em>is</em> real and finished: the entire content layer — every crop, animal,
+          building, recipe, good, level, and event — lives in a single validated data file and
+          passes an automated checker on every change. What remains is every other system:
+          production timers, the world renderer, input handling, and the UI wiring that would turn
+          that data into something you can play.
+        </p>
+        <p>
+          Because the renderer is a stub, <strong>there are no gameplay screenshots on this page</strong> —
+          a picture of the placeholder splash would misrepresent what the project is. This section
+          will be replaced with real captures once Phase B implementation lands.
+        </p>
+      </div>
+    </div>
+
+    <div class="stat-strip">
+      <div class="stat-tile"><span class="num">22</span><span class="label">Crops</span></div>
+      <div class="stat-tile"><span class="num">12</span><span class="label">Animals</span></div>
+      <div class="stat-tile"><span class="num">26</span><span class="label">Buildings</span></div>
+      <div class="stat-tile"><span class="num">128</span><span class="label">Recipes</span></div>
+      <div class="stat-tile"><span class="num">192</span><span class="label">Goods</span></div>
+      <div class="stat-tile"><span class="num">95</span><span class="label">Levels</span></div>
+      <div class="stat-tile"><span class="num">39</span><span class="label">Achievements</span></div>
+      <div class="stat-tile"><span class="num">23</span><span class="label">Materials</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt-surface" id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="section-header">
+      <span class="section-kicker">What it's designed to be</span>
+      <h2 class="section-title" id="features-title">Every system, documented and data-complete</h2>
+      <p class="section-desc">
+        Each card below describes a designed system. The content behind it (numbers, names,
+        recipes) is real and validated; the code that runs it is a documented contract awaiting
+        its Phase B implementation — see the status note above.
+      </p>
+    </div>
+
+    <div class="grid">
+      <article class="card">
+        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-wheat"></use></svg></div>
+        <h3>The farm loop</h3>
+        <p>Plant crops, raise animals in pens, and harvest on absolute wall-clock timers so
+        progress resolves correctly even after the game has been closed for hours.</p>
+        <span class="stat">22 crops · 12 animals</span>
+      </article>
+
+      <article class="card">
+        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-hammer"></use></svg></div>
+        <h3>Buildings are crafted, not bought</h3>
+        <p>Every production building is unlocked through the Building Workshop: gather raw
+        construction materials, craft them into components, assemble a kit, then the finished
+        factory goes up. This construction chain is its own small economy.</p>
+        <span class="stat">26 buildings · 23 materials</span>
+      </article>
+
+      <article class="card">
+        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-fish"></use></svg></div>
+        <h3>A minigame per factory</h3>
+        <p>Fishing, mining, the merge board, expeditions, and foraging are each tied to a
+        specific structure and produce an effect unique to it — bonus yield, rare materials,
+        faster queues. Always an optional bonus layer, never a gate: timers complete on their
+        own whether or not you ever play the minigame, and offline progress is never
+        penalized for skipping it.</p>
+        <span class="stat">3 merge chains</span>
+      </article>
+
+      <article class="card">
+        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-train"></use></svg></div>
+        <h3>The Township layer</h3>
+        <p>A town of houses and community buildings tracks population against a cap; trains and
+        an airport move finished goods out and construction materials back in; a zoo, a market,
+        and a set of islands round out the second half of the game.</p>
+        <span class="stat">16 houses · 10 community · 14 zoo enclosures · 8 islands</span>
+      </article>
+
+      <article class="card">
+        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-clock"></use></svg></div>
+        <h3>Dead-time systems</h3>
+        <p>Weekend events, mini-events, an annual Farm Fair, and seasonal holidays give the
+        idle time between check-ins something to look forward to, alongside a daily wheel,
+        achievements, and permanent research.</p>
+        <span class="stat">10 weekend events · 6 mini-events · 25 fair tasks · 6 holidays</span>
+      </article>
+
+      <article class="card">
+        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-users"></use></svg></div>
+        <h3>Simulated neighbours</h3>
+        <p>A request board and co-op systems are designed against simulated neighbour farms
+        rather than a live multiplayer backend, so the social loop works the same offline as
+        it will online.</p>
+        <span class="stat">39 achievements</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="modules" aria-labelledby="modules-title">
+  <div class="wrap">
+    <div class="section-header">
+      <span class="section-kicker">Under the hood</span>
+      <h2 class="section-title" id="modules-title">One module per system</h2>
+      <p class="section-desc">
+        No framework, no bundler, no build step for the game itself. Plain ES modules, DOM for
+        menus, canvas for the world. This is the real ownership map from the repository.
+      </p>
+    </div>
+
+    <div class="table-scroll scroll-x">
+      <table class="modules">
+        <caption>Source module map</caption>
+        <thead>
+          <tr><th scope="col">Module</th><th scope="col">Owns</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>src/state.js</code></td><td>The state object; save/load/migrate via localStorage; export/import</td></tr>
+          <tr><td><code>src/data.js</code></td><td>All content: crops, animals, goods, buildings/recipes, levels, tuning</td></tr>
+          <tr><td><code>src/economy.js</code></td><td>Coins, XP/levels, unlock checks, sell values, diamond skips</td></tr>
+          <tr><td><code>src/farm.js</code></td><td>Grid, placement/footprints, expansion zones</td></tr>
+          <tr><td><code>src/production.js</code></td><td>Every timer: crops, animal pens, building queues, offline catch-up</td></tr>
+          <tr><td><code>src/orders.js</code></td><td>Order board and truck</td></tr>
+          <tr><td><code>src/merge.js</code></td><td>Merge Meadow: merge-board minigame</td></tr>
+          <tr><td><code>src/town.js</code></td><td>Town: houses, population/cap, milestones</td></tr>
+          <tr><td><code>src/trains.js</code></td><td>Trains and airport: goods out, construction materials in</td></tr>
+          <tr><td><code>src/zoo.js</code></td><td>Zoo enclosures, souvenirs, visitor income, zoo orders</td></tr>
+          <tr><td><code>src/render/renderer.js</code></td><td>Camera, iso tile math, frame drawing, DPR scaling</td></tr>
+          <tr><td><code>src/render/sprites.js</code></td><td>All vector art draw functions — no image assets, ever</td></tr>
+          <tr><td><code>src/ui.js</code></td><td>All DOM: HUD, dock, sheet panels, radial menu, toasts, modals</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="alt-surface">
+  <div class="wrap">
+    <div class="transparency">
+      <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>What's finished vs. what's a stub</h2>
+      <div class="transparency-grid">
+        <div>
+          <h3>Finished and validated</h3>
+          <p>All game content in <code>src/data.js</code>: every crop, animal, building, recipe,
+          good, level, and event. Verified by an automated checker (<code>npm test</code>) that
+          enforces roughly thirty rule families and was deliberately broken and watched fail before
+          being trusted.</p>
+        </div>
+        <div>
+          <h3>Finished and validated</h3>
+          <p>The Windows installer packaging (Squirrel.Windows, unsigned per this project's
+          permanent no-signing policy), the application icon, and the vendored font set used on
+          this page and in the app.</p>
+        </div>
+        <div>
+          <h3>Documented contracts, stub bodies</h3>
+          <p>Every other <code>src/</code> module — production timers, the renderer, input
+          handling, UI wiring, audio, tutorial — has final function signatures and doc comments,
+          but the implementation bodies are placeholders. Nothing runs the game loop yet.</p>
+        </div>
+        <div>
+          <h3>Not started</h3>
+          <p>Phase B (full implementation) has not begun. See the repository's
+          <code>CLAUDE.md</code> and <code>HANDOFF.md</code> for the exact handoff state and
+          delivery sequence.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="screens-title">
+  <div class="wrap">
+    <div class="section-header">
+      <span class="section-kicker">Screenshots</span>
+      <h2 class="section-title" id="screens-title">No gameplay screenshots yet — on purpose</h2>
+    </div>
+    <div class="screens-placeholder">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>
+      <h3>The renderer is a stub, so there is nothing honest to show</h3>
+      <p>
+        The canvas currently draws a static placeholder splash, not the real farm or town.
+        Publishing a screenshot of that placeholder — or a mockup of what the game will look
+        like — would misrepresent the project's actual state. Real captures of a real, running
+        game will replace this panel once Phase B implementation lands.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="alt-surface" id="download" aria-labelledby="download-title">
+  <div class="wrap">
+    <div class="section-header">
+      <span class="section-kicker">Get it</span>
+      <h2 class="section-title" id="download-title">Download the installer</h2>
+      <p class="section-desc">
+        This installs the current state of the project described above — a content-complete
+        scaffold with a placeholder splash screen, not a playable game.
+      </p>
+    </div>
+
+    <div class="download-card">
+      <h2>Farm Tycoon v0.1.0 for Windows</h2>
+      <div class="download-meta">
+        <span class="chip">
+          <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>
+          Windows 10/11 · x64
+        </span>
+        <span class="chip">
+          <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-crate"></use></svg>
+          Farm.Tycoon-Setup-0.1.0.exe · ~114 MB
+        </span>
+      </div>
+      <a class="btn btn-filled" href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases/download/v0.1.0-build3%2B06b0ec557d51/Farm.Tycoon-Setup-0.1.0.exe">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-crate"></use></svg>
+        Download Farm.Tycoon-Setup-0.1.0.exe
+      </a>
+      <div class="warn-box" role="note">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>
+        <div>
+          <strong>This installer is unsigned.</strong> Code signing is not used on this project.
+          Windows will show an "unknown publisher" warning, and SmartScreen may warn before you
+          run it — that is expected, not a sign that the file is broken.
+        </div>
+      </div>
+      <p class="section-desc">
+        See every published release on
+        <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases">GitHub Releases</a>.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-links">
+      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon">Source</a>
+      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/blob/main/PLAN.md">Game design (PLAN.md)</a>
+      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/blob/main/HANDOFF.md">Handoff notes</a>
+      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases">Releases</a>
+      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/issues">Issues</a>
+    </div>
+    <p>Farm Tycoon is a content-complete scaffold, not a finished game. No dependencies, no
+    build step, no CDN assets — everything on this page is served from this repository.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById('themeToggle');
+  var icon = document.getElementById('themeIcon');
+  var KEY = 'farm-tycoon-theme';
+
+  function systemPrefersDark() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function apply(mode) {
+    if (mode === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+      icon.textContent = '☀️';
+      btn.setAttribute('aria-pressed', 'true');
+    } else if (mode === 'light') {
+      root.setAttribute('data-theme', 'light');
+      icon.textContent = '🌙';
+      btn.setAttribute('aria-pressed', 'false');
+    } else {
+      root.removeAttribute('data-theme');
+      icon.textContent = systemPrefersDark() ? '☀️' : '🌙';
+      btn.setAttribute('aria-pressed', String(systemPrefersDark()));
+    }
+  }
+
+  var stored = null;
+  try { stored = window.localStorage.getItem(KEY); } catch (e) { /* private mode, no storage */ }
+  apply(stored);
+
+  btn.addEventListener('click', function () {
+    var current = root.getAttribute('data-theme') || (systemPrefersDark() ? 'dark' : 'light');
+    var next = current === 'dark' ? 'light' : 'dark';
+    apply(next);
+    try { window.localStorage.setItem(KEY, next); } catch (e) { /* ignore */ }
+  });
+})();
+</script>
+</body>
+</html>

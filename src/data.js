@@ -3,6 +3,23 @@
 // Times are in seconds (wall-clock). Prices in coins. All ids are lowercase snake_case.
 
 /** Crop definitions. Harvest returns 2x the planted seed (Hay Day rule). */
+/**
+ * Balance note, recorded so it is not re-derived wrongly (it was, three times).
+ *
+ * Crop XP looks inverted: wheat yields 15 xp/h per field against about 1 for mint, so late
+ * crops appear pointless. That is an artefact of measuring instantaneous rate. A crop only
+ * yields when someone is present to harvest it, so the real cycle is ceil(growTime / visit)
+ * * visit. Model an actual check-in cadence and it reverses:
+ *
+ *   xp per hour per field   wheat   strawberry   grapes   mint
+ *   tapping every 2 min     15.15      2.48        1.00    1.14
+ *   checking in every 4 h    0.25      1.25        1.00    1.14
+ *   checking in every 12 h   0.08      0.42        1.00    1.14
+ *
+ * Wheat only wins for a player tapping thirty times an hour. At any cadence a person keeps,
+ * late crops beat it by 4-14x. So the curve below is correct as it stands, and raising late
+ * crop XP would inflate the economy to fix something that does not happen.
+ */
 export const CROPS = {
   wheat:      { name: 'Wheat',       unlockLevel: 1,  growTime: 120,   seedCost: 1,  sellPrice: 4,   xp: 1 },
   corn:       { name: 'Corn',        unlockLevel: 2,  growTime: 300,   seedCost: 2,  sellPrice: 7,   xp: 1 },
@@ -169,6 +186,37 @@ export const GOODS = {
   // producer is a real gap, not a special case.
   pickaxe:  { name: 'Pickaxe',  sellPrice: 40, source: 'loot' },
   dynamite: { name: 'Dynamite', sellPrice: 90, source: 'loot' },
+  // island and deep-water products
+  peach_melba:      { name: 'Peach Melba',        sellPrice: 900 },
+  lime_cooler:      { name: 'Lime Cooler',        sellPrice: 1050 },
+  coconut_cream:    { name: 'Coconut Cream',      sellPrice: 1240 },
+  mango_sorbet:     { name: 'Mango Sorbet',       sellPrice: 1480 },
+  aloe_tonic:       { name: 'Aloe Tonic',         sellPrice: 1760 },
+  smoked_sturgeon:  { name: 'Smoked Sturgeon',    sellPrice: 2100 },
+  caviar_tin:       { name: 'Tin of Caviar',      sellPrice: 2650 },
+  // island exotics (Township port goods)
+  peach:           { name: 'Peach',            sellPrice: 150 },
+  watermelon_ex:   { name: 'Island Melon',     sellPrice: 190 },
+  plum:            { name: 'Plum',             sellPrice: 230 },
+  key_lime:        { name: 'Key Lime',         sellPrice: 270 },
+  coconut:         { name: 'Coconut',          sellPrice: 320 },
+  avocado:         { name: 'Avocado',          sellPrice: 380 },
+  mango:           { name: 'Mango',            sellPrice: 450 },
+  aloe:            { name: 'Aloe',             sellPrice: 520 },
+  // zoo souvenirs, second tier
+  otter_charm:     { name: 'Otter Charm',        sellPrice: 600 },
+  toucan_mask:     { name: 'Toucan Mask',        sellPrice: 680 },
+  koala_plush:     { name: 'Koala Plush',        sellPrice: 770 },
+  tiger_banner:    { name: 'Tiger Banner',       sellPrice: 870 },
+  polar_globe:     { name: 'Polar Snow Globe',   sellPrice: 980 },
+  rhino_carving:   { name: 'Rhino Carving',      sellPrice: 1100 },
+  // deeper-water fish
+  fish_sturgeon:   { name: 'Lake Sturgeon',    sellPrice: 210 },
+  fish_zander:     { name: 'Zander',           sellPrice: 250 },
+  fish_huchen:     { name: 'Huchen',           sellPrice: 300 },
+  fish_arctic:     { name: 'Arctic Charr',     sellPrice: 360 },
+  fish_barb:       { name: 'Giant Barb',       sellPrice: 430 },
+  fish_moonfish:   { name: 'Moonfish',         sellPrice: 520 },
   // oil_press
   olive_oil:        { name: 'Olive Oil',            sellPrice: 420 },
   herb_oil:         { name: 'Herb Oil',             sellPrice: 560 },
@@ -381,6 +429,11 @@ export const BUILDINGS = {
       { id: 'pina_smoothie', inputs: { pineapple: 2, milk: 1 },           time: 6300, xp: 15 },
       { id: 'choco_banana',  inputs: { banana: 2, cocoa: 1, sugar: 1 },   time: 7200, xp: 16 },
       { id: 'vanilla_ice',   inputs: { vanilla: 1, cream: 2, sugar: 2 },  time: 9000, xp: 18 },
+      { id: 'peach_melba',    inputs: { peach: 3, cream: 1 },                         time: 5400,  xp: 46 },
+      { id: 'lime_cooler',    inputs: { key_lime: 2, watermelon_ex: 2 },              time: 6300,  xp: 54 },
+      { id: 'coconut_cream',  inputs: { coconut: 3, milk: 2 },                        time: 7200,  xp: 62 },
+      { id: 'mango_sorbet',   inputs: { mango: 3, plum: 2 },                          time: 8100,  xp: 70 },
+      { id: 'aloe_tonic',     inputs: { aloe: 2, avocado: 2, honey: 1 },              time: 9000,  xp: 80 },
     ],
   },
   smelter: {
@@ -453,6 +506,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'pickles',        inputs: { bell_pepper: 3, watermelon: 1 },              time: 9000,  xp: 70 },
       { id: 'canned_fish',    inputs: { fish_trout: 2, olive_oil: 1 },                time: 10800, xp: 84 },
+      { id: 'smoked_sturgeon', inputs: { fish_sturgeon: 2, mint: 1 },                  time: 12600, xp: 96 },
+      { id: 'caviar_tin',     inputs: { fish_sturgeon: 1, fish_barb: 1 },             time: 16200, xp: 120 },
       { id: 'dried_fruit',    inputs: { grapes: 2, strawberry: 2 },                   time: 8100,  xp: 66 },
     ],
   },
@@ -579,7 +634,7 @@ export const EFFECT_KEYS = [
 export const FISHING = {
   unlockLevel: 12,
   castTime: 20, // seconds until the catch window
-  species: ['fish_perch', 'fish_trout', 'fish_carp', 'fish_bass', 'fish_pike', 'fish_catfish', 'fish_salmon', 'fish_golden'],
+  species: ['fish_perch', 'fish_trout', 'fish_carp', 'fish_bass', 'fish_pike', 'fish_catfish', 'fish_salmon', 'fish_golden', 'fish_sturgeon', 'fish_zander', 'fish_huchen', 'fish_arctic', 'fish_barb', 'fish_moonfish'],
   rarityWeights: { common: 60, uncommon: 30, rare: 10 },
   chestChance: 0.08, // treasure chest instead of a fish
   chestLoot: [
@@ -675,6 +730,36 @@ export const DECORATIONS = {
   pumpkin_pile:   { name: 'Pumpkin Pile',    cost: 450,  size: [1, 1], holiday: 'harvest_fest' },
   cherry_blossom: { name: 'Cherry Blossom',  cost: 800,  size: [1, 1], holiday: 'spring_bloom' },
   beach_chair:    { name: 'Beach Chair',     cost: 350,  size: [1, 1], holiday: 'summer_splash' },
+  // --- expansion decorations (levels 51+) ---
+  // coin-bought, late tier
+  stone_arch:         { name: 'Stone Arch',         cost: 1800,  size: [2, 1] },
+  clock_tower:        { name: 'Clock Tower',        cost: 4200,  size: [2, 2] },
+  duck_pond_deco:     { name: 'Ornamental Pond',    cost: 2600,  size: [2, 2] },
+  flower_arch:        { name: 'Flower Arch',        cost: 1500,  size: [1, 1] },
+  hedge_maze:         { name: 'Hedge Maze',         cost: 6800,  size: [3, 3] },
+  stone_bridge:       { name: 'Stone Bridge',       cost: 3100,  size: [2, 1] },
+  wishing_well:       { name: 'Wishing Well',       cost: 2200,  size: [1, 1] },
+  sun_dial:           { name: 'Sundial',            cost: 1700,  size: [1, 1] },
+  orchard_row:        { name: 'Orchard Row',        cost: 3600,  size: [3, 1] },
+  lamp_post:          { name: 'Lamp Post',          cost: 900,   size: [1, 1] },
+  picnic_set:         { name: 'Picnic Set',         cost: 1300,  size: [2, 1] },
+  weather_vane:       { name: 'Weather Vane',       cost: 2000,  size: [1, 1] },
+  // voucher-bought
+  crystal_fountain:   { name: 'Crystal Fountain',   voucherCost: 18, size: [2, 2] },
+  marble_arch:        { name: 'Marble Arch',        voucherCost: 24, size: [2, 1] },
+  koi_pond:           { name: 'Koi Pond',           voucherCost: 30, size: [2, 2] },
+  glass_house:        { name: 'Glass House',        voucherCost: 38, size: [2, 2] },
+  // event rewards
+  harvest_wagon:      { name: 'Harvest Wagon',      eventOnly: true, size: [2, 1] },
+  ribbon_pole:        { name: 'Ribbon Pole',        eventOnly: true, size: [1, 1] },
+  fair_carousel:      { name: 'Fair Carousel',      eventOnly: true, size: [3, 3] },
+  banner_wall:        { name: 'Banner Wall',        eventOnly: true, size: [2, 1] },
+  // earned only from the new subsystems - each needs its own flag, so the validator
+  // learns three new ways a decoration can be legitimately unbuyable
+  coop_flagpole:      { name: 'Co-op Flagpole',     coopOnly: true,   size: [1, 1] },
+  regatta_buoy:       { name: 'Regatta Buoy',       regattaOnly: true, size: [1, 1] },
+  relic_plinth:       { name: 'Relic Plinth',       museumOnly: true, size: [1, 1] },
+  fossil_display:     { name: 'Fossil Display',     museumOnly: true, size: [2, 1] },
 };
 
 /** Level curve + per-level unlocks (levels 1–40, an unlock at every level). */
@@ -745,30 +830,30 @@ export const LEVELS = {
     // Levels 51-95. Every level carries at least one unlock: the validator refuses a
     // dead level, which is what keeps the late game from becoming a silent XP corridor.
     51: ['rice'],
-    52: ['oil_press'],
+    52: ['oil_press', 'isle_frutus'],
     53: ['lamb'],
     54: ['expansion_10'],
     55: ['olive'],
-    56: ['tea_house'],
+    56: ['tea_house', 'zoo_otter'],
     57: ['silo_titan_upgrade'],
-    58: ['lavender', 'quail'],
+    58: ['lavender', 'quail', 'isle_olivia'],
     59: ['expansion_11'],
     60: ['sushi_bar'],
     61: ['barn_titan_upgrade'],
-    62: ['tea_leaf'],
+    62: ['tea_leaf', 'zoo_toucan'],
     63: ['expansion_12'],
     64: ['perfumery', 'alpaca'],
     65: ['golden_meadow'],
-    66: ['bell_pepper'],
+    66: ['bell_pepper', 'isle_fishers'],
     67: ['expansion_13'],
-    68: ['salad_bar'],
+    68: ['salad_bar', 'zoo_koala'],
     69: ['master_orders_ii'],
     70: ['grand_fair'],
     71: ['peony'],
     72: ['pasta_kitchen', 'otter'],
     73: ['expansion_14'],
-    74: ['harvest_festival'],
-    75: ['deep_silo'],
+    74: ['harvest_festival', 'isle_bonita'],
+    75: ['deep_silo', 'zoo_tiger'],
     76: ['fondue_pot'],
     77: ['watermelon'],
     78: ['expansion_15'],
@@ -776,7 +861,7 @@ export const LEVELS = {
     80: ['preservation_station'],
     81: ['prize_pavilion'],
     82: ['turkey'],
-    83: ['master_grower'],
+    83: ['master_grower', 'zoo_polar'],
     84: ['mint'],
     85: ['jeweler'],
     86: ['gilded_orders'],
@@ -784,7 +869,7 @@ export const LEVELS = {
     88: ['grand_market'],
     89: ['master_crafter'],
     90: ['yogurt_maker'],
-    91: ['legend_trucks'],
+    91: ['legend_trucks', 'zoo_rhino'],
     92: ['legend_boats'],
     93: ['legend_trains'],
     94: ['master_farmer'],
@@ -894,6 +979,12 @@ export const TOWN = {
     terrace_row: { name: 'Terrace Row',   cost: 40000, materials: { brick: 10, slab: 8, hammer: 4 }, population: 48, size: [2, 2], tier: 4 },
     loft_block:  { name: 'Loft Block',    cost: 60000, materials: { glass: 12, slab: 10, paint: 6 }, population: 62, size: [2, 2], tier: 5 },
     mansion:     { name: 'Mansion',       cost: 90000, materials: { brick: 14, glass: 10, hammer: 6, paint: 6 }, population: 80, size: [2, 2], tier: 5 },
+    apartment_block:  { name: 'Apartment Block',  cost: 130000, materials: { brick: 18, glass: 14, cement: 8 },    population: 100, size: [2, 2], tier: 6 },
+    courtyard_row:    { name: 'Courtyard Row',    cost: 180000, materials: { slab: 20, paint: 14, tile: 10 },      population: 125, size: [2, 2], tier: 6 },
+    hillside_villas:  { name: 'Hillside Villas',  cost: 250000, materials: { brick: 24, glass: 18, cement: 12 },   population: 160, size: [2, 2], tier: 6 },
+    riverside_lofts:  { name: 'Riverside Lofts',  cost: 340000, materials: { glass: 28, slab: 22, tile: 14 },      population: 205, size: [2, 2], tier: 7 },
+    clocktower_flats: { name: 'Clocktower Flats', cost: 460000, materials: { brick: 32, hammer: 20, cement: 16 },  population: 260, size: [2, 2], tier: 7 },
+    grand_estate:     { name: 'Grand Estate',     cost: 620000, materials: { brick: 40, glass: 30, tile: 20 },     population: 320, size: [2, 2], tier: 7 },
   },
   communityBuildings: {
     town_hall: { name: 'Town Hall',     cost: 5000,   materials: { brick: 4, slab: 4 },              capacity: 60,  size: [2, 2], tier: 1 },
@@ -902,6 +993,10 @@ export const TOWN = {
     cinema:    { name: 'Cinema',        cost: 38000,  materials: { brick: 10, glass: 8, hammer: 4 }, capacity: 160, size: [2, 2], tier: 4 },
     pavilion:  { name: 'Park Pavilion', cost: 60000,  materials: { slab: 12, paint: 8, nails: 6 },   capacity: 210, size: [2, 2], tier: 4 },
     museum:    { name: 'Museum',        cost: 95000,  materials: { brick: 16, glass: 12, paint: 8 }, capacity: 280, size: [2, 2], tier: 5 },
+    library:         { name: 'Library',           cost: 150000, materials: { brick: 20, glass: 14 },     capacity: 350, size: [2, 2], tier: 6 },
+    sports_hall:     { name: 'Sports Hall',       cost: 220000, materials: { slab: 26, cement: 12 },     capacity: 460, size: [2, 2], tier: 6 },
+    observatory:     { name: 'Observatory',       cost: 320000, materials: { glass: 30, hammer: 18 },    capacity: 620, size: [2, 2], tier: 7 },
+    botanic_garden:  { name: 'Botanical Garden',  cost: 450000, materials: { slab: 34, paint: 24 },      capacity: 900, size: [2, 2], tier: 7 },
   },
   basePopulationCap: 30,
   /** Milestones by total population; each pays once and unlocks the next house/community tier. */
@@ -911,6 +1006,10 @@ export const TOWN = {
     { population: 140, rewards: { coins: 15000, diamonds: 5, materials: { glass: 6, paint: 4 } }, unlocksTier: 4 },
     { population: 260, rewards: { coins: 40000, diamonds: 8, materials: { hammer: 6, nails: 6 } }, unlocksTier: 5 },
     { population: 400, rewards: { coins: 100000, diamonds: 15 }, unlocksTier: 5 },
+    { population: 600,  rewards: { coins: 90000,  diamonds: 12, materials: { cement: 8, tile: 6 } },   unlocksTier: 6 },
+    { population: 900,  rewards: { coins: 150000, diamonds: 16, materials: { glass: 12, brick: 12 } }, unlocksTier: 6 },
+    { population: 1400, rewards: { coins: 260000, diamonds: 22, materials: { cement: 14, tile: 12 } }, unlocksTier: 7 },
+    { population: 2000, rewards: { coins: 420000, diamonds: 30, materials: { brick: 20, glass: 18 } }, unlocksTier: 7 },
   ],
 };
 
@@ -958,6 +1057,12 @@ export const ZOO = {
     zoo_panda:    { name: 'Panda Grove',        cost: 60000, materials: { slab: 8, paint: 5 },   feed: { sugarcane: 12 },        produceTime: 14400, product: 'panda_souvenir',  unlockLevel: 46 },
     zoo_giraffe:  { name: 'Giraffe Savanna',    cost: 80000, materials: { brick: 10, glass: 6 }, feed: { carrot: 15 },           produceTime: 18000, product: 'giraffe_scarf',   unlockLevel: 48 },
     zoo_elephant: { name: 'Elephant Meadow',    cost: 110000, materials: { brick: 12, slab: 10 }, feed: { pumpkin: 6 },          produceTime: 21600, product: 'elephant_statue', unlockLevel: 50 },
+    zoo_otter:     { name: 'Otter Pond',        cost: 140000, materials: { glass: 14, slab: 12 },    feed: { fish_perch: 6 },      produceTime: 25200, product: 'otter_charm',   unlockLevel: 56 },
+    zoo_toucan:    { name: 'Toucan Aviary',     cost: 175000, materials: { brick: 15, glass: 12 },   feed: { banana: 8 },          produceTime: 27000, product: 'toucan_mask',   unlockLevel: 62 },
+    zoo_koala:     { name: 'Koala Grove',       cost: 215000, materials: { slab: 16, paint: 12 },    feed: { tea_leaf: 6 },        produceTime: 28800, product: 'koala_plush',   unlockLevel: 68 },
+    zoo_tiger:     { name: 'Tiger Ridge',       cost: 265000, materials: { brick: 18, hammer: 12 },  feed: { lamb_chop: 5 },       produceTime: 32400, product: 'tiger_banner',  unlockLevel: 75 },
+    zoo_polar:     { name: 'Polar Shore',       cost: 325000, materials: { glass: 20, cement: 10 },  feed: { fish_salmon: 4 },     produceTime: 36000, product: 'polar_globe',   unlockLevel: 83 },
+    zoo_rhino:     { name: 'Rhino Plain',       cost: 400000, materials: { brick: 24, slab: 20 },    feed: { watermelon: 6 },      produceTime: 39600, product: 'rhino_carving', unlockLevel: 91 },
   },
 };
 
@@ -972,6 +1077,12 @@ export const ISLANDS = {
     isle_coral:   { name: 'Coral Cove',   tripTime: 7200,  cargo: { pineapple: [3, 5] }, unlockLevel: 43 },
     isle_lagoon:  { name: 'Blue Lagoon',  tripTime: 10800, cargo: { cocoa: [2, 5] },     unlockLevel: 45 },
     isle_volcano: { name: 'Volcano Key',  tripTime: 14400, cargo: { vanilla: [2, 4] },   unlockLevel: 47 },
+    // Township's real port islands. Each carries two goods rather than one, so a voyage is
+    // worth the trip time at these levels.
+    isle_frutus:   { name: 'Frutus Isle',       tripTime: 18000, cargo: { peach: [3, 6], plum: [2, 4] },              unlockLevel: 52 },
+    isle_olivia:   { name: 'Olivia Isle',       tripTime: 25200, cargo: { key_lime: [2, 5], watermelon_ex: [2, 4] },  unlockLevel: 58 },
+    isle_fishers:  { name: 'Fisherman Isle',  tripTime: 32400, cargo: { coconut: [2, 4], avocado: [2, 3] },         unlockLevel: 66 },
+    isle_bonita:   { name: 'Bonita Isle',       tripTime: 39600, cargo: { mango: [2, 4], aloe: [1, 3] },              unlockLevel: 74 },
   },
 };
 

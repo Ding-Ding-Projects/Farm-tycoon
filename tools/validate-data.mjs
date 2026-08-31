@@ -260,7 +260,14 @@ for (const a of d.ACHIEVEMENTS) {
 
 // Decorations & pets sanity.
 for (const [id, dec] of Object.entries(d.DECORATIONS)) {
-  if (!dec.cost && !dec.voucherCost && !dec.eventOnly) errors.push(`decoration ${id}: no cost and not eventOnly`);
+  // A decoration must have exactly one legitimate way to be obtained. The earn-only flags are
+  // a closed list rather than "any truthy flag", so a typo like `coopOnly2: true` is caught
+  // instead of silently making the decoration unobtainable by every route.
+  const EARN_FLAGS = ['eventOnly', 'coopOnly', 'regattaOnly', 'museumOnly'];
+  const earned = EARN_FLAGS.filter((f) => dec[f] === true);
+  const ways = (dec.cost ? 1 : 0) + (dec.voucherCost ? 1 : 0) + earned.length;
+  if (ways === 0) errors.push(`decoration ${id}: no cost, no voucher cost and no earn flag - unobtainable`);
+  if (ways > 1) errors.push(`decoration ${id}: ${ways} ways to obtain it (${[dec.cost && 'cost', dec.voucherCost && 'voucherCost', ...earned].filter(Boolean).join(', ')}) - pick one`);
   if (dec.holiday && !d.EVENTS.holidays.some((hd) => hd.id === dec.holiday)) errors.push(`decoration ${id}: unknown holiday '${dec.holiday}'`);
 }
 

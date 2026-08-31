@@ -1,0 +1,25 @@
+# Line endings.
+#
+# Shell scripts and CI workflows MUST be LF. This is not a style preference: on a Windows
+# checkout these files get CRLF, and bash then reads a line continuation as backslash-CR
+# rather than backslash-newline. The backslash escapes the carriage return, the command breaks
+# apart, and the arguments after it are passed as garbage.
+#
+# That exact failure took the first CI run of this repository red: a `git commit \` continuation
+# became `git commit` followed by a literal `n`, and git answered
+# "error: pathspec 'n' did not match any file(s) known to git". The build, the packaging and the
+# release notes had all succeeded; only the last step broke, and it skipped the publish.
+*.sh            text eol=lf
+*.bash          text eol=lf
+.github/**/*.yml  text eol=lf
+.github/**/*.yaml text eol=lf
+
+# Fonts and icons are binary. Never let Git rewrite bytes inside them — a "text" font file is
+# a corrupt font file, and it fails silently as a fallback rather than as an error.
+*.woff2  binary
+*.woff   binary
+*.ico    binary
+*.png    binary
+*.jpg    binary
+*.exe    binary
+*.nupkg  binary

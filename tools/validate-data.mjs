@@ -219,11 +219,25 @@ if (d.STORAGE.silo.materials.some((m) => d.STORAGE.barn.materials.includes(m)))
 if (!(d.MARKET.slots > 0) || !(d.MARKET.priceMultiplier > 1)) errors.push('MARKET tuning invalid');
 if (!(d.TRAINS.wagons[0] <= d.TRAINS.wagons[1])) errors.push('TRAINS wagons range invalid');
 
+// Nothing may unlock above maxLevel. Without this, raising content past the cap ships
+// items no player can ever reach and every other check stays green - which is exactly what
+// happened when crops were added at level 84 while maxLevel was still 50.
+for (const [label, table] of [['crop', d.CROPS], ['animal', d.ANIMALS], ['building', d.BUILDINGS],
+                              ['zoo', d.ZOO.enclosures], ['island', d.ISLANDS.destinations]])
+  for (const [id, v] of Object.entries(table))
+    if (v.unlockLevel > d.LEVELS.maxLevel)
+      errors.push(`${label} '${id}' unlocks at ${v.unlockLevel}, above maxLevel ${d.LEVELS.maxLevel}`);
+
 // LEVELS.unlocks ids resolve to known content or feature flags.
 const features = new Set([
   'field', 'orders_board', 'truck', 'boat', 'fishing', 'mine', 'pets', 'merge_meadow',
   'silo_mega_upgrade', 'barn_mega_upgrade', 'golden_fields', 'master_orders', 'golden_windmill',
   'market', 'town', 'trains', 'airport', 'zoo', 'islands', 'town_mega_milestone',
+  // late game (levels 51-95)
+  'silo_titan_upgrade', 'barn_titan_upgrade', 'deep_silo', 'golden_barn', 'golden_meadow',
+  'master_orders_ii', 'gilded_orders', 'grand_fair', 'harvest_festival', 'prize_pavilion',
+  'grand_market', 'master_grower', 'master_rancher', 'master_crafter', 'master_farmer',
+  'legend_trucks', 'legend_boats', 'legend_trains', 'golden_farm_crown',
 ]);
 const known = (id) => d.CROPS[id] || d.ANIMALS[id] || d.BUILDINGS[id] || features.has(id)
   || d.FARM.expansions.some((e) => e.id === id) || d.ZOO.enclosures[id]

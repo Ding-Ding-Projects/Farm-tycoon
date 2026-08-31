@@ -679,9 +679,17 @@ export const DECORATIONS = {
 
 /** Level curve + per-level unlocks (levels 1–40, an unlock at every level). */
 export const LEVELS = {
-  maxLevel: 50,
-  /** XP required to go from level n to n+1. */
-  xpForLevel: (n) => Math.round(50 * Math.pow(n, 1.8)),
+  maxLevel: 95,
+  /**
+   * XP to go from level n to n+1. PIECEWISE on purpose: the original 50*n^1.8 curve is kept
+   * exactly for n <= 50, so every level the game already shipped costs precisely what it did
+   * before. Above 50 the exponent eases to 1.65, because at a flat 1.8 level 95 alone would
+   * cost about 190k XP and levels 51-95 several million - an endgame nobody reaches.
+   * The two halves are joined at 50 so there is no jump at the seam.
+   */
+  xpForLevel: (n) => (n <= 50
+    ? Math.round(50 * Math.pow(n, 1.8))
+    : Math.round(50 * Math.pow(50, 1.8) * Math.pow(n / 50, 1.65))),
   /** Feature/content gates. Anything not listed unlocks via its own unlockLevel field. */
   unlocks: {
     1:  ['field', 'wheat'],
@@ -734,6 +742,53 @@ export const LEVELS = {
     48: ['zoo_giraffe'],
     49: ['town_mega_milestone'],
     50: ['zoo_elephant', 'golden_town_statue'],
+    // Levels 51-95. Every level carries at least one unlock: the validator refuses a
+    // dead level, which is what keeps the late game from becoming a silent XP corridor.
+    51: ['rice'],
+    52: ['oil_press'],
+    53: ['lamb'],
+    54: ['expansion_10'],
+    55: ['olive'],
+    56: ['tea_house'],
+    57: ['silo_titan_upgrade'],
+    58: ['lavender', 'quail'],
+    59: ['expansion_11'],
+    60: ['sushi_bar'],
+    61: ['barn_titan_upgrade'],
+    62: ['tea_leaf'],
+    63: ['expansion_12'],
+    64: ['perfumery', 'alpaca'],
+    65: ['golden_meadow'],
+    66: ['bell_pepper'],
+    67: ['expansion_13'],
+    68: ['salad_bar'],
+    69: ['master_orders_ii'],
+    70: ['grand_fair'],
+    71: ['peony'],
+    72: ['pasta_kitchen', 'otter'],
+    73: ['expansion_14'],
+    74: ['harvest_festival'],
+    75: ['deep_silo'],
+    76: ['fondue_pot'],
+    77: ['watermelon'],
+    78: ['expansion_15'],
+    79: ['golden_barn'],
+    80: ['preservation_station'],
+    81: ['prize_pavilion'],
+    82: ['turkey'],
+    83: ['master_grower'],
+    84: ['mint'],
+    85: ['jeweler'],
+    86: ['gilded_orders'],
+    87: ['master_rancher'],
+    88: ['grand_market'],
+    89: ['master_crafter'],
+    90: ['yogurt_maker'],
+    91: ['legend_trucks'],
+    92: ['legend_boats'],
+    93: ['legend_trains'],
+    94: ['master_farmer'],
+    95: ['golden_farm_crown'],
   },
 };
 

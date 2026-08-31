@@ -136,6 +136,27 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   for (const s of Object.values(d.STORAGE)) for (const m of s.materials || []) matSpent.add(m);
   for (const mid of Object.keys(d.MATERIALS))
     if (!matSpent.has(mid)) errors.push(`material '${mid}' is spent on nothing`);
+
+  // The earn side of the same rule. Only the spend half was ever implemented, so nine
+  // materials were spendable and obtainable nowhere - which made every farm expansion and
+  // every storage upgrade permanently unbuyable while the whole suite stayed green.
+  // Every table that can put a material into the barn is enumerated here by hand; a count
+  // that says HOW MANY materials arrive is not a source, only a pool naming WHICH ones is.
+  const matEarned = new Set();
+  const earn = (m) => { for (const k of Object.keys(m || {})) matEarned.add(k); };
+  const earnPool = (pool) => { for (const e of pool || []) if (e.material) matEarned.add(e.material); };
+  for (const m of d.TOWN.milestones) earn(m.rewards.materials);
+  for (const t of d.COOP.taskPool) earn(t.rewards && t.rewards.materials);
+  for (const p of d.REGATTA.rewards.placement) earn(p.materials);
+  for (const s of Object.values(d.EXPEDITIONS.sites)) earnPool(s.loot);
+  earnPool(d.TRAINS.materialPool);
+  earnPool(d.AIRPORT.rewards.materialPool);
+  earnPool(d.HELICOPTER.rewards.materialPool);
+  for (const l of d.FISHING.chestLoot) if (l.material) matEarned.add(l.material);
+  for (const seg of d.DAILY_WHEEL) if (seg.material) matEarned.add(seg.material);
+  for (const ev of Object.values(d.EVENTS.types || {})) earn(ev.rewards && ev.rewards.materials);
+  for (const mid of Object.keys(d.MATERIALS))
+    if (!matEarned.has(mid)) errors.push(`material '${mid}' has no source - it can be spent but never earned`);
 }
 
 // Animals: product in GOODS, feed is a feed-mill recipe (or null for bees).
@@ -221,6 +242,25 @@ if (d.STORAGE.silo.materials.some((m) => d.STORAGE.barn.materials.includes(m)))
   errors.push('STORAGE: silo and barn must not share upgrade materials');
 if (!(d.MARKET.slots > 0) || !(d.MARKET.priceMultiplier > 1)) errors.push('MARKET tuning invalid');
 if (!(d.TRAINS.wagons[0] <= d.TRAINS.wagons[1])) errors.push('TRAINS wagons range invalid');
+
+// Transport material pools. A pool entry must name a real material with a sane quantity band
+// and a positive weight; a zero-weight entry looks like a source and can never be drawn.
+for (const [label, pool] of [['TRAINS', d.TRAINS.materialPool],
+                             ['AIRPORT', d.AIRPORT.rewards.materialPool],
+                             ['HELICOPTER', d.HELICOPTER.rewards.materialPool]]) {
+  if (!Array.isArray(pool) || pool.length === 0) { errors.push(`${label}: materialPool is missing or empty`); continue; }
+  const seen = new Set();
+  for (const e of pool) {
+    if (!d.MATERIALS[e.material]) { errors.push(`${label} pool: unknown material '${e.material}'`); continue; }
+    if (seen.has(e.material)) errors.push(`${label} pool: '${e.material}' listed twice`);
+    seen.add(e.material);
+    if (d.MATERIALS[e.material].set === 'advanced')
+      errors.push(`${label} pool: '${e.material}' is an advanced material - those are Tool Exchange and expedition loot only`);
+    if (!Array.isArray(e.qty) || !(e.qty[0] > 0) || !(e.qty[1] >= e.qty[0]))
+      errors.push(`${label} pool: bad qty range for '${e.material}'`);
+    if (!(e.weight > 0)) errors.push(`${label} pool: '${e.material}' has non-positive weight and can never be drawn`);
+  }
+}
 
 // Nothing may unlock above maxLevel. Without this, raising content past the cap ships
 // items no player can ever reach and every other check stays green - which is exactly what

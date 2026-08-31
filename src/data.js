@@ -1074,8 +1074,27 @@ export const TRAINS = {
   departureWindow: 7200,    // s before an unfilled train leaves without bonus
   wagons: [3, 5],           // wagons per train, scales with level
   tripTime: 3600,           // s away before returning with materials
-  materialsPerTrip: [4, 8], // total material items returned (weighted random from MATERIALS)
+  materialsPerTrip: [4, 8], // how MANY material items return; materialPool decides WHICH
   xpPerWagon: 12,
+  /**
+   * The workhorse pool: the building set the town runs on, plus the expansion tools that buy
+   * land. Weighted draws, the same { material, qty, weight } shape EXPEDITIONS.loot uses, so
+   * one roll helper serves every pool in the file. The advanced set is deliberately absent -
+   * jackhammers, drills and electric saws are Tool Exchange and expedition loot only.
+   */
+  materialPool: [
+    { material: 'brick',  qty: [1, 3], weight: 16 },
+    { material: 'slab',   qty: [1, 3], weight: 16 },
+    { material: 'nails',  qty: [1, 3], weight: 14 },
+    { material: 'glass',  qty: [1, 2], weight: 12 },
+    { material: 'paint',  qty: [1, 2], weight: 10 },
+    { material: 'hammer', qty: [1, 2], weight: 10 },
+    { material: 'cement', qty: [1, 2], weight: 6 },
+    { material: 'tile',   qty: [1, 2], weight: 6 },
+    { material: 'shovel', qty: [1, 2], weight: 4 },
+    { material: 'axe',    qty: [1, 2], weight: 3 },
+    { material: 'saw',    qty: [1, 2], weight: 3 },
+  ],
 };
 
 /**
@@ -1088,7 +1107,29 @@ export const AIRPORT = {
   interval: 14400,
   crates: 4,
   departureWindow: 5400,
-  rewards: { xpPerCrate: 30, materialsPerFlight: [3, 6], fullBonusCoins: 5000 },
+  rewards: {
+    xpPerCrate: 30,
+    materialsPerFlight: [3, 6], // how MANY; materialPool decides WHICH
+    fullBonusCoins: 5000,
+    /**
+     * The long-haul pool leans expansion and storage: by level 28 the barn and silo are the
+     * binding constraint and land is the thing worth flying for. A little building material
+     * rides along so a flight is never a total blank for a town project.
+     */
+    materialPool: [
+      { material: 'shovel',     qty: [1, 3], weight: 14 },
+      { material: 'axe',        qty: [1, 3], weight: 14 },
+      { material: 'saw',        qty: [1, 3], weight: 14 },
+      { material: 'bolt',       qty: [1, 2], weight: 8 },
+      { material: 'plank',      qty: [1, 2], weight: 8 },
+      { material: 'duct_tape',  qty: [1, 2], weight: 8 },
+      { material: 'screw',      qty: [1, 2], weight: 8 },
+      { material: 'wood_panel', qty: [1, 2], weight: 8 },
+      { material: 'bracket',    qty: [1, 2], weight: 8 },
+      { material: 'cement',     qty: [1, 2], weight: 5 },
+      { material: 'tile',       qty: [1, 2], weight: 5 },
+    ],
+  },
 };
 
 /**
@@ -1156,8 +1197,8 @@ export const FARM = {
   // have overlapped. The validator now asserts in-bounds and non-overlap.
   gridSize: 40,
   startZone: { x: 10, y: 10, w: 12, h: 12 },
-  // Expansions cost coins + the EXPANSION material set (shovel / axe / saw), earned from
-  // trains, airport, helicopter and expedition loot. Never the building or storage sets.
+  // Expansions cost coins + the EXPANSION material set (shovel / axe / saw). Those come from
+  // TRAINS.materialPool and AIRPORT.rewards.materialPool; never the building or storage sets.
   expansions: [
     { id: 'expansion_1', rect: { x: 22, y: 10, w: 5, h: 12 }, cost: 500, materials: { shovel: 1, axe: 1, saw: 1 } },
     { id: 'expansion_2', rect: { x: 10, y: 22, w: 12, h: 5 }, cost: 2000, materials: { shovel: 2, axe: 2, saw: 2 } },
@@ -1582,7 +1623,29 @@ export const HELICOPTER = {
   departureWindow: 3600,
   crates: 3,
   fuel: { max: 5, regenSeconds: 3600, costPerDispatch: 1 },
-  rewards: { xpPerCrate: 40, materialsPerFlight: [2, 4], fullBonusCoins: 3500, coopPoints: 25 },
+  rewards: {
+    xpPerCrate: 40,
+    materialsPerFlight: [2, 4], // how MANY; materialPool decides WHICH
+    fullBonusCoins: 3500,
+    coopPoints: 25,
+    /**
+     * Quick but modest: a 90-minute round trip returning one or two items at a time. It is the
+     * earliest storage-material channel, which is what lets the barn grow before the airport
+     * exists, and it carries light building stock for the same reason.
+     */
+    materialPool: [
+      { material: 'bolt',       qty: [1, 2], weight: 12 },
+      { material: 'plank',      qty: [1, 2], weight: 12 },
+      { material: 'duct_tape',  qty: [1, 2], weight: 12 },
+      { material: 'screw',      qty: [1, 2], weight: 12 },
+      { material: 'wood_panel', qty: [1, 2], weight: 12 },
+      { material: 'bracket',    qty: [1, 2], weight: 12 },
+      { material: 'nails',      qty: [1, 2], weight: 10 },
+      { material: 'brick',      qty: [1, 1], weight: 6 },
+      { material: 'slab',       qty: [1, 1], weight: 6 },
+      { material: 'glass',      qty: [1, 1], weight: 6 },
+    ],
+  },
 };
 
 /**

@@ -51,7 +51,9 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   }
   // Hand-written list, because a rule alone passes trivially on a building that simply has
   // no kit field. These must each require one; the three coin-only ones must NOT.
-  const MUST_HAVE_KIT = ['dairy', 'sugar_mill', 'popcorn_pot', 'grill', 'pie_oven', 'loom', 'sewing_machine', 'juice_press', 'jam_maker', 'coffee_kiosk', 'candy_machine', 'tropical_cafe', 'smelter'];
+  const MUST_HAVE_KIT = ['dairy', 'sugar_mill', 'popcorn_pot', 'grill', 'pie_oven', 'loom', 'sewing_machine', 'juice_press', 'jam_maker', 'coffee_kiosk', 'candy_machine', 'tropical_cafe', 'smelter',
+    'oil_press', 'tea_house', 'sushi_bar', 'perfumery', 'salad_bar', 'pasta_kitchen',
+    'fondue_pot', 'preservation_station', 'jeweler', 'yogurt_maker'];
   const COIN_ONLY = ['feed_mill', 'bakery', 'build_workshop'];
   for (const bid of MUST_HAVE_KIT) {
     if (!d.BUILDINGS[bid]) errors.push(`kit inventory names unknown building '${bid}'`);
@@ -89,6 +91,48 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
     seenEffect.set(g.effect, gid);
   }
   if (new Set(d.EFFECT_KEYS).size !== d.EFFECT_KEYS.length) errors.push('EFFECT_KEYS contains duplicates');
+}
+
+// Orphan and sink audit - the highest-value rule here, and one that did not exist before.
+// A good nobody produces is unobtainable; a crop nobody consumes is a dead-end the player
+// grows once and never again. Neither fails any other check, and both are invisible in review.
+{
+  const produced = new Set();
+  for (const b of Object.values(d.BUILDINGS)) for (const r of b.recipes) produced.add(r.id);
+  for (const a of Object.values(d.ANIMALS)) produced.add(a.product);
+  for (const f of d.FISHING.species) produced.add(f);
+  for (const t of Object.values(d.MINE.tools)) for (const y of t.yields) produced.add(y.item);
+  for (const i of Object.values(d.ISLANDS.destinations)) for (const g of Object.keys(i.cargo)) produced.add(g);
+  for (const z of Object.values(d.ZOO.enclosures)) produced.add(z.product);
+  for (const l of d.FISHING.chestLoot) if (l.item) produced.add(l.item);
+  for (const c of Object.values(d.MERGE.chains)) {
+    if (c.topReward && c.topReward.item) produced.add(c.topReward.item);
+    for (const rw of Object.values(c.claims)) if (rw.item) produced.add(rw.item);
+  }
+  for (const [gid, g] of Object.entries(d.GOODS))
+    if (!produced.has(gid) && g.source !== 'loot')
+      errors.push(`good '${gid}' has no producer and is not tagged source: 'loot'`);
+
+  // Sinks. Instant-sell is a universal sink, so this applies only to crops, which exist to
+  // be turned into something: a crop with no recipe is content the player grows once.
+  const consumed = new Set();
+  for (const b of Object.values(d.BUILDINGS)) for (const r of b.recipes) for (const k of Object.keys(r.inputs)) consumed.add(k);
+  for (const z of Object.values(d.ZOO.enclosures)) for (const k of Object.keys(z.feed)) consumed.add(k);
+  for (const cid of Object.keys(d.CROPS))
+    if (!consumed.has(cid)) errors.push(`crop '${cid}' is consumed by no recipe or zoo feed`);
+
+  // Materials must be both earnable and spendable. A material with no build cost is a
+  // currency for nothing; one with no source is a wall.
+  const matSpent = new Set();
+  const collect = (m) => { for (const k of Object.keys(m || {})) matSpent.add(k); };
+  for (const h of Object.values(d.TOWN.houses)) collect(h.materials);
+  for (const c of Object.values(d.TOWN.communityBuildings)) collect(c.materials);
+  for (const z of Object.values(d.ZOO.enclosures)) collect(z.materials);
+  for (const e of d.FARM.expansions) collect(e.materials);
+  for (const b of Object.values(d.BUILDINGS)) for (const r of b.recipes) for (const k of Object.keys(r.inputs)) if (d.MATERIALS[k]) matSpent.add(k);
+  for (const s of Object.values(d.STORAGE)) for (const m of s.materials || []) matSpent.add(m);
+  for (const mid of Object.keys(d.MATERIALS))
+    if (!matSpent.has(mid)) errors.push(`material '${mid}' is spent on nothing`);
 }
 
 // Animals: product in GOODS, feed is a feed-mill recipe (or null for bees).

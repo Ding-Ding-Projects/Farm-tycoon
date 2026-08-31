@@ -18,6 +18,17 @@ export const CROPS = {
   chili:      { name: 'Chili Pepper',unlockLevel: 25, growTime: 21600, seedCost: 17, sellPrice: 90,  xp: 8 },
   coffee:     { name: 'Coffee Bean', unlockLevel: 29, growTime: 28800, seedCost: 20, sellPrice: 112, xp: 10 },
   grapes:     { name: 'Grapes',      unlockLevel: 33, growTime: 43200, seedCost: 25, sellPrice: 140, xp: 12 },
+  // Levels 51-84. Names are wiki-real (Hay Day and Township both grow these); values
+  // continue the shipped geometric curve rather than the add-content skill's formula,
+  // which disagrees with every crop already in this table.
+  rice:       { name: 'Rice',        unlockLevel: 51, growTime: 50400,  seedCost: 30, sellPrice: 172, xp: 14 },
+  olive:      { name: 'Olive',       unlockLevel: 55, growTime: 57600,  seedCost: 34, sellPrice: 200, xp: 17 },
+  lavender:   { name: 'Lavender',    unlockLevel: 58, growTime: 64800,  seedCost: 39, sellPrice: 232, xp: 19 },
+  tea_leaf:   { name: 'Tea Leaf',    unlockLevel: 62, growTime: 72000,  seedCost: 45, sellPrice: 270, xp: 23 },
+  bell_pepper: { name: 'Bell Pepper', unlockLevel: 66, growTime: 82800,  seedCost: 52, sellPrice: 314, xp: 26 },
+  peony:      { name: 'Peony',       unlockLevel: 71, growTime: 93600,  seedCost: 60, sellPrice: 365, xp: 30 },
+  watermelon: { name: 'Watermelon',  unlockLevel: 77, growTime: 108000, seedCost: 69, sellPrice: 424, xp: 35 },
+  mint:       { name: 'Mint',        unlockLevel: 84, growTime: 129600, seedCost: 80, sellPrice: 492, xp: 41 },
 };
 
 /** Animal pens. Animals eat feed (made in the Feed Mill) and produce goods on a timer. */
@@ -29,6 +40,14 @@ export const ANIMALS = {
   goat:    { name: 'Goat',    pen: 'Goat Yard',    unlockLevel: 19, feed: 'goat_feed',    produceTime: 7200,  product: 'goat_milk', penCost: 2600,  animalCost: 320, capacity: 3, xp: 6 },
   bee:     { name: 'Bees',    pen: 'Beehive',      unlockLevel: 23, feed: null,           produceTime: 10800, product: 'honey',     penCost: 4200,  animalCost: 0,   capacity: 1, xp: 7 },
   duck:    { name: 'Duck',    pen: 'Duck Pond',    unlockLevel: 27, feed: 'chicken_feed', produceTime: 9000,  product: 'feathers',  penCost: 6000,  animalCost: 450, capacity: 3, xp: 8 },
+  // Lamb and Otter are wiki-real (Hay Day's lamb, Township's otter pond and its pearls).
+  // Quail, Alpaca and Turkey are original but written in the same idiom - flagged here so
+  // nobody later cites a wiki for them.
+  lamb:    { name: 'Lamb',   pen: 'Lamb Meadow',     unlockLevel: 53, feed: 'lamb_feed',   produceTime: 12600, product: 'lamb_chop',    penCost: 9000,  animalCost: 700,  capacity: 3, xp: 10 },
+  quail:   { name: 'Quail',  pen: 'Quail Hutch',     unlockLevel: 58, feed: 'quail_feed',  produceTime: 14400, product: 'quail_egg',    penCost: 13000, animalCost: 950,  capacity: 4, xp: 12 },
+  alpaca:  { name: 'Alpaca', pen: 'Alpaca Paddock',  unlockLevel: 64, feed: 'alpaca_feed', produceTime: 18000, product: 'alpaca_wool',  penCost: 19000, animalCost: 1400, capacity: 3, xp: 15 },
+  otter:   { name: 'Otter',  pen: 'Otter Pond',      unlockLevel: 72, feed: 'otter_feed',  produceTime: 21600, product: 'pearls',       penCost: 27000, animalCost: 2000, capacity: 2, xp: 18 },
+  turkey:  { name: 'Turkey', pen: 'Turkey Run',      unlockLevel: 82, feed: 'turkey_feed', produceTime: 25200, product: 'turkey_plume', penCost: 38000, animalCost: 2800, capacity: 3, xp: 22 },
 };
 
 /** Goods produced by animals, buildings, fishing and the mine. sellPrice = base instant-sell value. */
@@ -41,12 +60,22 @@ export const GOODS = {
   goat_milk:  { name: 'Goat Milk',   sellPrice: 44 },
   honey:      { name: 'Honey',       sellPrice: 58 },
   feathers:   { name: 'Feathers',    sellPrice: 50 },
+  lamb_chop:  { name: 'Lamb Chop',    sellPrice: 70 },
+  quail_egg:  { name: 'Quail Egg',    sellPrice: 44 },
+  alpaca_wool: { name: 'Alpaca Wool',  sellPrice: 105 },
+  pearls:     { name: 'Pearls',       sellPrice: 160 },
+  turkey_plume: { name: 'Turkey Plume', sellPrice: 135 },
   // feed
   chicken_feed: { name: 'Chicken Feed', sellPrice: 5 },
   cow_feed:     { name: 'Cow Feed',     sellPrice: 8 },
   pig_feed:     { name: 'Pig Feed',     sellPrice: 12 },
   sheep_feed:   { name: 'Sheep Feed',   sellPrice: 16 },
   goat_feed:    { name: 'Goat Feed',    sellPrice: 21 },
+  lamb_feed:    { name: 'Lamb Feed',    sellPrice: 22 },
+  quail_feed:   { name: 'Quail Feed',   sellPrice: 24 },
+  alpaca_feed:  { name: 'Alpaca Feed',  sellPrice: 28 },
+  otter_feed:   { name: 'Otter Feed',   sellPrice: 34 },
+  turkey_feed:  { name: 'Turkey Feed',  sellPrice: 30 },
   // bakery
   bread:        { name: 'Bread',           sellPrice: 22 },
   corn_bread:   { name: 'Corn Bread',      sellPrice: 32 },
@@ -135,8 +164,66 @@ export const GOODS = {
   giraffe_scarf:   { name: 'Giraffe Scarf',    sellPrice: 470 },
   elephant_statue: { name: 'Elephant Statue',  sellPrice: 540 },
   // mine tools (consumed, obtainable from orders/fishing chests/shop)
-  pickaxe:  { name: 'Pickaxe',  sellPrice: 40 },
-  dynamite: { name: 'Dynamite', sellPrice: 90 },
+  // source: 'loot' is the explicit opt-out from the orphan audit - these are earned from
+  // orders, fishing chests and the shop, never produced by a recipe. Anything else lacking a
+  // producer is a real gap, not a special case.
+  pickaxe:  { name: 'Pickaxe',  sellPrice: 40, source: 'loot' },
+  dynamite: { name: 'Dynamite', sellPrice: 90, source: 'loot' },
+  // oil_press
+  olive_oil:        { name: 'Olive Oil',            sellPrice: 420 },
+  herb_oil:         { name: 'Herb Oil',             sellPrice: 560 },
+  lavender_oil:     { name: 'Lavender Oil',         sellPrice: 720 },
+  // tea_house
+  green_tea:        { name: 'Green Tea',            sellPrice: 480 },
+  milk_tea:         { name: 'Milk Tea',             sellPrice: 620 },
+  honey_tea:        { name: 'Honey Tea',            sellPrice: 780 },
+  mint_tea:         { name: 'Mint Tea',             sellPrice: 940 },
+  // sushi_bar
+  sushi_roll:       { name: 'Sushi Roll',           sellPrice: 700 },
+  egg_sushi:        { name: 'Egg Sushi',            sellPrice: 840 },
+  rice_ball:        { name: 'Rice Ball',            sellPrice: 1020 },
+  // perfumery
+  air_freshener:    { name: 'Air Freshener',        sellPrice: 900 },
+  perfume:          { name: 'Perfume',              sellPrice: 1450 },
+  lotion:           { name: 'Lotion',               sellPrice: 1180 },
+  // salad_bar
+  garden_salad:     { name: 'Garden Salad',         sellPrice: 860 },
+  feta_salad:       { name: 'Feta Salad',           sellPrice: 1300 },
+  fruit_salad:      { name: 'Fruit Salad',          sellPrice: 1120 },
+  // pasta_kitchen
+  fresh_pasta:      { name: 'Fresh Pasta',          sellPrice: 560 },
+  lasagna:          { name: 'Lasagna',              sellPrice: 1700 },
+  pesto_pasta:      { name: 'Pesto Pasta',          sellPrice: 1520 },
+  // fondue_pot
+  cheese_fondue:    { name: 'Cheese Fondue',        sellPrice: 1250 },
+  choco_fondue:     { name: 'Chocolate Fondue',     sellPrice: 1800 },
+  herb_fondue:      { name: 'Herb Fondue',          sellPrice: 2050 },
+  // preservation_station
+  pickles:          { name: 'Pickles',              sellPrice: 1650 },
+  canned_fish:      { name: 'Canned Fish',          sellPrice: 2100 },
+  dried_fruit:      { name: 'Dried Fruit',          sellPrice: 1500 },
+  // jeweler
+  pearl_necklace:   { name: 'Pearl Necklace',       sellPrice: 3200 },
+  gold_ring:        { name: 'Gold Ring',            sellPrice: 3800 },
+  plume_brooch:     { name: 'Plume Brooch',         sellPrice: 4500 },
+  // yogurt_maker
+  plain_yogurt:     { name: 'Plain Yogurt',         sellPrice: 1350 },
+  berry_yogurt:     { name: 'Berry Yogurt',         sellPrice: 2000 },
+  mint_yogurt:      { name: 'Mint Yogurt',          sellPrice: 2300 },
+  // sinks for the new animal products, added to existing buildings
+  lamb_skewer:      { name: 'Lamb Skewer',          sellPrice: 340 },
+  alpaca_scarf:     { name: 'Alpaca Scarf',         sellPrice: 420 },
+  // kits for the ten buildings above
+  kit_oil_press:            { name: 'Oil Press Kit',          sellPrice: 2300 },
+  kit_tea_house:            { name: 'Tea House Kit',          sellPrice: 2800 },
+  kit_sushi_bar:            { name: 'Sushi Bar Kit',          sellPrice: 3400 },
+  kit_perfumery:            { name: 'Perfumery Kit',          sellPrice: 4100 },
+  kit_salad_bar:            { name: 'Salad Bar Kit',          sellPrice: 5000 },
+  kit_pasta_kitchen:        { name: 'Pasta Kitchen Kit',      sellPrice: 6000 },
+  kit_fondue_pot:           { name: 'Fondue Pot Kit',         sellPrice: 7200 },
+  kit_preservation_station: { name: 'Preservation Kit',       sellPrice: 8600 },
+  kit_jeweler:              { name: 'Jeweler Kit',            sellPrice: 10300 },
+  kit_yogurt_maker:         { name: 'Yogurt Maker Kit',       sellPrice: 12400 },
   // build components (Building Workshop) - crafted from MATERIALS, consumed by kits
   beam:         { name: 'Steel Beam',       sellPrice: 70 },
   frame:        { name: 'Timber Frame',     sellPrice: 85 },
@@ -178,6 +265,11 @@ export const BUILDINGS = {
       { id: 'pig_feed',     inputs: { carrot: 2, soybean: 2 },  time: 1200, xp: 4 },
       { id: 'sheep_feed',   inputs: { wheat: 3, soybean: 2 },   time: 1800, xp: 5 },
       { id: 'goat_feed',    inputs: { carrot: 3, corn: 3 },     time: 2400, xp: 6 },
+      { id: 'lamb_feed',   inputs: { rice: 2, soybean: 2 },          time: 3000, xp: 7 },
+      { id: 'quail_feed',  inputs: { rice: 3, corn: 2 },             time: 3600, xp: 8 },
+      { id: 'alpaca_feed', inputs: { bell_pepper: 2, wheat: 4 },     time: 4200, xp: 10 },
+      { id: 'otter_feed',  inputs: { fish_perch: 1, rice: 2 },       time: 4800, xp: 12 },
+      { id: 'turkey_feed', inputs: { corn: 3, watermelon: 1 },       time: 5400, xp: 14 },
     ],
   },
   bakery: {
@@ -221,6 +313,7 @@ export const BUILDINGS = {
       { id: 'pancakes',     inputs: { wheat: 2, egg: 1, syrup: 1 },     time: 1800, xp: 7 },
       { id: 'baked_potato', inputs: { potato: 2, butter: 1 },           time: 2400, xp: 7 },
       { id: 'burger',       inputs: { bread: 2, bacon: 2, tomato: 1 },  time: 4500, xp: 13 },
+      { id: 'lamb_skewer',    inputs: { lamb_chop: 2, bell_pepper: 1 },               time: 2700,  xp: 26 },
     ],
   },
   pie_oven: {
@@ -237,6 +330,7 @@ export const BUILDINGS = {
     recipes: [
       { id: 'cotton_fabric', inputs: { cotton: 3 },        time: 1800, xp: 6 },
       { id: 'sweater',       inputs: { wool: 2 },          time: 3600, xp: 9 },
+      { id: 'alpaca_scarf',   inputs: { alpaca_wool: 2, indigo: 1 },                  time: 5400,  xp: 34 },
     ],
   },
   sewing_machine: {
@@ -297,6 +391,87 @@ export const BUILDINGS = {
       { id: 'platinum_bar', inputs: { ore_platinum: 2 }, time: 7200,  xp: 16 },
     ],
   },
+  oil_press: {
+    name: 'Oil Press', unlockLevel: 52, cost: 18000, size: [2, 2], kit: 'kit_oil_press', minigame: 'press_flow', queueSlots: 3,
+    recipes: [
+      { id: 'olive_oil',      inputs: { olive: 3 },                                   time: 2700,  xp: 22 },
+      { id: 'herb_oil',       inputs: { olive: 2, mint: 2 },                          time: 3600,  xp: 28 },
+      { id: 'lavender_oil',   inputs: { lavender: 3, olive: 1 },                      time: 4500,  xp: 34 },
+    ],
+  },
+  tea_house: {
+    name: 'Tea House', unlockLevel: 56, cost: 26000, size: [2, 2], kit: 'kit_tea_house', minigame: 'steep_timer', queueSlots: 3,
+    recipes: [
+      { id: 'green_tea',      inputs: { tea_leaf: 3 },                                time: 1800,  xp: 24 },
+      { id: 'milk_tea',       inputs: { tea_leaf: 2, milk: 1 },                       time: 2700,  xp: 30 },
+      { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36 },
+      { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44 },
+    ],
+  },
+  sushi_bar: {
+    name: 'Sushi Bar', unlockLevel: 60, cost: 36000, size: [2, 2], kit: 'kit_sushi_bar', minigame: 'knife_work', queueSlots: 3,
+    recipes: [
+      { id: 'sushi_roll',     inputs: { rice: 5, fish_perch: 1 },                     time: 3600,  xp: 34 },
+      { id: 'egg_sushi',      inputs: { rice: 5, egg: 3 },                            time: 4200,  xp: 40 },
+      { id: 'rice_ball',      inputs: { rice: 6, quail_egg: 2 },                      time: 5400,  xp: 48 },
+    ],
+  },
+  perfumery: {
+    name: 'Perfumery', unlockLevel: 64, cost: 50000, size: [2, 2], kit: 'kit_perfumery', minigame: 'blend_nose', queueSlots: 3,
+    recipes: [
+      { id: 'air_freshener',  inputs: { lavender: 3 },                                time: 4500,  xp: 42 },
+      { id: 'perfume',        inputs: { peony: 3, lavender: 2 },                      time: 6300,  xp: 56 },
+      { id: 'lotion',         inputs: { peony: 2, olive_oil: 1 },                     time: 5400,  xp: 50 },
+    ],
+  },
+  salad_bar: {
+    name: 'Salad Bar', unlockLevel: 68, cost: 68000, size: [2, 2], kit: 'kit_salad_bar', minigame: 'plate_toss', queueSlots: 3,
+    recipes: [
+      { id: 'garden_salad',   inputs: { bell_pepper: 2, tomato: 2 },                  time: 3600,  xp: 44 },
+      { id: 'feta_salad',     inputs: { goat_cheese: 1, olive: 2, bell_pepper: 1 },   time: 5400,  xp: 58 },
+      { id: 'fruit_salad',    inputs: { watermelon: 2, strawberry: 2 },               time: 4500,  xp: 52 },
+    ],
+  },
+  pasta_kitchen: {
+    name: 'Pasta Kitchen', unlockLevel: 72, cost: 90000, size: [2, 2], kit: 'kit_pasta_kitchen', minigame: 'dough_stretch', queueSlots: 3,
+    recipes: [
+      { id: 'fresh_pasta',    inputs: { wheat: 2, egg: 1 },                           time: 1800,  xp: 30 },
+      { id: 'lasagna',        inputs: { fresh_pasta: 2, tomato: 3, cheese: 1 },       time: 6300,  xp: 66 },
+      { id: 'pesto_pasta',    inputs: { fresh_pasta: 2, mint: 2, olive_oil: 1 },      time: 5400,  xp: 62 },
+    ],
+  },
+  fondue_pot: {
+    name: 'Fondue Pot', unlockLevel: 76, cost: 120000, size: [2, 2], kit: 'kit_fondue_pot', minigame: 'melt_stir', queueSlots: 3,
+    recipes: [
+      { id: 'cheese_fondue',  inputs: { cheese: 2, bread: 1 },                        time: 4500,  xp: 56 },
+      { id: 'choco_fondue',   inputs: { cocoa: 2, cream: 1, strawberry: 2 },          time: 6300,  xp: 72 },
+      { id: 'herb_fondue',    inputs: { cheese: 2, bell_pepper: 2, olive_oil: 1 },    time: 7200,  xp: 80 },
+    ],
+  },
+  preservation_station: {
+    name: 'Preservation Station', unlockLevel: 80, cost: 155000, size: [2, 2], kit: 'kit_preservation_station', minigame: 'jar_seal', queueSlots: 3,
+    recipes: [
+      { id: 'pickles',        inputs: { bell_pepper: 3, watermelon: 1 },              time: 9000,  xp: 70 },
+      { id: 'canned_fish',    inputs: { fish_trout: 2, olive_oil: 1 },                time: 10800, xp: 84 },
+      { id: 'dried_fruit',    inputs: { grapes: 2, strawberry: 2 },                   time: 8100,  xp: 66 },
+    ],
+  },
+  jeweler: {
+    name: 'Jeweler', unlockLevel: 85, cost: 200000, size: [2, 2], kit: 'kit_jeweler', minigame: 'stone_set', queueSlots: 3,
+    recipes: [
+      { id: 'pearl_necklace', inputs: { pearls: 3, silver_bar: 1 },                   time: 12600, xp: 110 },
+      { id: 'gold_ring',      inputs: { gold_bar: 2, pearls: 1 },                     time: 14400, xp: 125 },
+      { id: 'plume_brooch',   inputs: { turkey_plume: 2, platinum_bar: 1 },           time: 16200, xp: 145 },
+    ],
+  },
+  yogurt_maker: {
+    name: 'Yogurt Maker', unlockLevel: 90, cost: 260000, size: [2, 2], kit: 'kit_yogurt_maker', minigame: 'culture_temp', queueSlots: 3,
+    recipes: [
+      { id: 'plain_yogurt',   inputs: { milk: 3, cream: 1 },                          time: 5400,  xp: 62 },
+      { id: 'berry_yogurt',   inputs: { plain_yogurt: 1, strawberry: 3 },             time: 7200,  xp: 78 },
+      { id: 'mint_yogurt',    inputs: { plain_yogurt: 1, mint: 2, honey: 1 },         time: 8100,  xp: 86 },
+    ],
+  },
   // The Building Workshop is the spine of progression: coins alone never place a
   // production building. Raw MATERIALS become components here, components become a kit,
   // and the kit is consumed to place its building (BUILDINGS[x].kit). It is itself
@@ -326,6 +501,16 @@ export const BUILDINGS = {
       { id: 'kit_candy_machine',    inputs: { fitting: 5, wiring_loom: 3, beam: 4 },            time: 21600, xp: 66 },
       { id: 'kit_tropical_cafe',    inputs: { glazing: 4, plumbing: 3, frame: 6 },              time: 25200, xp: 74 },
       { id: 'kit_smelter',          inputs: { beam: 8, cement: 4, plumbing: 3 },                time: 28800, xp: 84 },
+      { id: 'kit_oil_press',          inputs: { beam: 3, plumbing: 2, panel: 3 },             time: 32400, xp: 92 },
+      { id: 'kit_tea_house',          inputs: { frame: 4, glazing: 3, shingle: 5, tile: 4 },           time: 36300, xp: 103 },
+      { id: 'kit_sushi_bar',          inputs: { panel: 5, glazing: 3, fitting: 3 },           time: 40680, xp: 115 },
+      { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129 },
+      { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144 },
+      { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161 },
+      { id: 'kit_fondue_pot',         inputs: { fitting: 6, wiring_loom: 3, cement: 3 },      time: 63960, xp: 180 },
+      { id: 'kit_preservation_station', inputs: { glazing: 6, plumbing: 4, beam: 5, electric_saw: 2 },           time: 71640, xp: 202 },
+      { id: 'kit_jeweler',            inputs: { glazing: 7, fitting: 6, wiring_loom: 4, jackhammer: 2 },     time: 80220, xp: 226 },
+      { id: 'kit_yogurt_maker',       inputs: { plumbing: 5, panel: 7, wiring_loom: 4, drill: 3 },      time: 89820, xp: 253 },
     ],
   },
 };
@@ -360,6 +545,16 @@ export const MINIGAMES = {
   garnish_stack:   { name: 'Stack the Garnish',  building: 'tropical_cafe',   effect: 'tipChance',          cap: 0.35, purpose: 'Balance the garnish. A drink that looks the part earns a tip.' },
   bellows_timing:  { name: 'Work the Bellows',   building: 'smelter',         effect: 'purityChance',       cap: 0.2,  purpose: 'Time the bellows to hold the heat. Hotter metal pours purer.' },
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
+  press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
+  steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  knife_work:      { name: 'Knife Work',         building: 'sushi_bar',              effect: 'knifePrecision',     cap: 0.25, purpose: 'Slice clean and even. A ragged cut ruins the roll.' },
+  blend_nose:      { name: 'Blend the Notes',    building: 'perfumery',              effect: 'blendHarmony',       cap: 0.3,  purpose: 'Balance top and base notes. One loud note flattens the blend.' },
+  plate_toss:      { name: 'Toss the Bowl',      building: 'salad_bar',              effect: 'plateFreshness',     cap: 0.25, purpose: 'Toss without bruising. Handled well, the leaves stay crisp.' },
+  dough_stretch:   { name: 'Stretch the Dough',  building: 'pasta_kitchen',          effect: 'doughStretch',       cap: 0.3,  purpose: 'Stretch thin without tearing. Thin sheets cook true.' },
+  melt_stir:       { name: 'Stir the Melt',      building: 'fondue_pot',             effect: 'meltEvenness',       cap: 0.25, purpose: 'Keep it moving. A fondue left still catches and splits.' },
+  jar_seal:        { name: 'Seal the Jars',      building: 'preservation_station',   effect: 'sealTightness',      cap: 0.3,  purpose: 'Seat every lid square. A poor seal spoils the batch.' },
+  stone_set:       { name: 'Set the Stone',      building: 'jeweler',                effect: 'settingAccuracy',    cap: 0.2,  purpose: 'Seat the stone dead centre. Off-centre and the claw shows.' },
+  culture_temp:    { name: 'Hold the Culture',   building: 'yogurt_maker',           effect: 'cultureVigour',      cap: 0.3,  purpose: 'Hold the warmth steady. A cold spot and the culture stalls.' },
 };
 
 /**
@@ -372,6 +567,8 @@ export const EFFECT_KEYS = [
   'byproductChance', 'sellPriceMult', 'xpMult', 'rarityTier',
   'fabricSaveChance', 'juiceYieldBonus', 'setQualityBonus', 'rushHourChance',
   'mouldPrecision', 'tipChance', 'purityChance', 'materialRefund',
+  'oilClarity', 'steepQuality', 'knifePrecision', 'blendHarmony', 'plateFreshness',
+  'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',

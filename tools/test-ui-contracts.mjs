@@ -171,6 +171,12 @@ const islands = await import('../src/islands.js');
 const newspaper = await import('../src/newspaper.js');
 const collections = await import('../src/collections.js');
 const workshop = await import('../src/workshop.js');
+const production = await import('../src/production.js');
+const minigames = await import('../src/minigames.js');
+const foraging = await import('../src/foraging.js');
+const economy = await import('../src/economy.js');
+const input = await import('../src/input.js');
+const main = await import('../src/main.js');
 
 state.resetGame();
 ui.init();
@@ -612,6 +618,350 @@ test('a broad sweep of every required panel, against a rich real save, never ren
     }
   }
   assert.equal(failuresBySweep.length, 0, `sweep failures:\n${failuresBySweep.join('\n')}`);
+});
+
+// ---------------------------------------------------------------------------
+// G. Per-factory minigames (minigames.js) — a second headline mechanic (buildings are CRAFTED,
+// not bought, is the first) that was completely unreachable: ui.js never imported minigames.js,
+// so none of the 26 production buildings' own minigame could ever be opened. Every check below
+// is driven through the REAL ui.js render path and the REAL minigames.js API — never a
+// restated shape — exactly as bug #1-#4 above required.
+// ---------------------------------------------------------------------------
+test('ui.js imports minigames.js', () => {
+  assert.ok(/from '\.\/minigames\.js'/.test(uiSource), "expected \"import ... from './minigames.js'\" in ui.js");
+});
+
+test("a production building's minigame is reachable, playable end to end, and production never depends on playing it", () => {
+  const s = freshState();
+  const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  const recipe = data.BUILDINGS.dairy.recipes[0]; // cream: { milk: 1 }
+  for (const [inputId, qty] of Object.entries(recipe.inputs)) {
+    (data.CROPS[inputId] ? s.silo.items : s.barn.items)[inputId] = qty;
+  }
+  assert.equal(production.enqueue(buildingId, recipe.id), true, 'setup: queuing cream must succeed');
+
+  openAndGetHtml('building', buildingId);
+  const playBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Play '));
+  assert.ok(playBtn, 'expected a reachable "Play <name>" button on a building with something queued');
+  assert.equal(playBtn.textContent, `Play ${data.MINIGAMES.churn_timing.name}`,
+    "expected dairy's real minigame name (churn_timing) on the button, not a generic label");
+  assert.equal(playBtn.disabled, false, 'a building with a not-yet-ready queue entry must have an available minigame');
+
+  playBtn.click();
+  assert.ok(s.minigames.pending[buildingId], 'clicking Play must start a real minigames.start() run');
+  assert.equal(s.minigames.pending[buildingId].gameId, 'churn_timing', 'the started run must be dairy\'s own real minigame, not a placeholder');
+  const seed = s.minigames.pending[buildingId].seed;
+
+  let guard = 0;
+  while (s.minigames.pending[buildingId] && guard < 20) {
+    const live = queryAll(sheetContentEl, '.live');
+    assert.equal(live.length, 1, `expected exactly one live target cell mid-round (event ${guard}), got ${live.length}`);
+    assert.equal(s.minigames.pending[buildingId].seed, seed,
+      're-rendering mid-run (refreshPanel) must never reroll the seed — same seed, same round');
+    live[0].click();
+    guard++;
+  }
+  assert.ok(guard > 0 && guard < 20, `expected the fixed 8-event round to finish in a bounded number of taps, took ${guard}`);
+  assert.equal(s.minigames.pending[buildingId], undefined, 'finishing the round must clear the pending run');
+  assert.ok(s.minigames.results[buildingId], 'finishing the round must bank a real result for collection to spend later');
+
+  // Production itself never depended on any of the above: the queued batch collects normally
+  // whether or not its minigame was ever opened.
+  const entry = s.production.find((p) => p.objectId === buildingId);
+  entry.readyAt = Date.now() - 1000;
+  const result = production.collectBuilding(buildingId);
+  assert.ok(result && result.qty >= 1, 'the batch must collect normally — the minigame is a bonus, never a gate');
+  assert.equal(s.minigames.results[buildingId], undefined, 'collecting the batch must consume (spend) the banked minigame result exactly once');
+});
+
+test('a building with nothing queued shows its minigame as unavailable, never as playable', () => {
+  const s = freshState();
+  const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  openAndGetHtml('building', buildingId);
+  const playBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Play '));
+  assert.ok(playBtn, 'the minigame section must still render (with a real name/purpose) even with nothing queued');
+  assert.equal(playBtn.disabled, true, 'nothing queued means minigames.isAvailable() is false — Play must be disabled, never clickable');
+  playBtn.click();
+  assert.equal(s.minigames.pending[buildingId], undefined, 'a disabled Play button must never actually start a run');
+});
+
+test('the Building Workshop has its own reachable minigame (workshop_fit) on the workshop panel', () => {
+  const s = freshState();
+  const workshopId = placeStructureAndBuilding(s, 'workshop_yard', 'build_workshop');
+  const recipe = data.BUILDINGS.build_workshop.recipes[0];
+  for (const [inputId, qty] of Object.entries(recipe.inputs)) s.barn.items[inputId] = qty;
+  assert.equal(workshop.craft(recipe.id), true, 'setup: crafting the cheapest workshop recipe must succeed');
+
+  openAndGetHtml('workshop');
+  const playBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Play '));
+  assert.ok(playBtn, 'expected a reachable "Play <name>" minigame button on the Workshop panel');
+  assert.equal(playBtn.textContent, `Play ${data.MINIGAMES.workshop_fit.name}`);
+  assert.equal(playBtn.disabled, false, 'the workshop has a not-yet-ready craft in progress — its minigame must be available');
+  playBtn.click();
+  assert.ok(s.minigames.pending[workshopId], 'clicking Play on the workshop panel must start a real run keyed by the real workshop building id');
+});
+
+// ---------------------------------------------------------------------------
+// H. Foraging (foraging.js) — free, always-available world nodes that never rendered
+// (main.js's buildWorld() never fed them into the frame's object list) and never had a click
+// handler (input.js's handleTap only ever resolved state.farm.objects, a SEPARATE array from
+// state.foraging.nodes).
+// ---------------------------------------------------------------------------
+test('main.js ticks foraging.js from the loop, and buildWorld() renders every real node as kind:"forage"', () => {
+  const s = freshState();
+  s.foraging.nodes = [];
+  const spawned = foraging.tick(Date.now());
+  assert.ok(spawned.length > 0, 'setup: a fresh unlocked save must spawn at least one forage node on tick');
+
+  const world = main.buildWorld();
+  const rendered = world.objects.filter((o) => o.kind === 'forage');
+  assert.equal(rendered.length, s.foraging.nodes.length,
+    'every real state.foraging.nodes entry must be rendered — main.js never fed them into the frame before this fix');
+  for (const obj of rendered) {
+    assert.ok(data.FORAGING.nodes[obj.type], `rendered forage type "${obj.type}" must be a real FORAGING.nodes key`);
+    assert.ok(typeof obj.progress === 'number', 'a forage object must carry a real numeric progress for the regrow ring');
+  }
+
+  assert.ok(/from '\.\/foraging\.js'/.test(readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8')),
+    "expected \"import ... from './foraging.js'\" in main.js");
+});
+
+test('input.js resolves a tap on a forage node\'s own tile to foraging.collectNode, never state.farm.objects', () => {
+  const s = freshState();
+  s.foraging.nodes = [{ id: 'forage_test_ready', type: 'wildflower_patch', x: 5, y: 5, readyAt: Date.now() - 1000 }];
+  const node = input.forageNodeAt(5, 5);
+  assert.ok(node, 'expected forageNodeAt(5,5) to find the real state.foraging.nodes entry sitting there');
+  assert.equal(node.id, 'forage_test_ready');
+  assert.equal(input.forageNodeAt(0, 0), null, 'an empty tile must resolve to null rather than throwing');
+
+  const barnBefore = Object.values(s.barn.items).reduce((a, b) => a + b, 0);
+  input.forageTap(node);
+  const barnAfter = Object.values(s.barn.items).reduce((a, b) => a + b, 0);
+  assert.ok(barnAfter >= barnBefore, 'tapping a ready node must never remove items from the barn');
+  assert.ok(node.readyAt > Date.now(), 'collecting must set a real future respawn readyAt, matching foraging.collectNode\'s own contract');
+
+  const growing = { id: 'forage_test_growing', type: 'wildflower_patch', x: 6, y: 6, readyAt: Date.now() + 999_000 };
+  input.forageTap(growing);
+  assert.equal(growing.readyAt, Date.now() + 999_000, 'tapping a not-yet-ready node must be a true no-op, not silently collect early');
+
+  const inputSource = readFileSync(path.join(__dirname, '..', 'src', 'input.js'), 'utf8');
+  assert.ok(/from '\.\/foraging\.js'/.test(inputSource), "expected \"import ... from './foraging.js'\" in input.js");
+  assert.ok(/foraging\.collectNode\(/.test(inputSource), 'expected input.js to actually call foraging.collectNode(...)');
+});
+
+// ---------------------------------------------------------------------------
+// I. Building mastery (collections.js) — production.js and workshop.js never called
+// collections.recordMake, so a star tier could never advance no matter how much a player
+// produced. Wired at both real completion points; mastery's own effect is registered with
+// economy's shared multiplier merge point rather than composing through a second mechanism.
+// ---------------------------------------------------------------------------
+test('collectBuilding (production.js) records mastery via collections.recordMake at the real completion point', () => {
+  const s = freshState();
+  const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  s.barn.items.milk = 1;
+  assert.equal(production.enqueue(buildingId, 'cream'), true);
+  assert.equal(collections.masteryOf(buildingId).makes, 0, 'setup: no mastery recorded yet');
+
+  const entry = s.production.find((p) => p.objectId === buildingId);
+  entry.readyAt = Date.now() - 1000;
+  const result = production.collectBuilding(buildingId);
+  assert.ok(result, 'setup: the batch must actually collect');
+  assert.equal(collections.masteryOf(buildingId).makes, 1, 'collectBuilding must call collections.recordMake exactly once per real collection');
+});
+
+test('collectBuilding must NOT record mastery when the barn is full and nothing actually collects', () => {
+  const s = freshState();
+  const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  s.barn.items.milk = 1;
+  assert.equal(production.enqueue(buildingId, 'cream'), true);
+  const entry = s.production.find((p) => p.objectId === buildingId);
+  entry.readyAt = Date.now() - 1000;
+  s.barn.capacity = 0; // nothing can fit
+  const result = production.collectBuilding(buildingId);
+  assert.equal(result, null, 'setup: a full barn must refuse to collect');
+  assert.equal(collections.masteryOf(buildingId).makes, 0, 'a make must only be recorded for a real, successful collection');
+});
+
+test('workshop.collect() also records mastery for the Workshop building itself', () => {
+  const s = freshState();
+  const workshopId = placeStructureAndBuilding(s, 'workshop_yard', 'build_workshop');
+  const recipe = data.BUILDINGS.build_workshop.recipes[0];
+  for (const [inputId, qty] of Object.entries(recipe.inputs)) s.barn.items[inputId] = qty;
+  assert.equal(workshop.craft(recipe.id), true);
+  const entry = s.production.find((p) => p.objectId === workshopId);
+  entry.readyAt = Date.now() - 1000;
+  const result = workshop.collect(0);
+  assert.ok(result, 'setup: the crafted item must actually collect');
+  assert.equal(collections.masteryOf(workshopId).makes, 1, 'workshop.collect() must call collections.recordMake exactly once per real collection');
+});
+
+test('production.applyMinigameBonus: a *Mult-named result adds bonus XP and never a bonus unit', () => {
+  const s = freshState();
+  s.minigames.results.mult_test_building = { effect: 'speedMult', amount: 0.5 };
+  const { xp, bonusQty } = production.applyMinigameBonus('mult_test_building', 'bread', 100);
+  assert.equal(xp, 150, 'expected 100 base + round(100*0.5) bonus XP for a *Mult effect');
+  assert.equal(bonusQty, 0, 'a *Mult effect must never grant a bonus unit of the good');
+  assert.equal(s.minigames.results.mult_test_building, undefined, 'reading the bonus (pendingBonus) must consume it — a second read must find nothing');
+});
+
+test('production.applyMinigameBonus: a non-Mult result may grant one bonus unit, bounded by barn room', () => {
+  const s = freshState();
+  s.barn.capacity = 10;
+  s.barn.items = {};
+  s.minigames.results.chance_test_building = { effect: 'seedRefundChance', amount: 0.9 };
+  const originalRandom = Math.random;
+  Math.random = () => 0; // force the roll to hit, deterministically
+  try {
+    const { xp, bonusQty } = production.applyMinigameBonus('chance_test_building', 'bread', 100);
+    assert.equal(xp, 100, 'a non-Mult effect must never touch XP');
+    assert.equal(bonusQty, 1, 'a hit roll with barn room available must grant exactly one bonus unit');
+    assert.equal(s.barn.items.bread, 1, 'the bonus unit must actually land in the barn');
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('production.applyMinigameBonus: nothing pending is a true no-op — the minigame is never a gate', () => {
+  const s = freshState();
+  const { xp, bonusQty } = production.applyMinigameBonus('no_such_building', 'bread', 100);
+  assert.equal(xp, 100, 'with nothing pending, XP must be exactly the base amount, unmodified');
+  assert.equal(bonusQty, 0, 'with nothing pending, no bonus unit may be granted');
+});
+
+test("mastery's effect composes through economy's shared multiplier provider list rather than a second merge path", () => {
+  const s = freshState();
+  const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  for (let i = 0; i < MASTERY_FIRST_TIER_MAKES(data); i++) collections.recordMake(buildingId);
+  const effect = collections.masteryEffect();
+  assert.ok(effect.productionTimeMult < 1, 'setup: enough makes must have crossed the first mastery tier');
+  // economy.sellValue is the one existing consumer of economy's shared merge point
+  // (registerMultiplierEffect / combinedMultiplier). production.js registers mastery's own
+  // provider at module load (see production.js's top-of-file comment) using that exact
+  // sanctioned API — proving it did not throw or corrupt the merge point for its one real
+  // consumer today is the honest, real-behavior check available without economy.js exporting
+  // a generic reader (it does not — combinedMultiplier is private, only ever invoked for
+  // 'sell'). productionTimeMult itself having no consumer anywhere yet is a pre-existing gap
+  // in economy.js, out of this file's scope to invent a second path around.
+  assert.doesNotThrow(() => economy.sellValue('bread'), 'registering mastery\'s provider must never break the existing sell merge point');
+});
+function MASTERY_FIRST_TIER_MAKES(d) { return d.MASTERY.tiers[0].makes; }
+
+// ---------------------------------------------------------------------------
+// J. Five modules main.js's loop never ticked: lab, helicopter, newspaper, coop, regatta. The
+// previous audit worked around it by ticking each from its own render function (ui.js), so an
+// OPEN panel was never stale — but background progress while the panel stayed CLOSED never
+// advanced. Wired into main.js's tickAllSystems(); helicopter and regatta specifically need a
+// throttle (verified below, not assumed) because their own tick() resolves elapsed-since-last-
+// call and unconditionally resets that baseline — ticked at full per-frame (~16ms) frequency,
+// the elapsed slice never crosses a real regen/scoring threshold and progress is lost forever.
+// ---------------------------------------------------------------------------
+test('main.js imports and ticks lab/newspaper/coop/helicopter/regatta from tickAllSystems', () => {
+  const mainSource = readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
+  for (const mod of ['lab', 'newspaper', 'coop', 'helicopter', 'regatta']) {
+    assert.ok(new RegExp(`from '\\./${mod}\\.js'`).test(mainSource), `expected main.js to import ${mod}.js`);
+    // Matches either a direct "mod.tick(" call or main.js's own "safeCall(mod.tick, ...)"
+    // defensive-wrapper form (see main.js's safeCall) — both are real wiring, neither is a
+    // restated shape of what main.js actually does.
+    assert.ok(new RegExp(`(${mod}\\.tick\\(|safeCall\\(${mod}\\.tick[,)])`).test(mainSource),
+      `expected main.js's loop to actually call ${mod}.tick(...), directly or via safeCall(...)`);
+  }
+});
+
+test('tickAllSystems() completes research whose panel was never opened — the loop itself does it, not ui.js', () => {
+  const s = freshState();
+  // Research costs draw on crop items (silo) as well as goods/materials (barn) — see e.g.
+  // irrigation_1's { wheat: 60, cotton: 20 } — stock all three so this test is about the tick
+  // wiring, never about resource affordability (same shape as tools/test-research.mjs's own
+  // freshState, which this cannot import from since it owns its own).
+  for (const id of Object.keys(data.CROPS)) s.silo.items[id] = 1e6;
+  for (const id of Object.keys(data.MATERIALS)) s.barn.items[id] = 1e6;
+  for (const id of Object.keys(data.GOODS)) s.barn.items[id] = 1e6;
+  assert.equal(lab.build(), true, 'setup: building the laboratory must succeed');
+  const nodeId = lab.availableNodes()[0];
+  assert.ok(nodeId, 'setup: at least one research node must be immediately available');
+  assert.equal(lab.startResearch(nodeId), true, 'setup: starting research must succeed');
+  assert.ok(s.lab.active, 'setup: research must now be active');
+
+  // No ui.openPanel('lab', ...) call anywhere in this test — proving the LOOP, not ui.js's old
+  // render-time safeTick(lab.tick, ...) fallback, is what completes it.
+  main.tickAllSystems(s.lab.active.readyAt + 1);
+  assert.equal(s.lab.active, null, 'tickAllSystems() must complete research once its readyAt has passed');
+  assert.ok(s.lab.researched.includes(nodeId), 'the completed node must be recorded as researched');
+});
+
+test('DOCUMENTS the hazard: calling helicopter.tick() truly unthrottled (every ~1s) never regenerates fuel, even across real hours', () => {
+  const s = freshState();
+  s.helicopter.fuel = 0;
+  const start = Date.now() + 950_000_000; // a synthetic timeline segment this test owns exclusively
+  s.helicopter.fuelUpdatedAt = start;
+  let now = start;
+  for (let elapsed = 1000; elapsed <= 2 * 3600 * 1000; elapsed += 1000) {
+    now = start + elapsed;
+    helicopter.tick(now); // the RAW module call, unthrottled — exactly what a naive per-frame loop tick would do
+  }
+  assert.equal(helicopter.currentFuel(now), 0,
+    "this is the exact defect main.js's throttled tickAllSystems() call exists to avoid: settleFuel() resolves elapsed-since-last-call and resets its own baseline on EVERY call, so an unthrottled periodic tick() permanently loses fuel regen no matter how much real time elapses");
+});
+
+test("main.js's throttled tickAllSystems() correctly regenerates helicopter fuel over real elapsed time", () => {
+  const s = freshState();
+  s.helicopter.fuel = 0;
+  const start = Date.now() + 900_000_000; // a synthetic timeline segment this test owns exclusively
+  s.helicopter.fuelUpdatedAt = start;
+  let now = start;
+  // 3 simulated hours, ticked every 90s of simulated time (a stand-in for "many animation
+  // frames worth of loop calls" without literally iterating every 16ms) — the throttle inside
+  // tickAllSystems() must still let real, correctly-sized elapsed spans through.
+  for (let elapsed = 90_000; elapsed <= 3 * 3600 * 1000; elapsed += 90_000) {
+    now = start + elapsed;
+    main.tickAllSystems(now);
+  }
+  const fuel = helicopter.currentFuel(now);
+  assert.ok(fuel >= 2 && fuel <= data.HELICOPTER.fuel.max,
+    `expected roughly 3 fuel points (capped at ${data.HELICOPTER.fuel.max}) over 3 simulated hours of throttled loop ticks, got ${fuel}`);
+});
+
+test('DOCUMENTS the hazard: calling regatta.tick() truly unthrottled (every ~1s) never advances rival scores, even across real hours', () => {
+  const s = freshState();
+  regatta.standings(); // force regatta.js's ensure() to create real rivals
+  const start = Date.now() + 850_000_000;
+  s.regatta.endsAt = start + 999 * 24 * 3600 * 1000; // push the season boundary far out — no rollover must interfere
+  for (const r of s.regatta.rivals) { r.points = 0; r.lastTickAt = start; }
+  let now = start;
+  for (let elapsed = 1000; elapsed <= 2 * 3600 * 1000; elapsed += 1000) {
+    now = start + elapsed;
+    regatta.tick(now); // the RAW module call, unthrottled
+  }
+  const totalPoints = s.regatta.rivals.reduce((sum, r) => sum + r.points, 0);
+  assert.equal(totalPoints, 0,
+    'neighbours.simulate()\'s Math.round() on a near-zero per-call elapsed slice resolves to 0 every time, and lastTickAt still resets — exactly the same hazard class as helicopter\'s fuel, which is why main.js throttles this one too');
+});
+
+test("main.js's throttled tickAllSystems() correctly advances regatta rival scores over real elapsed time", () => {
+  const s = freshState();
+  regatta.standings();
+  // main.js's lastHeliTick/lastRegattaTick throttle timestamps are module-level state shared
+  // across every test in this file (main.js is imported once) and only ever grow — this offset
+  // must stay LARGER than every earlier tickAllSystems()-driven test's own synthetic timeline
+  // (the helicopter-regen test above tops out around Date.now()+900_000_000+3h) or the throttle
+  // gate here would never re-open and this test would tick nothing, exactly the failure mode
+  // that shipped on the first pass of this test.
+  const start = Date.now() + 2_000_000_000;
+  s.regatta.endsAt = start + 999 * 24 * 3600 * 1000;
+  for (const r of s.regatta.rivals) { r.points = 0; r.lastTickAt = start; }
+  let now = start;
+  // Called every simulated SECOND, not every 90s — on its own, a 1s-spaced call is exactly the
+  // hazard the test above documents (Math.round() of a ~1s slice resolves to 0 for every rival
+  // on every call). This only accumulates real points BECAUSE tickAllSystems()'s own 5-minute
+  // throttle skips most of these calls and lets the few it does make carry a full throttle
+  // interval's worth of real elapsed time — proven by temporarily deleting that throttle guard
+  // during this fix's verification pass and watching this exact assertion go red.
+  for (let elapsed = 1000; elapsed <= 3 * 3600 * 1000; elapsed += 1000) {
+    now = start + elapsed;
+    main.tickAllSystems(now);
+  }
+  const totalPoints = s.regatta.rivals.reduce((sum, r) => sum + r.points, 0);
+  assert.ok(totalPoints > 0, 'rival scores must have moved in the background over 3 simulated hours of throttled loop ticks, with no panel ever opened');
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

@@ -9,10 +9,11 @@ import { state, save } from './state.js';
 import * as renderer from './render/renderer.js';
 import * as farm from './farm.js';
 import * as production from './production.js';
+import * as foraging from './foraging.js';
 import * as ui from './ui.js';
 import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
-import { STRUCTURES, CROPS, ANIMALS } from './data.js';
+import { STRUCTURES, CROPS, ANIMALS, GOODS, MATERIALS } from './data.js';
 import * as economy from './economy.js';
 
 let canvasRef = null;
@@ -42,6 +43,41 @@ function structureAt(tx, ty) {
 
 function isStructureUnlocked(def) {
   return state.level >= def.unlockLevel;
+}
+
+/** Item display name across every table a foraged item id could land in. */
+function nameOf(id) {
+  return CROPS[id]?.name || GOODS[id]?.name || MATERIALS[id]?.name || id;
+}
+
+/** A forage node at this tile, or null. Nodes live in state.foraging.nodes — a SEPARATE array
+ *  from state.farm.objects (see foraging.js's own findFreeTile, which checks farm.objectAt to
+ *  avoid ever overlapping one), so farm.objectAt() above never finds them; this is the one
+ *  place a tap resolves them. Exported (alongside forageTap below) so tools/test-ui-contracts.mjs
+ *  can drive the real tap-resolution path directly rather than faking pointer/canvas geometry
+ *  just to prove the wiring is real. */
+export function forageNodeAt(tx, ty) {
+  return foraging.nodes().find((n) => n.x === tx && n.y === ty) || null;
+}
+
+/** Nodes cost nothing and are simply tapped (foraging.js's own words) — no radial menu, no
+ *  confirmation, just an instant collect when ready and an honest "not yet" toast when not. */
+export function forageTap(node) {
+  const now = Date.now();
+  if (node.readyAt > now) {
+    ui.toast('Still regrowing — check back soon.', 'info');
+    return;
+  }
+  const result = foraging.collectNode(node.id, now);
+  if (result && result.qty > 0) {
+    audio.harvest();
+    ui.toast(`Foraged ${nameOf(result.itemId)} x${result.qty}!`, 'success');
+    tutorial.emit('foraged');
+  } else {
+    audio.error();
+    ui.toast('Barn is full — make room first.', 'error');
+  }
+  save();
 }
 
 function openStructure(key, def) {
@@ -150,8 +186,12 @@ function handleTap(sx, sy) {
     return;
   }
 
+  const node = forageNodeAt(tx, ty);
+  if (node) { forageTap(node); return; }
+
   // Tapped empty unlocked ground with nothing on it — no default action (per design, only
-  // fields/structures/pens open something); just close any open panel to feel responsive.
+  // fields/structures/pens/forage nodes open something); just close any open panel to feel
+  // responsive.
   if (ui.isPanelOpen()) ui.closePanel();
 }
 

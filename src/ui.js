@@ -83,11 +83,12 @@ function progressBarHtml(frac) {
 }
 
 /** Call a backend module's own tick(now), defensively — a broken/missing tick must never take
- *  a panel down with it. Several expansion systems (lab, helicopter, newspaper, co-op, the
- *  regatta) are not ticked by the main game loop yet (see main.js's tickAllSystems), so their
- *  own panel is the only place their timers ever actually advance; calling tick() here keeps
- *  research completing, fuel regenerating, and boards refreshing even though main.js hasn't
- *  been taught about them. */
+ *  a panel down with it. main.js's loop now ticks lab/newspaper/coop/helicopter/regatta itself
+ *  (see its tickAllSystems), so this is only still called for regatta's render path (kept for
+ *  on-demand freshness when its panel opens between the loop's own 5-minute throttled ticks —
+ *  see the comment at that one remaining call site for why it is safe rather than a double
+ *  tick). Left generic/exported-shape rather than deleted so a future render-time need has
+ *  somewhere to reach for the same defensive wrapper. */
 function safeTick(fn, now) {
   try { if (typeof fn === 'function') fn(now); } catch (e) { console.error(e); }
 }
@@ -1032,7 +1033,13 @@ function renderZoo(container) {
 // The helicopter pad (helicopter.js) — the fastest materials channel.
 // ---------------------------------------------------------------------------
 function renderHelicopter(container) {
-  helicopter.tick(Date.now());
+  // No helicopter.tick() call here on purpose — see main.js's tickAllSystems for why:
+  // settleFuel() resolves elapsed-since-last-call and unconditionally resets its own baseline,
+  // so calling it on every render (which can happen many times a second while this panel is
+  // open) would discard fuel regen exactly the way an unthrottled per-frame loop tick would.
+  // currentFuel() below is the pure, side-effect-free reader that already shows the correct
+  // live value without needing tick() to run at all; main.js ticks the real regen forward on a
+  // throttled cadence in the background.
   const fuel = helicopter.currentFuel(Date.now());
   container.appendChild(hintEl(`Fuel: ${fuel}/${HELICOPTER.fuel.max}`));
 
@@ -1089,7 +1096,9 @@ function renderHelicopter(container) {
 // The laboratory (lab.js) — permanent research; one node runs at a time.
 // ---------------------------------------------------------------------------
 function renderLab(container) {
-  safeTick(lab.tick, Date.now());
+  // No render-time lab.tick() here — main.js's loop ticks it every frame now, and lab.tick()'s
+  // "if (now < active.readyAt) return" one-shot check is idempotent at any call frequency, so
+  // the loop alone genuinely covers this (see main.js's tickAllSystems comment).
 
   if (!state.lab.built) {
     const cost = LAB.buildCost;
@@ -1259,7 +1268,9 @@ function renderExpeditions(container) {
 // The newspaper (newspaper.js) — browse simulated neighbours' shops.
 // ---------------------------------------------------------------------------
 function renderNewspaper(container) {
-  safeTick(newspaper.tick, Date.now());
+  // No render-time newspaper.tick() here — main.js's loop ticks it every frame now, and
+  // currentIssue()'s own staleness check (only regenerates once the issue is genuinely
+  // NEWSPAPER.refreshMinutes old) is idempotent at any call frequency.
   const issue = newspaper.currentIssue(Date.now());
   const refreshRow = row('');
   refreshRow.appendChild(button('Refresh', () => {
@@ -1338,7 +1349,9 @@ function renderCoop(container) {
     container.appendChild(hintEl(`The co-op unlocks at level ${COOP.unlockLevel}.`));
     return;
   }
-  safeTick(coop.tick, Date.now());
+  // No render-time coop.tick() here — main.js's loop ticks it every frame now, and both
+  // refreshDailyTasksIfNeeded (a calendar-boundary check) and refreshBoard (fills up to
+  // capacity and stops) are idempotent at any call frequency.
 
   container.appendChild(hintEl(`Co-op points: ${coop.contributionPoints()}`));
 
@@ -1401,6 +1414,16 @@ function renderCoop(container) {
     container.appendChild(hintEl(`Unlocks at level ${REGATTA.unlockLevel}.`));
     return;
   }
+  // Kept deliberately, unlike lab/newspaper/coop above: regatta.tick() advances rival scores
+  // through neighbours.simulate()'s Math.round(), which — like helicopter's fuel — resolves
+  // elapsed-since-last-call and unconditionally resets its own baseline (state.regatta.rivals[].
+  // lastTickAt). main.js's loop only ticks this on a 5-minute throttle for safe background
+  // progress, so a panel opened between throttled ticks would show standings up to 5 minutes
+  // stale without this. Calling it again here is safe rather than a double-advance: it is
+  // delta-based against the real elapsed wall-clock time since whichever call (loop or render)
+  // touched it last, never a fixed per-call increment, so an extra call just adds the tiny
+  // extra slice of real time and moves the baseline forward — it cannot count the same elapsed
+  // time twice.
   safeTick(regatta.tick, Date.now());
   const season = regatta.activeSeason(Date.now());
   const league = REGATTA.leagues.find((l) => l.id === season.league);

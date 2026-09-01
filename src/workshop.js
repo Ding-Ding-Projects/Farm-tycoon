@@ -16,6 +16,7 @@ import { state } from './state.js';
 import { BUILDINGS } from './data.js';
 import * as economy from './economy.js';
 import * as production from './production.js';
+import * as collections from './collections.js';
 
 function def() {
   return BUILDINGS.build_workshop;
@@ -95,13 +96,18 @@ export function collect(index) {
   if (given === 0) return null; // barn full — leave it queued, collect once there is room
 
   state.barn.items[entry.recipeId] = (state.barn.items[entry.recipeId] || 0) + given;
-  economy.addXp(recipe.xp);
-  economy.trackStat('goodsProduced', given);
+  // The Workshop has its own minigame (workshop_fit) like every other production building —
+  // spend a finished run's bonus at this same collection point, through production.js's own
+  // helper rather than a second copy of the *Mult/chance-of-a-bonus-unit logic.
+  const { xp, bonusQty } = production.applyMinigameBonus(workshop.id, entry.recipeId, recipe.xp);
+  economy.addXp(xp);
+  economy.trackStat('goodsProduced', given + bonusQty);
+  collections.recordMake(workshop.id);
 
   const idx = state.production.indexOf(entry);
   if (idx !== -1) state.production.splice(idx, 1);
 
-  return { goodId: entry.recipeId, qty: given };
+  return { goodId: entry.recipeId, qty: given + bonusQty };
 }
 
 /** Whether a kit for this building is held and the building may therefore be placed. */

@@ -5,6 +5,25 @@
 import { state } from './state.js';
 import { CROPS, ANIMALS, BUILDINGS, QUALITY } from './data.js';
 import * as economy from './economy.js';
+import * as collections from './collections.js';
+import * as minigames from './minigames.js';
+
+// Building mastery (collections.js) computes a `productionTimeMult` contribution that is meant
+// to flow through economy's ONE multiplier merge point (economy.registerMultiplierEffect) —
+// exactly the way lab.js's own research self-registers at the bottom of that file — but nothing
+// ever registered it, so a maxed-out mastery star tier composed with nothing. Registered here,
+// at production.js's own module load, using the same sanctioned API lab.js uses, rather than
+// giving mastery a second merge mechanism of its own.
+//
+// NOTE for whoever picks up productionTimeMult next: economy.js's combinedMultiplier() (the
+// function this registration ultimately feeds) is currently only ever invoked for the 'sell'
+// kind (economy.sellValue) — 'productionTimeMult' itself, along with every other reserved-for-
+// research EFFECT_KEYS entry (cropGrowMult, animalProduceMult, siloCapBonus, barnCapBonus,
+// orderPayoutMult, mineYieldBonus, fishRareChance, zooIncomeMult, truckIntervalMult), has NO
+// consumer anywhere in the codebase yet — that is a pre-existing gap in economy.js, not
+// something this file can fix without adding the second merge path this comment is here to
+// avoid. This registration makes mastery's contribution available the moment somebody does.
+economy.registerMultiplierEffect((kind) => collections.masteryEffect()[kind] ?? 1);
 
 // Materials (data.js MATERIALS) have no dedicated bucket — see the NOTE in state.js. Any
 // input/output id that is not a crop lives in the barn, materials included.
@@ -158,6 +177,40 @@ export function enqueue(buildingId, recipeId) {
   return true;
 }
 
+/**
+ * Apply the per-BUILDING factory bonus (minigames.pendingBonus — the original one-per-building
+ * MINIGAMES table, awarded at Masterpiece by minigames.js's finalize()) at the moment a batch is
+ * actually collected — the one place both production.js and workshop.js spend it, since
+ * minigames.js's own `results` bucket is consumed on read (see pendingBonus's doc comment). This
+ * is a SEPARATE channel from the per-CRAFT quality tier a playable recipe's own game resolves
+ * (that one is a real gate now, by design — see production.collectBuilding/isCollectable); the
+ * factory bonus here stays exactly what it always was, optional and never a gate on its own:
+ * pendingBonus() returns a zeroed shape when nothing is pending, and `amount > 0` short-circuits
+ * before either branch below does anything.
+ *
+ * `*Mult`-named effects (speedMult, sellPriceMult, xpMult, ...) read as a fractional boost on
+ * top of the recipe's own reward; XP is the one reward every recipe already pays, so that is
+ * what a multiplicative result adds to. Every other effect name (bonusYield, extraOutput,
+ * byproductChance, purityChance, ...) reads as a probability of one bonus unit of the same
+ * good, bounded by barn room exactly like the base yield.
+ * Returns { xp, bonusQty } — xp is the TOTAL to award (base + bonus), bonusQty is how many
+ * extra units of `goodId` were actually granted (0 unless the barn had room and the roll hit).
+ */
+export function applyMinigameBonus(buildingId, goodId, baseXp) {
+  const bonus = minigames.pendingBonus(buildingId);
+  let xp = baseXp;
+  let bonusQty = 0;
+  if (bonus.effect && bonus.amount > 0) {
+    if (bonus.effect.endsWith('Mult')) {
+      xp += Math.round(baseXp * bonus.amount);
+    } else if (Math.random() < bonus.amount && barnRoom() > 0) {
+      state.barn.items[goodId] = (state.barn.items[goodId] || 0) + 1;
+      bonusQty = 1;
+    }
+  }
+  return { xp, bonusQty };
+}
+
 /** Collect a finished queue slot's output into the barn. */
 export function collectBuilding(buildingId, now = Date.now()) {
   // findIndex SKIPS a ready-but-unplayed entry rather than stopping at it, so an unplayed cake
@@ -181,8 +234,17 @@ export function collectBuilding(buildingId, now = Date.now()) {
   if (given === 0) return null; // barn full — leave the entry queued, collect once there is room
 
   state.barn.items[entry.recipeId] = (state.barn.items[entry.recipeId] || 0) + given;
-  economy.addXp(Math.round(recipe.xp * (tier ? tier.xpMult : 1)));
-  economy.trackStat('goodsProduced', given);
+
+  // Two SEPARATE reward channels stack here, per minigames.js's own header comment: the tier
+  // above is the per-CRAFT quality game's result (XP multiplier baked in); applyMinigameBonus
+  // spends the per-BUILDING factory bonus (the original MINIGAMES table, awarded at Masterpiece
+  // and banked in state.minigames.results) on top of it — that bonus is computed by finalize()
+  // but was never actually being spent anywhere, exactly the gap minigames.js's own comment on
+  // pendingBonus() describes ("the consuming path, used at collect") without it being wired.
+  const tierXp = Math.round(recipe.xp * (tier ? tier.xpMult : 1));
+  const { xp, bonusQty } = applyMinigameBonus(buildingId, entry.recipeId, tierXp);
+  economy.addXp(xp);
+  economy.trackStat('goodsProduced', given + bonusQty);
 
   // Room for fewer than the tier earned: pay the shortfall out as coins rather than inventing
   // a partial-entry state, and rather than silently dropping units the player played for.
@@ -192,8 +254,9 @@ export function collectBuilding(buildingId, now = Date.now()) {
     economy.addCoins(Math.round(economy.sellValue(entry.recipeId) * (tier.tipMult - 1) * given));
   }
 
+  collections.recordMake(buildingId);
   state.production.splice(idx, 1);
-  return { goodId: entry.recipeId, qty: given, tier: tier ? tier.id : null };
+  return { goodId: entry.recipeId, qty: given + bonusQty, tier: tier ? tier.id : null };
 }
 
 /** Skip a timer with diamonds (uses economy.skipCost). `target` is any object carrying a

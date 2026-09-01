@@ -20,10 +20,30 @@ import * as shop from './shop.js';
 import * as trains from './trains.js';
 import * as zoo from './zoo.js';
 import * as extras from './extras.js';
-import { CROPS, GOODS, MATERIALS, STRUCTURES, FARM } from './data.js';
+import * as foraging from './foraging.js';
+import * as lab from './lab.js';
+import * as helicopter from './helicopter.js';
+import * as newspaper from './newspaper.js';
+import * as coop from './coop.js';
+import * as regatta from './regatta.js';
+import { CROPS, GOODS, MATERIALS, STRUCTURES, FARM, FORAGING, HELICOPTER } from './data.js';
 
 let lastAutosave = 0;
 let running = false;
+
+// helicopter.tick()/regatta.tick() both resolve "how much time passed since I was last called"
+// and then unconditionally reset their own baseline to `now` (helicopter.js's settleFuel();
+// regatta.js's tick(), through neighbours.simulate()'s Math.round()). Called every animation
+// frame (~16ms apart), the elapsed slice is always far too small to register — floor()/round()
+// resolves to zero EVERY time, the baseline still advances to `now`, and that sliver of
+// progress is gone for good: verified live, fuel would never regenerate and rival scores would
+// never move if these two were ticked unthrottled, which is worse than the render-time-only
+// workaround they had before (see ui.js's old safeTick calls). Throttled here to an interval
+// long enough that real, non-zero progress lands on every call instead.
+let lastHeliTick = 0;
+let lastRegattaTick = 0;
+const REGATTA_TICK_INTERVAL_MS = 5 * 60 * 1000; // 5 min — safely above the ~90s worst case
+// (slowest rival profile, unluckiest jitter) neighbours.simulate() needs to round up to ≥1 point.
 
 function safeCall(fn, ...args) {
   if (typeof fn !== 'function') return undefined;
@@ -74,6 +94,21 @@ function buildWorld() {
     });
   }
 
+  // Forage nodes (foraging.js) — a SEPARATE array from s.farm.objects (see foraging.js's own
+  // findFreeTile, which checks farm.objectAt to avoid ever overlapping one), so they need their
+  // own loop here. renderer.js's KIND_DISPATCH already has a 'forage' entry drawing from
+  // sprites.FORAGE_DRAW; it was simply never fed anything, so nothing ever rendered — same
+  // shape as the workshop-not-imported defect fixed earlier: the consumer existed, the producer
+  // never wired to it. `progress` reuses drawFrame's generic "ring while progress < 1" support
+  // to show a regrowing node, computed from the node's own real respawn duration (not a
+  // hard-coded constant) so the ring genuinely reflects FORAGING.nodes[type].respawn.
+  for (const node of s.foraging.nodes) {
+    const respawnMs = (FORAGING.nodes[node.type]?.respawn ?? 1) * 1000;
+    const elapsed = now - (node.readyAt - respawnMs);
+    const progress = node.readyAt <= now ? 1 : Math.max(0, Math.min(1, elapsed / respawnMs));
+    objects.push({ id: node.id, kind: 'forage', type: node.type, tx: node.x, ty: node.y, progress });
+  }
+
   return { objects };
 }
 
@@ -86,7 +121,33 @@ function tickAllSystems(now) {
   safeCall(trains.tick, now);
   safeCall(zoo.tick, now);
   safeCall(extras.tickEvents, now);
+  safeCall(foraging.tick, now);
+
+  // lab/newspaper/coop resolve elapsed time via a one-shot readyAt check or a staleness/
+  // boundary comparison (see each module's own tick — none of them floor/round a fractional
+  // slice of elapsed time into a baseline they then reset), so calling them every frame is
+  // exactly as safe as production/orders/boat/shop/trains/zoo/extras above already are.
+  safeCall(lab.tick, now);
+  safeCall(newspaper.tick, now);
+  safeCall(coop.tick, now);
+
+  // helicopter and regatta do NOT share that property (see the module-load comment above) —
+  // throttled so every call carries enough real elapsed time to register.
+  if (now - lastHeliTick >= HELICOPTER.fuel.regenSeconds * 1000) {
+    lastHeliTick = now;
+    safeCall(helicopter.tick, now);
+  }
+  if (now - lastRegattaTick >= REGATTA_TICK_INTERVAL_MS) {
+    lastRegattaTick = now;
+    safeCall(regatta.tick, now);
+  }
 }
+
+// Exported for tools/test-ui-contracts.mjs, which proves the loop-wiring seam the same way it
+// proves ui.js's panel-routing seam: by calling the real function against real state, rather
+// than restating what it does. Harmless for the shipped boot path — nothing here changes
+// because these are now reachable from outside the module.
+export { tickAllSystems, buildWorld };
 
 function loop(nowMs) {
   if (!running) return;
@@ -207,6 +268,21 @@ function boot() {
       }
       if (s.orders?.truck?.readyAt) s.orders.truck.readyAt -= ms;
       if (s.orders?.boat?.readyAt) s.orders.boat.readyAt -= ms;
+      for (const node of s.foraging?.nodes || []) {
+        if (node.readyAt) node.readyAt -= ms;
+      }
+      if (s.lab?.active?.readyAt) s.lab.active.readyAt -= ms;
+      // helicopter/regatta resolve elapsed time from their OWN baseline field, not a fixed
+      // readyAt — shift that instead so tickAllSystems() below actually sees the skipped time
+      // (and reset this file's own loop throttle so it does not swallow the very tick that is
+      // supposed to make it visible).
+      if (typeof s.helicopter?.fuelUpdatedAt === 'number') s.helicopter.fuelUpdatedAt -= ms;
+      if (s.helicopter?.current?.returningAt) s.helicopter.current.returningAt -= ms;
+      for (const r of s.regatta?.rivals || []) {
+        if (r.lastTickAt) r.lastTickAt -= ms;
+      }
+      lastHeliTick = 0;
+      lastRegattaTick = 0;
       tickAllSystems(Date.now());
     },
     /** Grant qty of an item id straight into the appropriate storage bucket. */

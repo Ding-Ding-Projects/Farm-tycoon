@@ -100,6 +100,17 @@ Two honest notes. The frame rate is low, around 5fps, because the emulator runs 
 with `-gpu swiftshader_indirect`; the app itself is not this choppy. And it captures the DEVICE
 screen, never the host monitor, so nothing of whoever recorded it is in the file.
 
+**[screenshots/farm-tycoon-desktop.mp4](screenshots/farm-tycoon-desktop.mp4)** — 22 seconds, 99 KB,
+the Windows build at a full 12fps. Produced by `tools/capture-recording.mjs`, which captures the
+app's own renderer frame by frame over the DevTools protocol and drives it with real pointer events
+while it does. It records the page's pixels rather than a screen, so there is no window to
+accidentally include and no desktop behind it.
+
+It shows the loop: three fields planted through the radial menu, the crops growing, and all three
+harvested, with the seed counter running 6 to 3 and back up to 9 as each harvest returns double.
+
+![Four frames from the desktop recording: a "Planted Wheat." toast with the seed counter at 5/50, then 3/50 with three plots sown, then two "Harvested crop!" toasts with seeds back up to 7/50, and finally 9/50 with the plots empty again.](screenshots/desktop-recording-frames.png)
+
 The first attempt at this recording is worth knowing about: it used `KEYCODE_BACK` to close panels,
 the app has no back handler, so the key exited it and 25 seconds of the Android home screen were
 recorded instead. That was caught by extracting frames and looking at them rather than trusting the

@@ -69,9 +69,14 @@ test('trains: a fully-loaded train consumes its wagon goods exactly once and ret
   t.wagons.forEach((_, i) => trains.fillWagon(i));
   // second fill attempt on an already-full train must be a no-op — no double consumption
   t.wagons.forEach((_, i) => trains.fillWagon(i));
-  for (const wagon of t.wagons) {
-    const consumed = before[wagon.itemId] - state.silo.items[wagon.itemId];
-    assert.equal(consumed, wagon.requested, `wagon ${wagon.itemId} consumed exactly its requested amount once`);
+  // Two wagons on one train can legitimately request the SAME good (measured at ~5% of trains),
+  // so expected consumption has to be summed per item id. Comparing a combined draw against a
+  // single wagon's request made this test fail roughly one full run in twenty.
+  const expected = {};
+  for (const wagon of t.wagons) expected[wagon.itemId] = (expected[wagon.itemId] || 0) + wagon.requested;
+  for (const [itemId, want] of Object.entries(expected)) {
+    const consumed = before[itemId] - state.silo.items[itemId];
+    assert.equal(consumed, want, `${itemId} consumed exactly its requested amount once`);
   }
   trains.tick(now + 1); // departs (full)
   trains.tick(now + TRAINS.tripTime * 1000 + 1); // returns

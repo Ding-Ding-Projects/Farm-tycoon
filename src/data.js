@@ -661,6 +661,31 @@ export const EFFECT_KEYS = [
  * worstStageCap bounds a chain's aggregate at (weakest stage + this), so a burnt cake cannot be
  * rescued by nice piping and quality cannot be farmed by sandbagging the hard stage.
  */
+/**
+ * VERBS — one entry per playable item's game.
+ *
+ * Separate from MINIGAMES on purpose, and the distinction is load-bearing:
+ *   MINIGAMES is per BUILDING and awards a persistent EFFECT_KEYS bonus (unchanged, still 1:1
+ *             with a unique effect, still guarded by validate-data.mjs);
+ *   VERBS     is per RECIPE STAGE and is the game you actually play.
+ * Conflating them was what made 26 'minigames' share one generic round shape.
+ *
+ * `family` is one of the eight input grammars in src/minigames/input.js and decides only how a
+ * pointer or key becomes a number — never what the number means. `verbWord` is the anti-re-skin
+ * field: it is one English verb, globally unique, and the validator enforces that uniqueness, so
+ * two games cannot quietly become the same game wearing different art.
+ */
+export const VERBS = {
+  press_cutter: {
+    name: 'Press the Cutter',
+    verbWord: 'press',
+    family: 'sequence',
+    purpose: 'Cut clean rounds and the tray comes out even.',
+    hint: 'Press each round of dough before it slumps — early presses cut cleanest. Keys 1-9 work too.',
+    stageClass: 'stage-targets',
+    durationMs: 11000,
+  },
+};
 export const QUALITY = {
   worstStageCap: 0.25,
   tiers: [

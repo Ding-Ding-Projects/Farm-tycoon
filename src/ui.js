@@ -12,7 +12,8 @@ import * as shop from './shop.js';
 import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
 import * as workshop from './workshop.js';
-import { CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM } from './data.js';
+import * as minigames from './minigames.js';
+import { CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY } from './data.js';
 
 // ---------------------------------------------------------------------------
 // DOM refs, wired in init()
@@ -86,6 +87,7 @@ export function openModal(html, onClose) {
   el.modal.onclick = (e) => { if (e.target === el.modal) closeModal(onClose); };
   const closeBtn = el.modalCard.querySelector('[data-close]');
   if (closeBtn) closeBtn.addEventListener('click', () => closeModal(onClose));
+  return el.modalCard; // returned so a caller can render a live surface into it
 }
 export function closeModal(onClose) {
   el.modal.hidden = true;
@@ -329,6 +331,57 @@ function hintEl(text) {
  * for the progress bar; `collectFn(entry, index)` performs the actual collection and should
  * return a truthy result on success. Renders nothing when the queue is empty.
  */
+/** True when a craft has finished prepping but its game has not been played through. */
+function needsPlay(entry) {
+  return !!entry.play && !entry.play.done;
+}
+
+/** The queue card's status line — a playable craft says what it is waiting for. */
+function statusLine(entry, ready) {
+  if (!ready) return 'Crafting…';
+  if (!needsPlay(entry)) {
+    const tier = entry.play ? QUALITY.tiers[entry.play.tier] : null;
+    return tier ? `${tier.label} — ready to collect!` : 'Ready to collect!';
+  }
+  const stages = (minigames.chainFor(entry) || []);
+  return stages.length > 1
+    ? `Ready to make — step ${entry.play.stage + 1} of ${stages.length}`
+    : 'Ready to make';
+}
+
+/** Button label for a playable craft — 'Resume' reads better than 'Make' mid-chain. */
+function playLabel(entry) {
+  return entry.play && entry.play.stage > 0 ? 'Resume' : 'Make it';
+}
+
+/**
+ * Open one stage of a playable craft. The shell is imported HERE, lazily, so neither it nor any
+ * verb is on the boot path — the game loads exactly as fast as it did before this feature.
+ */
+async function openStagePlayer(entry) {
+  const host = openModal('<div class="minigame-loading">Setting up…</div>');
+  try {
+    const { playStage } = await import('./minigames/shell.js');
+    const outcome = await playStage(host, entry, {});
+    closeModal();
+    if (outcome.committed && outcome.result) {
+      if (outcome.result.done) {
+        audio.harvest();
+        toast(`${itemName(entry.recipeId)} — ${outcome.result.tier}! Collect it from the queue.`, 'success');
+      } else {
+        audio.place();
+        toast(`Step ${outcome.result.stage} of ${outcome.result.of} done.`, 'success');
+      }
+    }
+  } catch (err) {
+    // A failed dynamic import on a REQUIRED craft must never be a dead end.
+    closeModal();
+    audio.error();
+    toast('That game could not be loaded — try again, or finish it plain from settings.', 'error');
+  }
+  refreshPanel();
+}
+
 function renderQueue(container, entries, recipeOf, collectFn) {
   if (!entries.length) return;
   const heading = document.createElement('p');
@@ -346,8 +399,12 @@ function renderQueue(container, entries, recipeOf, collectFn) {
     card.className = 'order-card';
     card.innerHTML = `<strong>${itemIcon(entry.recipeId)} ${itemName(entry.recipeId)}</strong>
       <div class="event-progress"><div class="event-progress-fill" style="width:${Math.round(frac * 100)}%"></div></div>
-      <span>${ready ? 'Ready to collect!' : 'Crafting…'}</span>`;
-    if (ready) {
+      <span>${statusLine(entry, ready)}</span>`;
+    if (ready && needsPlay(entry)) {
+      // A PLAYABLE craft: the prep timer is done, but the item only exists once its game has
+      // been played through. Nothing expires while it waits here.
+      card.appendChild(button(playLabel(entry), () => openStagePlayer(entry)));
+    } else if (ready) {
       card.appendChild(button('Collect', () => {
         const result = collectFn(entry, index);
         if (result) {

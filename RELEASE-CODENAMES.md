@@ -17,3 +17,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `013509a4a7f6` | Dried Scallop Shrimp Dumpling · 瑤柱蝦餃 | `dried-scallop-shrimp-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0009-dried-scallop-shrimp-dumpling.png |
 | 0.1.0 | `375952d002b2` | Cuttlefish Shrimp Dumpling · 墨魚蝦餃 | `cuttlefish-shrimp-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0010-cuttlefish-shrimp-dumpling.png |
 | 0.1.0 | `05fb31fcccc5` | Classic Siu Mai · 燒賣 | `classic-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0011-classic-siu-mai.png |
+| 0.1.0 | `1c117c57bcf0` | Crab Roe Siu Mai · 蟹籽燒賣 | `crab-roe-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0012-crab-roe-siu-mai.png |

@@ -15,6 +15,20 @@
 //   test_set   - a testing step where guessing at 62% consistently beat actually testing, so the
 //                best strategy was to ignore the mechanic. Four attempts.
 //
+//   steady_spindle - a milkshake tin balanced on a spinning spindle, an inverted pendulum. The
+//                intended skill was anticipation: correct on which way it is MOVING, not only on
+//                where it is, because shoving against the lean was supposed to add momentum you
+//                then had to cancel. Measured, that is simply false. Sweeping the reactive gain
+//                from 1 to 20 showed gains of 6 and above scoring a flat 1.000, because the input
+//                saturates at plus or minus one and a high-gain proportional controller therefore
+//                degenerates into bang-bang control, which stabilises an inverted pendulum
+//                perfectly well. Reaction beats the verb's own premise.
+//
+//                Removing the drag term and adding a driven wobble did not save it; those made
+//                low gains worse without making high gains fail. The fix that would work is input
+//                lag, which is exactly the distinction jar_fill already owns, so there is nothing
+//                left here that is not already a verb.
+//
 //   work_rush  - a hot dog stand lunch rush: more orders come good than you can plate, and the
 //                intended skill was choosing what to sacrifice. Five attempts, all failed, and
 //                the reason is worth keeping because it is a general trap rather than a tuning

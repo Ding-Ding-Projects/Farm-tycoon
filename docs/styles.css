@@ -29,6 +29,14 @@
   --c-text-faint:         #75654e;
   --c-border:             #e0d2b6;
   --c-border-strong:      #c8b592;
+  /* The boundary of an interactive control, and the one border on this page
+     that carries a WCAG requirement rather than a preference: SC 1.4.11 asks
+     for 3:1 against whatever sits either side of it. --c-border and
+     --c-border-strong are tuned to separate surfaces, which is a different
+     job and a much gentler one, so a control that borrowed either of them
+     had no perceivable edge at all. Measured against the four surfaces a
+     control can sit on: 4.26 / 4.03 / 3.82 / 3.50. */
+  --c-control-border:     #8c7657;
   --c-scrim:              rgba(43, 28, 12, 0.44);
 
   /* --- accent (user-overridable at runtime) --------------------------- */
@@ -121,6 +129,7 @@
     --c-text-faint:     #a89a82;
     --c-border:         #403426;
     --c-border-strong:  #5b4b38;
+    --c-control-border: #94836b;
     --c-scrim:          rgba(0, 0, 0, 0.62);
 
     --c-accent:         #9fd472;
@@ -169,6 +178,7 @@
   --c-text-faint:     #a89a82;
   --c-border:         #403426;
   --c-border-strong:  #5b4b38;
+  --c-control-border: #94836b;
   --c-scrim:          rgba(0, 0, 0, 0.62);
 
   --c-accent:         #9fd472;
@@ -416,7 +426,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 0 6px 0 10px;
   height: 42px;
   background: var(--c-surface-2);
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--c-control-border);
   border-radius: var(--r-pill);
   transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
@@ -449,7 +459,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 4px;
   height: 30px;
   padding: 0 9px;
-  border: 1px solid var(--c-border-strong);
+  border: 1px solid var(--c-control-border);
   border-radius: var(--r-pill);
   background: var(--c-surface);
   color: var(--c-text-muted);
@@ -787,7 +797,14 @@ mark { background: var(--c-mark-bg); color: var(--c-mark-text); border-radius: 3
 .article-body svg:not(.icon) { max-width: 100%; height: auto; }
 .article-body hr { border: 0; border-top: 1px solid var(--c-border); }
 
-/* Wide content scrolls inside its own container, never the page body. */
+/* Wide content scrolls inside its own container, never the page body.
+   app.js makes each of these a named, focusable region for as long as it is
+   actually scrolling; this is the focus indicator that goes with that. */
+.table-scroll:focus-visible,
+.article-body pre:focus-visible {
+  outline: 3px solid var(--c-accent);
+  outline-offset: 2px;
+}
 .table-scroll {
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -814,6 +831,59 @@ mark { background: var(--c-mark-bg); color: var(--c-mark-text); border-radius: 3
 }
 .article-body tbody tr:last-child td { border-bottom: 0; }
 
+/* --------------------------------------------------------------------------
+   Screenshots of the game.
+
+   Every figure is a real capture of the built application, committed under
+   ./screenshots/ and served from this origin like everything else on the site.
+   Each <img> carries its intrinsic width and height and the frame reserves the
+   same 896:560 box, so a lazily loaded shot can never shift the text around it
+   while it arrives. Nothing here needs a colour of its own: the frame, the
+   caption and the loading placeholder are all existing surface tokens, so both
+   themes are covered by the palettes already defined at :root.
+   -------------------------------------------------------------------------- */
+.shot {
+  margin: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.shot > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 896 / 560;
+  object-fit: cover;
+  background: var(--c-surface-sunken);
+  border-bottom: 1px solid var(--c-border);
+}
+.shot > figcaption {
+  padding: calc(var(--sp) * 1.5) calc(var(--sp) * 2);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--c-text-muted);
+}
+.shot > figcaption strong { color: var(--c-text); font-weight: 800; }
+.shot > figcaption code { font-size: 0.92em; }
+
+/* Shots that belong together, and the full gallery. The min() guard is what
+   keeps a track from demanding more width than the article has: at a 320px
+   viewport a bare minmax(260px, 1fr) would overflow and take the page body
+   sideways with it. */
+.shot-row,
+.shot-gallery {
+  display: grid;
+  gap: calc(var(--sp) * 2);
+}
+.shot-row     { grid-template-columns: repeat(auto-fit,  minmax(min(100%, 270px), 1fr)); }
+.shot-gallery { grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+.shot-gallery .shot > figcaption {
+  padding: calc(var(--sp) * 1.25) calc(var(--sp) * 1.5);
+  font-size: var(--fs-xs);
+}
+
 .callout {
   display: flex; gap: 12px;
   padding: calc(var(--sp) * 1.75) calc(var(--sp) * 2);
@@ -829,15 +899,56 @@ mark { background: var(--c-mark-bg); color: var(--c-mark-text); border-radius: 3
 .callout-ok     { background: var(--c-ok-soft);     color: var(--c-on-ok-soft);     border-color: var(--c-ok); }
 
 /* section anchors + teleport highlight */
+
+/* The permalink beside a heading used to be `opacity: 0` and revealed only on
+   hover. A phone has no hover, so on a phone it was permanently invisible and
+   permanently tappable: a 14x31 target a reader could hit by accident and
+   could never find on purpose.
+
+   Two states now. Where there is a pointer it still keeps out of the way, but
+   while it is invisible it is also untargetable, so nothing can be hit that
+   cannot be seen. Keyboard access survives untouched, because `pointer-events`
+   has no bearing on focus and focus is one of the things that reveals it.
+   Where there is no hover to reveal it with, it is simply present, at a full
+   44x44 target. */
 .section-anchor {
   margin-left: 8px;
   opacity: 0;
+  pointer-events: none;
   color: var(--c-text-faint);
   text-decoration: none;
   font-size: 0.7em;
+  border-radius: var(--r-xs);
   transition: opacity var(--dur-1) var(--ease);
 }
-h2:hover .section-anchor, h3:hover .section-anchor, .section-anchor:focus-visible { opacity: 1; }
+h2:hover .section-anchor,
+h3:hover .section-anchor,
+.section-anchor:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.section-anchor:focus-visible {
+  outline: 3px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+@media (hover: none) {
+  .section-anchor {
+    opacity: 1;
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-left: 4px;
+    vertical-align: middle;
+    font-size: 0.62em;
+    color: var(--c-text-muted);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-control-border);
+  }
+}
 
 .teleport-flash {
   animation: teleport 1500ms var(--ease);
@@ -954,7 +1065,7 @@ h2:hover .section-anchor, h3:hover .section-anchor, .section-anchor:focus-visibl
 }
 .btn-filled { background: var(--c-accent); color: var(--c-on-accent); }
 .btn-filled:hover { background: var(--c-accent-hover); color: var(--c-on-accent); }
-.btn-outlined { background: transparent; border-color: var(--c-border-strong); color: var(--c-text); }
+.btn-outlined { background: transparent; border-color: var(--c-control-border); color: var(--c-text); }
 .btn-outlined:hover { background: var(--c-surface-2); color: var(--c-text); }
 .btn-text { background: none; color: var(--c-accent); min-height: 36px; padding: 0 10px; }
 .btn-text:hover { background: var(--c-accent-soft); color: var(--c-on-accent-soft); }
@@ -1035,16 +1146,24 @@ details.set-more > div {
   font-size: var(--fs-sm); color: var(--c-text-muted);
 }
 
+/* The choices wrap onto a second row rather than running off the side of a
+   narrow screen. `flex-basis` has to be `auto` for that to happen at all:
+   with a basis of 0 every button is hypothetically zero-wide, so they all
+   land on one line and then refuse to shrink past their own nowrap text,
+   which is how a four-choice control came to hang 32px past a 320px
+   viewport with `body { overflow-x: hidden }` quietly eating the evidence. */
 .segmented {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
   padding: 3px;
   background: var(--c-surface-2);
-  border: 1px solid var(--c-border);
+  border: 1px solid var(--c-control-border);
   border-radius: var(--r-pill);
 }
 .segmented button {
-  flex: 1 1 0;
+  flex: 1 1 auto;
+  min-width: 0;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 36px;
   padding: 0 10px;
@@ -1059,13 +1178,16 @@ details.set-more > div {
 select.field, input.field {
   min-height: 42px;
   padding: 0 12px;
-  border: 1px solid var(--c-border-strong);
+  border: 1px solid var(--c-control-border);
   border-radius: var(--r-md);
   background: var(--c-surface-2);
   width: 100%;
   font-size: var(--fs-sm);
 }
-input[type="range"].field { padding: 0; background: none; border: 0; min-height: 34px; accent-color: var(--c-accent); }
+/* A range input carries a 2px user-agent margin on each side, so `width: 100%`
+   resolves to 4px wider than the box it sits in. Small, but it is a real clip
+   on every slider on the settings page. */
+input[type="range"].field { padding: 0; margin: 0; background: none; border: 0; min-height: 34px; accent-color: var(--c-accent); }
 
 .switch {
   display: inline-flex; align-items: center; gap: 10px;
@@ -1076,7 +1198,7 @@ input[type="range"].field { padding: 0; background: none; border: 0; min-height:
   width: 46px; height: 26px; flex: none;
   border-radius: var(--r-pill);
   background: var(--c-surface-3);
-  border: 1px solid var(--c-border-strong);
+  border: 1px solid var(--c-control-border);
   position: relative;
   transition: background var(--dur-1) var(--ease);
 }
@@ -1096,7 +1218,7 @@ input[type="range"].field { padding: 0; background: none; border: 0; min-height:
   position: relative;
   height: 132px;
   border-radius: var(--r-md);
-  border: 1px solid var(--c-border-strong);
+  border: 1px solid var(--c-control-border);
   cursor: crosshair;
   touch-action: none;
   background-image:
@@ -1115,12 +1237,13 @@ input[type="range"].field { padding: 0; background: none; border: 0; min-height:
 }
 .picker-hue {
   width: 100%; height: 22px;
+  margin: 0;
   appearance: none; -webkit-appearance: none;
   background: linear-gradient(to right,
     hsl(0 100% 50%), hsl(60 100% 50%), hsl(120 100% 50%),
     hsl(180 100% 50%), hsl(240 100% 50%), hsl(300 100% 50%), hsl(360 100% 50%));
   border-radius: var(--r-pill);
-  border: 1px solid var(--c-border-strong);
+  border: 1px solid var(--c-control-border);
 }
 .picker-hue::-webkit-slider-thumb {
   appearance: none; -webkit-appearance: none;
@@ -1137,7 +1260,7 @@ input[type="range"].field { padding: 0; background: none; border: 0; min-height:
 .picker-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .swatch {
   width: 30px; height: 30px; border-radius: var(--r-sm);
-  border: 1px solid var(--c-border-strong); cursor: pointer; padding: 0;
+  border: 1px solid var(--c-control-border); cursor: pointer; padding: 0;
 }
 .swatch[aria-pressed="true"] { outline: 3px solid var(--c-text); outline-offset: 2px; }
 .contrast-readout {
@@ -1149,6 +1272,13 @@ input[type="range"].field { padding: 0; background: none; border: 0; min-height:
   font-size: var(--fs-xs);
 }
 .contrast-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.contrast-group {
+  margin: 8px 0 2px;
+  font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .05em;
+  color: var(--c-text-muted);
+}
+.contrast-group:first-child { margin-top: 0; }
 .contrast-ratio { font-family: var(--font-mono); font-weight: 800; }
 .pill-pass, .pill-fail {
   padding: 1px 8px; border-radius: var(--r-pill); font-weight: 800; font-size: 11px;

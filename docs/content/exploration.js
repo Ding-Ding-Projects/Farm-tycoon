@@ -226,6 +226,18 @@ the mine is <code>mining_madness</code> ("Mining Madness", carrying an effect pa
 mining event yields exactly what a dig on any other day yields. See
 <a href="#/exploration/verification">Verification and open items</a>.</p>
 </div>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/02c-locked-mine_entrance.webp" alt="The world view with a weathered, derelict-looking mine entrance and a red toast notification reading that it unlocks at level 24."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Locked at level 24.</strong> The mine entrance sits in the world from the start, drawn derelict, and says so when tapped.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/19-panel-mine_entrance.webp" alt="A sliding panel titled Mine reading that the Mine Entrance is being built — check back soon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Once it opens.</strong> Captured at <code>7dc0f14</code>, before the panels were wired: it opens on the placeholder rather than on a dig.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -341,6 +353,18 @@ bijection, checked in both directions — but never asks whether an artifact can
       hour in the table above is what the data promises, not what the running game currently
       pays.</li>
 </ul>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/02g-locked-museum_hall.webp" alt="The world view with a weathered, derelict-looking museum hall and a red toast notification reading that it unlocks at level 60."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Locked at level 60.</strong> Far out along the curve, and still drawn and clickable from level 1.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/26-panel-museum_hall.webp" alt="A sliding panel titled Museum reading that the Museum is being built — check back soon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The Museum panel.</strong> The museum module was implemented at that commit, and its panel opened on the placeholder.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -468,6 +492,11 @@ for the night and collecting in the morning works exactly as it should. The modu
 demand from the timestamp, so there is nothing to accumulate. The tick exists only so that
 every system shares one shape. A test confirms collection resolves correctly across a
 simulated offline gap.</p>
+<figure class="shot">
+  <img src="./screenshots/28-panel-expedition_camp.webp" alt="A sliding panel titled Expeditions reading that the Expedition Camp is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Expedition Camp.</strong> The expeditions module was implemented and exercised by the test tools at that commit, with no panel reading it yet.</figcaption>
+</figure>
 `,
     },
 
@@ -572,6 +601,18 @@ refund since every item id is storable there.</p>
 out of your silo and into your barn. The refund also does not check barn capacity, so it can
 push the barn above its limit. Nothing is lost either way — but the goods will not be where you
 left them.</p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/02f-locked-laboratory.webp" alt="The world view with a weathered, derelict-looking laboratory and a red toast notification reading that it unlocks at level 54."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Locked at level 54.</strong> Derelict in the world, clickable, and honest about why it will not open.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/27-panel-laboratory.webp" alt="A sliding panel titled Laboratory reading that the Laboratory is being built — check back soon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The Laboratory panel.</strong> The research module was implemented at that commit, and the panel it should drive opened on the placeholder.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -674,6 +715,11 @@ interface loses the result between the reel and the open — a reload, a crash �
 gone. Every other timed reward in the game is anchored to persistent state; this one is held
 only in the interface. Worth knowing when the fishing panel is built out.</p>
 </div>
+<figure class="shot">
+  <img src="./screenshots/18-panel-lake.webp" alt="A sliding panel titled Fishing reading that the Fishing Lake is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Fishing Lake.</strong> Captured before this panel was connected to the fishing module, so no cast can be made from the screen shown.</figcaption>
+</figure>
 `,
     },
 
@@ -786,6 +832,11 @@ read without a migration.</p>
 <p>The Merge Mania event carries an energy-regeneration payload of 2. Like the other event
 payloads on this page, nothing reads it — the merge module does not consult event state.</p>
 </div>
+<figure class="shot">
+  <img src="./screenshots/20-panel-merge_plot.webp" alt="A sliding panel titled Merge reading that the Merge Meadow is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>Merge Meadow.</strong> Captured before this panel was connected to the merge module, so the board described above is not on the screen shown.</figcaption>
+</figure>
 `,
     },
 

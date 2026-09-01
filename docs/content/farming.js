@@ -107,6 +107,11 @@ function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; 
   carries those timestamps across sessions in
   <a href="#/architecture">the architecture notes</a>.
 </p>
+<figure class="shot">
+  <img src="./screenshots/03-world-growth-stages.webp" alt="A farm showing wheat at four different growth stages side by side — bare seeded soil, small sprouts, a growing stem, and a fully grown ready-to-harvest head — next to two empty tilled plots."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>Every growth stage at once.</strong> Four of the six starting fields sown with wheat and advanced into each of the four bands the crop renderer draws: seed dots when freshly planted, sprout leaves at a quarter grown, a stem at three quarters, and a full head once ready. The two plots left bare are there for contrast.</figcaption>
+</figure>
 `,
     },
 
@@ -260,6 +265,23 @@ function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; 
     — <a href="#/farming/storage">the storage section</a> covers the exact rule
     and the one case where an item is genuinely held for you.
   </p>
+</div>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/04-plant-radial-menu.webp" alt="A circular radial menu floating over an empty field plot, offering a wheat crop icon to plant."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Planting.</strong> Tapping an empty plot opens a radial menu of every crop unlocked so far. At level 1 that is Wheat and nothing else.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/05-harvest-radial-menu.webp" alt="A circular radial menu over a fully grown wheat field, offering a single harvest basket icon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Harvesting.</strong> A field that has finished growing offers a single Harvest option in the same menu.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/06-harvest-success-toast.webp" alt="A green success toast reading &quot;Harvested Wheat!&quot; over the farm, with the previously-ready field now empty again."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The payoff.</strong> Harvest runs the real harvest path: the plot returns to bare soil and a green toast names what came off it.</figcaption>
+  </figure>
 </div>
 `,
     },
@@ -470,6 +492,23 @@ const qty = animal.capacity;     // products returned</code></pre>
   that every other recipe must satisfy. See
   <a href="#/farming/value-chain">the value chain</a> below.
 </p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/10-pen-built.webp" alt="A fenced chicken pen sitting on the farm."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>A pen in the world.</strong> A chicken pen placed through the same call the Workshop Build button makes, drawn by vector sprite code rather than an image file.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/10b-pen-radial-feed.webp" alt="A radial menu over a chicken pen offering a single feed icon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Feeding.</strong> An unfed pen offers exactly one option when tapped.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/10c-pen-radial-collect.webp" alt="A radial menu over a chicken pen offering a single collect icon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Collecting.</strong> The same pen once its timer has run out: the menu now offers Collect.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -604,6 +643,23 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
   the merge point itself is in <a href="#/architecture">the architecture
   notes</a>.
 </p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/11-building-queue-panel.webp" alt="A building queue panel showing a Chicken Feed card with a question-mark icon and a partially filled progress bar with the label Crafting."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>A recipe queued.</strong> The Feed Mill queue after Chicken Feed was ordered, with the real ingredients taken out of the silo and a live progress bar. The question mark beside the name is not the intended art: at the commit this was captured from, nothing in the content tables carried an icon, so every list in the DOM fell back to that glyph. Icons landed shortly afterwards.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/11b-building-queue-ready.webp" alt="A building queue panel showing a Chicken Feed card with a full progress bar, the label Ready to collect, and a Collect button."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Ready.</strong> The same entry once its timer is up: a full bar, a ready label and a Collect button.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/11c-building-queue-collected.webp" alt="A building queue panel with an empty queue and a green toast reading Collected Chicken Feed, over the farm."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Collected.</strong> Collect moves the finished goods into the barn, empties the queue and confirms with a toast.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -816,6 +872,18 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
     entries with no consumer behind them. Treat the numbers above as the
     intended shape, not as behaviour you can observe.
   </p>
+</div>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/12-panel-barn.webp" alt="A sliding panel titled Barn with the empty-state text &quot;No goods in the barn yet — cook something up!&quot;"
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The barn, empty.</strong> Nothing had been cooked on this save yet, so the panel shows its own empty state rather than a blank list.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/13-panel-silo.webp" alt="A sliding panel titled Silo showing a wheat item card with quantity and a sell button."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The silo, holding wheat.</strong> The crop harvested earlier, listed as a sellable card. The question mark is the missing-icon state described above, not the finished art.</figcaption>
+  </figure>
 </div>
 `,
     },

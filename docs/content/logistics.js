@@ -209,6 +209,11 @@ rewardXp    = round(total qty * ORDERS.board.xpMultiplier)  // 2</code></pre>
   minute wait for its replacement. Discarding is free: there is no diamond cost and
   no penalty.
 </p>
+<figure class="shot">
+  <img src="./screenshots/14-panel-order_board.webp" alt="A sliding panel titled Orders reading that the order board is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Order Board.</strong> Captured at <code>7dc0f14</code>, before the panels were wired to their backing modules: nothing refreshed the board, so it opens on the generic placeholder rather than on orders.</figcaption>
+</figure>
 `,
     },
 
@@ -273,6 +278,11 @@ rewardXp    = round(total qty * ORDERS.board.xpMultiplier)  // 2</code></pre>
   a test that jumps three days forward and asserts exactly one fresh truck is
   waiting, not a queue of them.
 </p>
+<figure class="shot">
+  <img src="./screenshots/15-panel-truck_bay.webp" alt="A sliding panel titled Truck reading that the Truck Bay is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Truck Bay.</strong> The same capture, in the same state: the structure opens, and at that commit the panel switch had no case for it.</figcaption>
+</figure>
 `,
     },
 
@@ -363,6 +373,11 @@ sellTime = max(15, round(SHOP.sellTimeBase * (0.15 + frac * 0.85)))</code></pre>
   <code>shopSales</code> counter by the quantity sold rather than by one, so the
   statistic counts items rather than transactions.
 </p>
+<figure class="shot">
+  <img src="./screenshots/16-panel-shop_stand.webp" alt="A sliding panel titled Shop reading that the roadside shop is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Roadside Shop.</strong> Its renderer existed at that commit and nothing filled the listings, so the panel opens on the placeholder rather than on stock.</figcaption>
+</figure>
 `,
     },
 
@@ -419,6 +434,11 @@ sellTime = max(15, round(SHOP.sellTimeBase * (0.15 + frac * 0.85)))</code></pre>
     balance decision nobody has made yet; it is recorded here as it stands.
   </p>
 </div>
+<figure class="shot">
+  <img src="./screenshots/21-panel-market_stall.webp" alt="A sliding panel titled Market reading that the Market Stall is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Market Stall.</strong> The offer and buy functions lived in the shop module at that commit, with no panel case reading them.</figcaption>
+</figure>
 `,
     },
 
@@ -511,6 +531,11 @@ vouchers = randomInt(4, 10)</code></pre>
     path is the missing piece.
   </p>
 </div>
+<figure class="shot">
+  <img src="./screenshots/17-panel-boat_dock.webp" alt="A sliding panel titled Boat reading that the Boat Dock is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Boat Dock.</strong> The boat module was implemented and exercised directly by the test tools at that commit, and not yet reachable from this panel.</figcaption>
+</figure>
 `,
     },
 
@@ -608,6 +633,23 @@ xp    = full ? xpPerWagon * wagons : round(xpPerWagon * filledWagons * 0.5)</cod
   filling, and it is worth knowing so that a train that appears stuck is understood
   as a full barn rather than a fault.
 </p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/22-panel-train_station.webp" alt="A sliding panel titled Trains reading that the Train Station is being built — check back soon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The Train Station.</strong> Captured before this panel was connected to the trains module.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/23-panel-airport.webp" alt="A sliding panel titled Airport reading that the Airport is being built — check back soon."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The Airport.</strong> Reached at level 38, and captured in the same pre-wiring state.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/02e-locked-airport.webp" alt="The world view with a weathered, derelict-looking airport and a red toast notification reading that it unlocks at level 38."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The Airport before level 38.</strong> Locked, drawn derelict, and still clickable: the tap returns the unlock toast naming the level.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -710,6 +752,11 @@ fuel    = min(HELICOPTER.fuel.max, fuel + regen)                   // capped at 
   <code>collectDelivery()</code> in <code>trains.js</code> is real. Empty the barn
   before collecting a flight.
 </p>
+<figure class="shot">
+  <img src="./screenshots/24-panel-helipad.webp" alt="A sliding panel titled Helicopter reading that the Helicopter Pad is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Helicopter Pad.</strong> Captured before this panel was connected to the helicopter module.</figcaption>
+</figure>
 `,
     },
 

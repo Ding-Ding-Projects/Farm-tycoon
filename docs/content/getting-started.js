@@ -179,6 +179,19 @@ export const article = {
           neither is needed to play. Nothing is fetched at runtime, by the game or by this
           documentation site.
         </p>
+
+        <div class="shot-row">
+          <figure class="shot">
+            <img src="./screenshots/37-wide-width-layout.webp" alt="The game at its default window size, 1280 by 800 pixels, with the full HUD, dock, and the Workshop panel open."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption><strong>The default window.</strong> The built app at 1280 by 800, the size <code>electron/main.cjs</code> opens its window at.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/36-narrow-width-layout.webp" alt="The game at its minimum supported window size, 1024 by 640 pixels, with a compact HUD and the Workshop panel open."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption><strong>The smallest supported window.</strong> The same build at 1024 by 640, the floor <code>electron/main.cjs</code> declares and the width the compact HUD rules are written for.</figcaption>
+          </figure>
+        </div>
       `,
     },
 
@@ -187,6 +200,12 @@ export const article = {
       id: 'first-launch',
       heading: 'What you see at first launch',
       html: `
+        <figure class="shot">
+          <img src="./screenshots/01-boot-tutorial.webp" alt="Farm Tycoon at first launch: an isometric meadow with six empty field plots, the top HUD showing level 1, and a tutorial speech bubble overlay."
+               width="896" height="560" loading="lazy" decoding="async">
+          <figcaption><strong>First boot.</strong> A brand new save: level 1, six empty fields, the level, coins, diamonds, silo and barn readouts along the top, and the guided tutorial starting on its own.</figcaption>
+        </figure>
+
         <p>
           The world canvas fills the window and everything else sits on top of it. The camera
           opens centred on the middle of the starting land, so your fields and the first
@@ -484,6 +503,12 @@ export const article = {
           <li><strong>Empty ground.</strong> Nothing opens. Any panel that was open closes, so the
               world always feels responsive to a tap rather than inert.</li>
         </ol>
+
+        <figure class="shot">
+          <img src="./screenshots/02-locked-workshop_yard.webp" alt="The world view with a weathered, derelict-looking workshop yard and a red toast notification reading that it unlocks at level 6."
+               width="896" height="560" loading="lazy" decoding="async">
+          <figcaption><strong>A locked structure answers back.</strong> The Workshop Yard tapped at level 1. Locked structures are drawn derelict and stay clickable from the first minute, and the tap produces the red unlock toast instead of a panel. All 22 world structures behave this way, each naming its own level.</figcaption>
+        </figure>
       `,
     },
 
@@ -564,6 +589,12 @@ export const article = {
             </p>
           </div>
         </div>
+
+        <figure class="shot">
+          <img src="./screenshots/09-dock-settings-panel.webp" alt="A sliding bottom sheet panel titled Settings with a Sound toggle, a language line, and Export save / Reset game buttons."
+               width="896" height="560" loading="lazy" decoding="async">
+          <figcaption><strong>Settings, from the dock.</strong> The gear button opens the sound toggle, the language line (English is the only locale in this build), Export save, and the Reset game danger button.</figcaption>
+        </figure>
       `,
     },
 
@@ -652,6 +683,12 @@ export const article = {
             </p>
           </div>
         </div>
+
+        <figure class="shot">
+          <img src="./screenshots/09b-confirm-reset-dialog.webp" alt="A modal dialog asking to confirm resetting the farm, warning that it deletes all progress and cannot be undone, with Cancel and Reset buttons."
+               width="896" height="560" loading="lazy" decoding="async">
+          <figcaption><strong>Reset asks first.</strong> Reset game opens a real confirmation dialog naming what would be lost. The capture run clicked Cancel afterwards, so the save behind these shots was never actually reset.</figcaption>
+        </figure>
       `,
     },
 
@@ -670,13 +707,16 @@ export const article = {
 
         <h3>The automated suite</h3>
         <p>
-          The content validator and eight test files were each run individually. Every one passed.
+          The content validator and nine test files were each run individually. Every one passed.
+          These figures were measured by running <code>npm test</code> against a clean checkout of
+          commit <code>7edfa26</code>; they move whenever a suite grows, so treat the number
+          <code>npm test</code> prints on your own machine as the authoritative one.
         </p>
         <table>
           <thead><tr><th>Suite</th><th>Assertions</th><th>Result</th></tr></thead>
           <tbody>
             <tr><td>Content validator</td><td>whole-table integrity</td><td>Passed</td></tr>
-            <tr><td>Camera and viewport</td><td>22</td><td>Passed</td></tr>
+            <tr><td>Camera and viewport</td><td>29</td><td>Passed</td></tr>
             <tr><td>Core: state, economy, production</td><td>27</td><td>Passed</td></tr>
             <tr><td>Logistics</td><td>19</td><td>Passed</td></tr>
             <tr><td>Crafting</td><td>23</td><td>Passed</td></tr>
@@ -684,7 +724,8 @@ export const article = {
             <tr><td>Research</td><td>15</td><td>Passed</td></tr>
             <tr><td>Dead-time systems</td><td>16</td><td>Passed</td></tr>
             <tr><td>Social systems</td><td>24</td><td>Passed</td></tr>
-            <tr><td><strong>Total</strong></td><td><strong>156</strong></td><td><strong>0 failures</strong></td></tr>
+            <tr><td>Workshop panel interface</td><td>8</td><td>Passed</td></tr>
+            <tr><td><strong>Total</strong></td><td><strong>171</strong></td><td><strong>0 failures</strong></td></tr>
           </tbody>
         </table>
 
@@ -718,11 +759,13 @@ export const article = {
         <h3>Evidence from the real built application</h3>
         <p>
           Separately from the tests, a capture run drove the actual packaged Windows build (not a
-          development server, not a mock) on an off-screen desktop, and recorded 47 screenshots
-          of real surfaces along with a manifest naming the commit, the viewport and the method
-          for each one. That run also recorded, honestly, the eight surfaces it could
-          <em>not</em> reach and the exact reason for each. That list is the most useful thing in
-          this section.
+          development server, not a mock) on an off-screen desktop, and recorded screenshots of
+          real surfaces along with a manifest naming the commit, the viewport and the method for
+          each one. The manifest committed at <code>7edfa26</code> holds <strong>57 captures</strong>
+          and records, honestly, the <strong>seven surfaces it could not reach</strong> and the
+          exact reason for each. That list is the most useful thing in this section. An earlier
+          pass recorded 47 captures and eight unreachable surfaces; the Workshop crafting flow
+          moved off the unreachable list once its panel was wired, and was captured instead.
         </p>
 
         <h3>The gap between the systems and the interface</h3>
@@ -753,19 +796,21 @@ export const article = {
           </tbody>
         </table>
         <p>
-          Two further gaps of the same kind deserve naming individually, because they touch the
-          mechanics this game is meant to be distinguished by. The
-          <strong>materials-to-components-to-kit crafting spine</strong> is fully implemented and
-          tested, but the live Workshop panel currently lets buildings be bought outright for
-          coins instead, bypassing it. And the <strong>per-factory minigames</strong> are
-          implemented and tested but are not called from anywhere in the interface, so there is at
-          present no way to reach one while playing.
+          Of the two mechanics this game is meant to be distinguished by, one is now connected
+          and one is not. The <strong>materials-to-components-to-kit crafting spine</strong> is
+          implemented, tested <em>and</em> wired: the Workshop panel disables the Build button
+          while a kit-gated building's kit is missing, refuses the placement again inside the
+          click handler, and consumes the kit only after the placement has actually succeeded.
+          That wiring landed in <code>2b33dec</code> and is held in place by a dedicated suite,
+          <code>tools/test-ui-workshop.mjs</code>. Coin-only buildings such as the Feed Mill and
+          the Bakery are unaffected by design. The <strong>per-factory minigames</strong> are the
+          half that is still disconnected: <code>src/minigames.js</code> is implemented and
+          tested, but no file the running game loads imports it, so there is at present no way to
+          reach one while playing.
         </p>
 
         <h3>Other open items, individually verified</h3>
         <ul>
-          <li><strong>No item icons.</strong> No content table carries an icon, so every place the
-              interface draws one falls back to a generic mark. Purely cosmetic, and pervasive.</li>
           <li><strong>The level progress ring does not fill.</strong> It compares your
               within-level experience against the absolute cost of the current and next level,
               which makes the fraction clamp to zero. The level number itself is correct.</li>
@@ -775,10 +820,15 @@ export const article = {
           <li><strong>One visual theme.</strong> The game ships the wood-and-parchment palette
               only; there is no dark variant. This documentation site has both, which is a
               separate thing entirely.</li>
-          <li><strong>Camera reach.</strong> The camera clamp defaults to a padded box around the
-              starting land, so several structures cannot be brought fully into frame by panning,
-              even though tapping them still opens their panel correctly. A fix to that clamp was
-              in progress when this page was written.</li>
+          <li><strong>Camera reach, at the default zoom only.</strong> The clamp defect that kept
+              most structures out of frame is fixed &mdash; three separate causes, repaired in
+              <code>556fe8f</code>, <code>c1b74e4</code> and <code>bb4524e</code>. What remains is
+              a narrower and deliberate limit: at the default zoom, 17 of the 22 structures can be
+              centred, and the five sitting in the far diagonal corners
+              (<code>boat_dock</code>, <code>zoo_gate</code>, <code>museum_hall</code>,
+              <code>laboratory</code>, <code>expedition_camp</code>) cannot. Zooming in reaches all
+              22. That is a screen-width limit rather than a clamp bug, and the camera suite
+              asserts the exact set rather than a threshold, so it cannot quietly widen.</li>
         </ul>
 
         <h3>What is never claimed</h3>
@@ -790,6 +840,350 @@ export const article = {
         <p>
           To re-check any of this yourself, run <code>npm test</code>, and read the
           <a href="#/changelog">changelog</a> for what has landed since.
+        </p>
+      `,
+    },
+    /* ------------------------------------------------------------------ */
+    {
+      id: 'gallery',
+      heading: 'Every screen, in one place',
+      html: `
+        <p>
+          All 57 captures used across this documentation, in capture order, from the first boot
+          through the locked structures, the farm loop, the dock panels, every structure panel, the
+          Workshop crafting chain and the two camera extremes. Each one appears again beside the
+          system it belongs to, in the article that explains it.
+        </p>
+
+        <div class="callout callout-info">
+          ${ICON_INFO}
+          <div>
+            <p>
+              <strong>These are the real application, not mockups.</strong> Every shot was taken
+              from the built Windows executable, driven over the DevTools protocol on an off-screen
+              desktop, at commit <code>7dc0f14</code>. They were re-encoded from the original PNG
+              captures to keep this page light, at about 26 KB each and roughly 1.4 MB for the
+              whole set, and nothing else about them was changed. They are stored beside this page
+              and load as you scroll, so opening this section does not fetch all 57 at once.
+            </p>
+            <p>
+              They are a record of that commit, not of the build today. Several structure panels
+              were wired to their backing modules after this pass, so a shot showing a generic
+              placeholder shows what that panel did then. Every caption that involves one says so.
+            </p>
+          </div>
+        </div>
+
+        <div class="shot-gallery">
+          <figure class="shot">
+            <img src="./screenshots/01-boot-tutorial.webp" alt="Farm Tycoon at first launch: an isometric meadow with six empty field plots, the top HUD showing level 1, and a tutorial speech bubble overlay."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>World at first boot (level 1, fresh save)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/02-locked-workshop_yard.webp" alt="The world view with a weathered, derelict-looking workshop yard and a red toast notification reading that it unlocks at level 6."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Locked/derelict world structure: workshop_yard (unlocks at level 6)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/02b-locked-town_gate.webp" alt="The world view with a weathered, derelict-looking town gate and a red toast notification reading that it unlocks at level 20."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Locked/derelict world structure: town_gate (unlocks at level 20)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/02c-locked-mine_entrance.webp" alt="The world view with a weathered, derelict-looking mine entrance and a red toast notification reading that it unlocks at level 24."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Locked/derelict world structure: mine_entrance (unlocks at level 24)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/02d-locked-zoo_gate.webp" alt="The world view with a weathered, derelict-looking zoo gate and a red toast notification reading that it unlocks at level 34."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Locked/derelict world structure: zoo_gate (unlocks at level 34)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/02e-locked-airport.webp" alt="The world view with a weathered, derelict-looking airport and a red toast notification reading that it unlocks at level 38."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Locked/derelict world structure: airport (unlocks at level 38)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/02f-locked-laboratory.webp" alt="The world view with a weathered, derelict-looking laboratory and a red toast notification reading that it unlocks at level 54."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Locked/derelict world structure: laboratory (unlocks at level 54)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/02g-locked-museum_hall.webp" alt="The world view with a weathered, derelict-looking museum hall and a red toast notification reading that it unlocks at level 60."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Locked/derelict world structure: museum_hall (unlocks at level 60)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/03-world-growth-stages.webp" alt="A farm showing wheat at four different growth stages side by side — bare seeded soil, small sprouts, a growing stem, and a fully grown ready-to-harvest head — next to two empty tilled plots."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>World view: all four crop growth stages</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/04-plant-radial-menu.webp" alt="A circular radial menu floating over an empty field plot, offering a wheat crop icon to plant."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Radial menu: planting on an empty field</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/05-harvest-radial-menu.webp" alt="A circular radial menu over a fully grown wheat field, offering a single harvest basket icon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Radial menu: harvesting a ready field</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/06-harvest-success-toast.webp" alt="A green success toast reading &quot;Harvested Wheat!&quot; over the farm, with the previously-ready field now empty again."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Toast notification: successful harvest</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/07-dock-decorate-off.webp" alt="A sliding bottom sheet panel titled Decorate with a single &quot;Enter Decorate Mode&quot; button."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Dock panel: Decorate (off)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/07b-dock-decorate-on.webp" alt="The Decorate panel closed with an info toast reading that decorate mode is on and the player can drag decorations to arrange the farm, though no such dragging exists yet."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Dock panel: Decorate (on) + toast</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/08-dock-achievements-panel.webp" alt="A sliding bottom sheet panel titled Achievements reading &quot;0 achievements unlocked so far.&quot;"
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Dock panel: Achievements</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/09-dock-settings-panel.webp" alt="A sliding bottom sheet panel titled Settings with a Sound toggle, a language line, and Export save / Reset game buttons."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Dock panel: Settings</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/09b-confirm-reset-dialog.webp" alt="A modal dialog asking to confirm resetting the farm, warning that it deletes all progress and cannot be undone, with Cancel and Reset buttons."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Confirmation dialog: Reset game</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/10-pen-built.webp" alt="A fenced chicken pen sitting on the farm."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>World view: a chicken pen built via the real Workshop panel</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/10b-pen-radial-feed.webp" alt="A radial menu over a chicken pen offering a single feed icon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Radial menu: feeding an unfed pen</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/10c-pen-radial-collect.webp" alt="A radial menu over a chicken pen offering a single collect icon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Radial menu: collecting a ready pen</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/11-building-queue-panel.webp" alt="A building queue panel showing a Chicken Feed card with a question-mark icon and a partially filled progress bar with the label Crafting."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Building queue panel (Feed Mill): Chicken Feed queued, in progress</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/11b-building-queue-ready.webp" alt="A building queue panel showing a Chicken Feed card with a full progress bar, the label Ready to collect, and a Collect button."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Building queue panel (Feed Mill): Chicken Feed ready to collect</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/11c-building-queue-collected.webp" alt="A building queue panel with an empty queue and a green toast reading Collected Chicken Feed, over the farm."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Building queue panel (Feed Mill): Chicken Feed collected</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/12-panel-barn.webp" alt="A sliding panel titled Barn with the empty-state text &quot;No goods in the barn yet — cook something up!&quot;"
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Barn</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/13-panel-silo.webp" alt="A sliding panel titled Silo showing a wheat item card with quantity and a sell button."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Silo</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/14-panel-order_board.webp" alt="A sliding panel titled Orders reading that the order board is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Order Board</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/15-panel-truck_bay.webp" alt="A sliding panel titled Truck reading that the Truck Bay is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Truck Bay</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/16-panel-shop_stand.webp" alt="A sliding panel titled Shop reading that the roadside shop is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Roadside Shop</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/17-panel-boat_dock.webp" alt="A sliding panel titled Boat reading that the Boat Dock is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Boat Dock</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/18-panel-lake.webp" alt="A sliding panel titled Fishing reading that the Fishing Lake is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Fishing Lake</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/19-panel-mine_entrance.webp" alt="A sliding panel titled Mine reading that the Mine Entrance is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Mine Entrance</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/20-panel-merge_plot.webp" alt="A sliding panel titled Merge reading that the Merge Meadow is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Merge Meadow</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/21-panel-market_stall.webp" alt="A sliding panel titled Market reading that the Market Stall is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Market Stall</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/22-panel-train_station.webp" alt="A sliding panel titled Trains reading that the Train Station is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Train Station</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/23-panel-airport.webp" alt="A sliding panel titled Airport reading that the Airport is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Airport</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/24-panel-helipad.webp" alt="A sliding panel titled Helicopter reading that the Helicopter Pad is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Helicopter Pad</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/26-panel-museum_hall.webp" alt="A sliding panel titled Museum reading that the Museum is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Museum</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/27-panel-laboratory.webp" alt="A sliding panel titled Laboratory reading that the Laboratory is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Laboratory</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/28-panel-expedition_camp.webp" alt="A sliding panel titled Expeditions reading that the Expedition Camp is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Expedition Camp</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/29-panel-town_gate.webp" alt="A sliding panel titled Town reading that the Road to Town is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Road to Town</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/30-panel-zoo_gate.webp" alt="A sliding panel titled Zoo reading that the Road to the Zoo is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Road to the Zoo</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/31-panel-mailbox.webp" alt="A sliding panel titled Newspaper reading that the Mailbox is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Mailbox</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/32-panel-bookshelf.webp" alt="A sliding panel titled Collections reading that the Collections Shelf is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Collections Shelf</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/33-panel-tripod.webp" alt="A sliding panel titled Photo Mode reading that the Camera Tripod is being built — check back soon."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Camera Tripod</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25-panel-workshop_yard.webp" alt="A sliding panel titled Workshop with one card offering to build the Workshop itself for coins."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Structure panel: Building Workshop (not yet built)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25b-workshop-craft-available.webp" alt="A Workshop panel showing a grid of craftable components and kits with question-mark icons, most disabled with a note listing which materials are missing, one (Roof Shingle) enabled."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Workshop panel: crafting chain unlocked (materials granted)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25c-workshop-craft-in-progress.webp" alt="A Workshop panel showing a Roof Shingle card with a progress bar partway full and the label Crafting."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Workshop panel: Roof Shingle crafting</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25d-workshop-craft-ready.webp" alt="A Workshop panel showing a Roof Shingle card with a full progress bar, the label Ready to collect, and a Collect button."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Workshop panel: Roof Shingle ready to collect</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25e-workshop-component-collected.webp" alt="A Workshop panel with an empty crafting queue and a green toast reading Collected Roof Shingle."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Workshop panel: Roof Shingle collected into the barn</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25f-workshop-kit-ready.webp" alt="A Workshop panel showing a Dairy Kit card with a full progress bar, the label Ready to collect, and a Collect button."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Workshop panel: Dairy Kit ready to collect</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25g-workshop-build-gate.webp" alt="A Workshop panel Build section: the Dairy card shows a checked kit and an enabled Build button, while other building cards show an unchecked kit requirement and are disabled."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Workshop panel: Build section, kit gate</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25h-workshop-building-placed.webp" alt="A Workshop panel Build section with a green toast reading Built Dairy, and no Dairy card left in the list."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Workshop panel: Dairy built</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/25i-workshop-dairy-in-world.webp" alt="A dairy building sitting on the farm, freshly placed."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>World view: the real placed Dairy building</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/34-world-zoom-out.webp" alt="A wide, zoomed-out view of the farm showing the meadow, several fields and nearby buildings together."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>World view zoomed far out (0.5x, the ZOOM_MIN floor)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/35-world-zoom-in.webp" alt="A close-up, zoomed-in view of a few farm fields and ground texture."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>World view zoomed far in (2.5x, the ZOOM_MAX ceiling)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/36-narrow-width-layout.webp" alt="The game at its minimum supported window size, 1024 by 640 pixels, with a compact HUD and the Workshop panel open."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Narrow-width layout at the documented minimum (1024x640)</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="./screenshots/37-wide-width-layout.webp" alt="The game at its default window size, 1280 by 800 pixels, with the full HUD, dock, and the Workshop panel open."
+                 width="896" height="560" loading="lazy" decoding="async">
+            <figcaption>Wide layout at the app's real configured default (1280x800)</figcaption>
+          </figure>
+        </div>
+
+        <h3>What has no picture, and why</h3>
+        <p>
+          Two surfaces are missing from this gallery because nothing in the build could reach them,
+          and one because it does not exist at all:
+        </p>
+        <ul>
+          <li><strong>Every per-factory minigame.</strong> The module is written and covered by the
+              test tools, and no panel in the interface opens one, so there is nothing to
+              photograph.</li>
+          <li><strong>The co-op and regatta panel.</strong> At the captured commit its dock button
+              carried a <code>hidden</code> attribute that nothing cleared. It has since been put
+              behind a level gate instead, so it is reachable now and simply has no capture yet.</li>
+          <li><strong>A dark theme.</strong> The game ships one visual palette. Only this
+              documentation site has both.</li>
+        </ul>
+        <p>
+          A number of the panels above open on a generic placeholder: the order board, the truck,
+          the shop, the market, the boat, the lake, the mine, Merge Meadow, the trains, the airport,
+          the helipad, the town, the zoo, the museum, the laboratory, the expedition camp, the
+          mailbox, the bookshelf and the tripod. That is what those panels did at the commit
+          captured, and each caption says so. They were wired to their real modules afterwards, and
+          this gallery has not been recaptured since.
         </p>
       `,
     },

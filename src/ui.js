@@ -9,11 +9,34 @@ import * as farm from './farm.js';
 import * as production from './production.js';
 import * as orders from './orders.js';
 import * as shop from './shop.js';
+import * as boat from './boat.js';
+import * as fishing from './fishing.js';
+import * as mine from './mine.js';
+import * as merge from './merge.js';
+import * as town from './town.js';
+import * as trains from './trains.js';
+import * as zoo from './zoo.js';
+import * as extras from './extras.js';
+import * as coop from './coop.js';
+import * as regatta from './regatta.js';
+import * as expeditions from './expeditions.js';
+import * as museum from './museum.js';
+import * as lab from './lab.js';
+import * as helicopter from './helicopter.js';
+import * as islands from './islands.js';
+import * as newspaper from './newspaper.js';
+import * as collections from './collections.js';
+import * as neighbours from './neighbours.js';
+import * as decorate from './decorate.js';
 import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
 import * as workshop from './workshop.js';
 import * as minigames from './minigames.js';
-import { CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY } from './data.js';
+import {
+  CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
+  ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
+  COOP, REGATTA, PHOTO, PETS, ACHIEVEMENTS, SHOP, COLLECTIONS,
+} from './data.js';
 
 // ---------------------------------------------------------------------------
 // DOM refs, wired in init()
@@ -24,10 +47,49 @@ let radialTarget = null; // context passed to the currently-open radial menu's c
 function q(id) { return document.getElementById(id); }
 
 function itemName(id) {
-  return CROPS[id]?.name || GOODS[id]?.name || ANIMALS[id]?.name || MATERIALS[id]?.name || id;
+  return CROPS[id]?.name || GOODS[id]?.name || ANIMALS[id]?.name || MATERIALS[id]?.name || ARTIFACTS[id]?.name || id;
 }
 function itemIcon(id) {
-  return CROPS[id]?.icon || GOODS[id]?.icon || ANIMALS[id]?.icon || MATERIALS[id]?.icon || '❔';
+  return CROPS[id]?.icon || GOODS[id]?.icon || ANIMALS[id]?.icon || MATERIALS[id]?.icon || (ARTIFACTS[id] ? '🏺' : '❔');
+}
+
+/** Which bucket a given item id lives in — crops sit in the silo, everything else (goods AND
+ *  raw MATERIALS) sits in the barn. Mirrors production.js's own stockOf(), which isn't
+ *  exported; kept identical on purpose so the UI never disagrees with what enqueue() checks. */
+function stockOf(id) {
+  return CROPS[id] ? state.silo.items : state.barn.items;
+}
+
+/** Current stock of an item id wherever it actually lives (silo or barn). */
+function stockCount(id) {
+  return stockOf(id)[id] || 0;
+}
+
+/** mm:ss / h:mm style countdown text for a millisecond duration. Never negative. */
+function fmtDuration(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+/** Small inline progress-bar HTML, reusing the same classes the event banner already uses. */
+function progressBarHtml(frac) {
+  const clamped = Math.max(0, Math.min(1, Number.isFinite(frac) ? frac : 0));
+  return `<div class="event-progress"><div class="event-progress-fill" style="width:${Math.round(clamped * 100)}%"></div></div>`;
+}
+
+/** Call a backend module's own tick(now), defensively — a broken/missing tick must never take
+ *  a panel down with it. Several expansion systems (lab, helicopter, newspaper, co-op, the
+ *  regatta) are not ticked by the main game loop yet (see main.js's tickAllSystems), so their
+ *  own panel is the only place their timers ever actually advance; calling tick() here keeps
+ *  research completing, fuel regenerating, and boards refreshing even though main.js hasn't
+ *  been taught about them. */
+function safeTick(fn, now) {
+  try { if (typeof fn === 'function') fn(now); } catch (e) { console.error(e); }
 }
 
 // ---------------------------------------------------------------------------
@@ -35,8 +97,21 @@ function itemIcon(id) {
 // ---------------------------------------------------------------------------
 let lastHud = null;
 
+/** Show/hide dock buttons whose feature isn't reachable yet. Cheap enough to run every frame. */
+function syncDockVisibility() {
+  if (!el.dock) return;
+  const coopBtn = findDockButton('coop');
+  if (coopBtn) coopBtn.hidden = state.level < COOP.unlockLevel;
+}
+
+function findDockButton(panelId) {
+  if (!el.dock) return null;
+  return Array.from(el.dock.children || []).find((b) => b?.dataset?.panel === panelId) || null;
+}
+
 export function updateHud() {
   if (!state || !el.coinsValue) return;
+  syncDockVisibility();
   const siloUsed = Object.values(state.silo.items).reduce((a, b) => a + b, 0);
   const barnUsed = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
   const level = state.level;
@@ -152,7 +227,7 @@ const PANEL_TITLES = {
   workshop: 'Building Workshop', museum: 'Museum', lab: 'Laboratory', expeditions: 'Expedition Camp',
   town: 'Town', zoo: 'Zoo', newspaper: 'Newspaper', collections: 'Collections', photo: 'Photo Mode',
   building: 'Building', pen: 'Animal Pen', decorate: 'Decorate', achievements: 'Achievements',
-  coop: 'Co-op & Regatta', settings: 'Settings',
+  coop: 'Co-op & Regatta', settings: 'Settings', wheel: 'Daily Wheel',
 };
 
 let openPanelId = null;
@@ -179,6 +254,7 @@ export function closePanel() {
   el.sheetContent.innerHTML = '';
   openPanelId = null;
   openPanelCtx = null;
+  mergeSelected = null; // transient UI-only selection — never survives leaving the panel
   audio.close();
 }
 
@@ -215,9 +291,21 @@ function renderComingSoon(container, name) {
   container.appendChild(p);
 }
 
-function renderInventoryGrid(container, items, emptyLabel) {
+function hintEl(text) {
+  const s = document.createElement('span');
+  s.className = 'minigame-hint';
+  s.textContent = text;
+  return s;
+}
+
+function slotGrid() {
   const grid = document.createElement('div');
-  grid.className = 'build-grid';
+  grid.className = 'slot-grid';
+  return grid;
+}
+
+function renderInventoryGrid(container, items, emptyLabel) {
+  const grid = slotGrid();
   const entries = Object.entries(items).filter(([, qty]) => qty > 0);
   if (!entries.length) {
     const p = document.createElement('p');
@@ -256,18 +344,30 @@ function renderBarnOrSilo(container, kind) {
   renderInventoryGrid(container, bucket.items, kind === 'silo' ? 'No crops in the silo yet — plant a field!' : 'No goods in the barn yet — cook something up!');
 }
 
+// ---------------------------------------------------------------------------
+// Orders + the truck (orders.js)
+// ---------------------------------------------------------------------------
 function renderOrders(container) {
+  orders.refreshBoard(Date.now());
   const board = state.orders.board || [];
-  if (!board.length) { renderComingSoon(container, 'The order board'); return; }
-  for (const order of board) {
-    const canFulfill = typeof orders.canFulfill === 'function' ? orders.canFulfill(order) : false;
+  if (!board.some(Boolean)) { renderComingSoon(container, 'The order board'); return; }
+
+  for (const slot of board) {
+    if (!slot) continue;
     const card = document.createElement('div');
     card.className = 'order-card';
-    const reqs = (order.items || []).map((it) => `${itemIcon(it.item)} x${it.qty}`).join(', ');
-    card.innerHTML = `<strong>${order.customer || 'Order'}</strong><div>${reqs}</div><div>Reward: 🪙${order.reward?.coins ?? 0}</div>`;
+    if (slot.empty) {
+      card.innerHTML = `<span class="minigame-hint">Next order in ${fmtDuration(slot.readyAt - Date.now())}…</span>`;
+      container.appendChild(card);
+      continue;
+    }
+    const order = slot;
+    const canFulfill = orders.canFulfill(order);
+    const reqs = (order.items || []).map((it) => `${itemIcon(it.itemId)} ${itemName(it.itemId)} x${it.qty}`).join(', ');
+    card.innerHTML = `<strong>Order</strong><div>${reqs}</div><div>Reward: 🪙${order.rewardCoins ?? 0} · ✨${order.rewardXp ?? 0} XP</div>`;
     card.appendChild(button('Fulfill', () => {
-      const ok = typeof orders.fulfillOrder === 'function' && orders.fulfillOrder(order.id);
-      if (ok) {
+      const result = orders.fulfillOrder(order.id);
+      if (result) {
         audio.orderComplete();
         toast('Order fulfilled!', 'success');
         tutorial.emit('order_fulfilled');
@@ -278,26 +378,1166 @@ function renderOrders(container) {
   }
 }
 
-function renderShop(container) {
-  const listings = state.shop.listings || [];
-  if (!listings.length) { renderComingSoon(container, 'The roadside shop'); return; }
-  for (const [i, listing] of listings.entries()) {
+function renderTruck(container) {
+  orders.tickTruck(Date.now());
+  const truck = state.orders.truck;
+  if (!truck) { renderComingSoon(container, 'The truck'); return; }
+
+  if (truck.departed) {
+    container.appendChild(hintEl(`The truck has departed. Next one in ${fmtDuration((truck.nextSpawnAt || 0) - Date.now())}.`));
+    return;
+  }
+
+  const grid = slotGrid();
+  truck.bundles.forEach((bundle, i) => {
     const card = document.createElement('div');
-    card.className = 'shop-slot';
-    card.innerHTML = `<span class="icon">${itemIcon(listing.item)}</span><strong>${itemName(listing.item)}</strong><span>x${listing.qty} — 🪙${listing.price}</span>`;
-    card.appendChild(button('Collect', () => {
-      const ok = typeof shop.collect === 'function' && shop.collect(i);
-      if (ok) { audio.coin(); toast('Collected!', 'success'); refreshPanel(); }
+    card.className = `build-card${bundle.filled ? ' locked' : ''}`;
+    card.innerHTML = `<span class="icon">${itemIcon(bundle.itemId)}</span><strong>${itemName(bundle.itemId)}</strong><span>x${bundle.qty}</span>`;
+    if (bundle.filled) {
+      card.appendChild(hintEl('Loaded ✅'));
+    } else {
+      card.appendChild(button('Fill', () => {
+        const ok = orders.fillTruckBundle(i);
+        if (ok) { audio.place(); toast('Bundle filled!', 'success'); refreshPanel(); }
+        else { audio.error(); toast('Not enough in storage.', 'error'); }
+      }, { disabled: stockCount(bundle.itemId) < bundle.qty }));
+    }
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Roadside shop + the market trader (shop.js)
+// ---------------------------------------------------------------------------
+function renderShop(container) {
+  shop.tick(Date.now());
+  const listings = state.shop.listings || [];
+  const active = listings.filter(Boolean);
+
+  if (active.length) {
+    const grid = slotGrid();
+    listings.forEach((listing, i) => {
+      if (!listing) return;
+      const card = document.createElement('div');
+      card.className = 'shop-slot';
+      card.innerHTML = `<span class="icon">${itemIcon(listing.itemId)}</span><strong>${itemName(listing.itemId)}</strong><span>x${listing.qty} — 🪙${listing.price}</span>`;
+      if (listing.sold) {
+        card.appendChild(button('Collect', () => {
+          const ok = shop.collect(i);
+          if (ok) { audio.coin(); toast('Collected!', 'success'); refreshPanel(); }
+        }));
+      } else {
+        card.appendChild(hintEl(`Selling… ready in ${fmtDuration(listing.readyAt - Date.now())}`));
+        card.appendChild(button('Cancel', () => {
+          const ok = shop.cancel(i);
+          if (ok) { toast('Listing cancelled.', 'info'); refreshPanel(); }
+        }));
+      }
+      grid.appendChild(card);
+    });
+    container.appendChild(grid);
+  } else {
+    container.appendChild(hintEl('No listings yet — sell something below.'));
+  }
+
+  container.appendChild(hintEl('List an item for sale:'));
+  const usedSlots = listings.filter(Boolean).length;
+  const full = usedSlots >= SHOP.slots;
+  const sellPool = { ...state.silo.items, ...state.barn.items };
+  const listGrid = slotGrid();
+  let listable = 0;
+  for (const [id, qty] of Object.entries(sellPool)) {
+    if (!(qty > 0)) continue;
+    const base = economy.sellValue(id);
+    if (!(base > 0)) continue;
+    listable++;
+    const price = Math.round(base * 1.2);
+    const card = document.createElement('div');
+    card.className = 'build-card';
+    card.innerHTML = `<span class="icon">${itemIcon(id)}</span><strong>${itemName(id)}</strong><span>x${qty} owned</span>`;
+    card.appendChild(button(`List 1 for 🪙${price}`, () => {
+      const ok = shop.list(id, 1, price);
+      if (ok) { audio.place(); toast(`Listed 1 ${itemName(id)}.`, 'success'); refreshPanel(); }
+      else { audio.error(); toast('Could not list that.', 'error'); }
+    }, { disabled: full }));
+    listGrid.appendChild(card);
+  }
+  if (listable) container.appendChild(listGrid);
+  else container.appendChild(hintEl('Nothing to sell yet — harvest or craft something first!'));
+}
+
+function renderMarket(container) {
+  const offers = shop.marketOffers(Date.now());
+  if (!offers.length) { renderComingSoon(container, 'The market stall'); return; }
+  const grid = slotGrid();
+  offers.forEach((offer, i) => {
+    const card = document.createElement('div');
+    card.className = `build-card${offer.bought ? ' locked' : ''}`;
+    card.innerHTML = `<span class="icon">${itemIcon(offer.item)}</span><strong>${itemName(offer.item)}</strong><span>x${offer.qty} — 🪙${offer.price}</span>`;
+    if (offer.bought) {
+      card.appendChild(hintEl('Sold out for today.'));
+    } else {
+      card.appendChild(button('Buy', () => {
+        const ok = shop.buyOffer(i);
+        if (ok) { audio.coin(); toast(`Bought ${itemName(offer.item)}!`, 'success'); refreshPanel(); }
+        else { audio.error(); toast('Could not buy that.', 'error'); }
+      }, { disabled: state.coins < offer.price }));
+    }
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Boat crates (boat.js) + island voyages (islands.js) — one physical dock, two modules.
+// ---------------------------------------------------------------------------
+function renderBoat(container) {
+  boat.tick(Date.now());
+  container.appendChild(hintEl('Boat Orders'));
+  const b = state.orders.boat;
+  if (!b) {
+    container.appendChild(hintEl('The next boat has not docked yet.'));
+  } else if (b.departed) {
+    container.appendChild(hintEl(`The boat has sailed. Next one in ${fmtDuration((b.nextSpawnAt || 0) - Date.now())}.`));
+  } else {
+    container.appendChild(hintEl(`Departs in ${fmtDuration(b.departsAt - Date.now())}.`));
+    const grid = slotGrid();
+    b.crates.forEach((crate, i) => {
+      const card = document.createElement('div');
+      card.className = `build-card${crate.filled ? ' locked' : ''}`;
+      card.innerHTML = `<span class="icon">${itemIcon(crate.itemId)}</span><strong>${itemName(crate.itemId)}</strong><span>x${crate.qty}</span>`;
+      if (crate.filled) {
+        card.appendChild(hintEl('Loaded ✅'));
+      } else {
+        card.appendChild(button('Load', () => {
+          const ok = boat.fillCrate(i);
+          if (ok) { audio.place(); toast('Crate loaded!', 'success'); refreshPanel(); }
+          else { audio.error(); toast('Not enough in storage.', 'error'); }
+        }, { disabled: stockCount(crate.itemId) < crate.qty }));
+      }
+      grid.appendChild(card);
+    });
+    container.appendChild(grid);
+    if (b.crates.length && b.crates.every((c) => c.filled) && !b.claimed) {
+      const claimRow = row('');
+      claimRow.appendChild(button('Claim full-boat bonus!', () => {
+        const result = boat.claimBonus();
+        if (result) {
+          audio.depart();
+          toast(`Bonus: 🪙${result.coins} · ✨${result.xp} XP · 🎟️${result.vouchers} vouchers!`, 'success');
+          refreshPanel();
+        } else { audio.error(); toast('Too late — the boat has left.', 'error'); }
+      }));
+      container.appendChild(claimRow);
+    }
+  }
+
+  container.appendChild(hintEl('Island Voyages'));
+  const voyage = state.islands.voyage;
+  if (voyage) {
+    const def = ISLANDS.destinations[voyage.islandId];
+    const now = Date.now();
+    if (now >= voyage.readyAt) {
+      const cargo = islands.pendingCargo() || {};
+      const cargoLine = Object.entries(cargo).map(([id, qty]) => `${itemIcon(id)} x${qty}`).join(', ');
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      card.innerHTML = `<strong>${def?.name || voyage.islandId} has returned!</strong><div>${cargoLine}</div>`;
+      card.appendChild(button('Collect cargo', () => {
+        const ok = islands.collect();
+        if (ok) { audio.coin(); toast('Cargo collected!', 'success'); refreshPanel(); }
+        else { audio.error(); toast('Barn is full — make room first.', 'error'); }
+      }));
+      container.appendChild(card);
+    } else {
+      container.appendChild(hintEl(`${def?.name || voyage.islandId} returns in ${fmtDuration(voyage.readyAt - now)}.`));
+    }
+  } else {
+    const grid = slotGrid();
+    for (const dest of islands.destinations()) {
+      const card = document.createElement('div');
+      card.className = 'build-card';
+      const cargoLine = Object.keys(dest.cargo || {}).map((id) => itemIcon(id)).join(' ');
+      card.innerHTML = `<span class="icon">⛵</span><strong>${dest.name}</strong><span class="minigame-hint">${cargoLine} · ${fmtDuration(dest.tripTime * 1000)}</span>`;
+      card.appendChild(button('Sail', () => {
+        const ok = islands.sail(dest.id);
+        if (ok) { audio.depart(); toast(`Sailing to ${dest.name}…`, 'success'); refreshPanel(); }
+        else { audio.error(); toast('Cannot sail right now.', 'error'); }
+      }, { disabled: !islands.canSail(dest.id) }));
+      grid.appendChild(card);
+    }
+    container.appendChild(grid);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fishing (fishing.js) — cast, then reel a real-time timing bar for accuracy.
+// ---------------------------------------------------------------------------
+let fishingStyleInjected = false;
+function ensureFishingStyle() {
+  if (fishingStyleInjected) return;
+  if (typeof document === 'undefined' || !document.head) return;
+  const style = document.createElement('style');
+  style.textContent = `
+    .fishing-track { position: relative; height: 18px; margin: 8px 0; cursor: pointer; background: rgba(0,0,0,0.12); border-radius: 9px; }
+    .fishing-marker { position: absolute; top: 0; width: 4px; height: 100%; background: #f0b52e; border-radius: 2px;
+      animation: fishing-ping-pong 1.4s ease-in-out infinite; }
+    @keyframes fishing-ping-pong { 0% { left: 0%; } 50% { left: 96%; } 100% { left: 0%; } }
+  `;
+  document.head.appendChild(style);
+  fishingStyleInjected = true;
+}
+
+function renderFishing(container) {
+  const now = Date.now();
+  const cast = state.fishing.cast;
+
+  if (!cast) {
+    container.appendChild(hintEl('Cast your line and wait for a bite.'));
+    const castRow = row('');
+    castRow.appendChild(button('Cast', () => {
+      const ok = fishing.cast();
+      if (ok) { audio.place(); toast('Line cast — wait for it…', 'info'); refreshPanel(); }
+      else { audio.error(); toast('Cannot cast right now.', 'error'); }
     }));
+    container.appendChild(castRow);
+    return;
+  }
+
+  if (now < cast.readyAt) {
+    container.appendChild(hintEl(`Waiting for a bite… ${fmtDuration(cast.readyAt - now)}`));
+    return;
+  }
+
+  ensureFishingStyle();
+  container.appendChild(hintEl('Something is biting! Click the bar when the marker is centred.'));
+  const track = document.createElement('div');
+  track.className = 'fishing-track';
+  const marker = document.createElement('div');
+  marker.className = 'fishing-marker';
+  const animStart = Date.now();
+  track.appendChild(marker);
+  track.addEventListener('click', () => {
+    const cycle = 1400;
+    const t = ((Date.now() - animStart) % cycle) / cycle;
+    const pos = t < 0.5 ? t * 2 : (1 - t) * 2; // mirrors the CSS ping-pong keyframes above
+    const accuracy = 1 - Math.abs(pos - 0.5) * 2;
+    const result = fishing.reel(accuracy);
+    if (!result) { audio.error(); refreshPanel(); return; }
+    if (result.chest) {
+      const loot = fishing.openChest();
+      const parts = [];
+      if (loot.coins) parts.push(`🪙${loot.coins}`);
+      if (loot.diamonds) parts.push(`💎${loot.diamonds}`);
+      if (loot.item) parts.push(`${itemIcon(loot.item)} x${loot.qty}`);
+      if (loot.material) parts.push(`${itemIcon(loot.material)} x${loot.qty}`);
+      audio.coin();
+      toast(`Treasure chest: ${parts.join(', ') || 'nothing this time'}!`, 'success');
+    } else if (result.qty > 0) {
+      audio.fishSplash();
+      toast(`Caught a ${itemName(result.item)}!`, 'success');
+    } else {
+      audio.error();
+      toast('It got away — the barn is full.', 'error');
+    }
+    refreshPanel();
+  });
+  container.appendChild(track);
+}
+
+// ---------------------------------------------------------------------------
+// The mine (mine.js) — tiered depths, dig with a pickaxe or dynamite.
+// ---------------------------------------------------------------------------
+function renderMine(container) {
+  const tools = mine.availableTools();
+  container.appendChild(hintEl(`Tools in the barn: ${itemIcon('pickaxe')} x${tools.pickaxe}   ${itemIcon('dynamite')} x${tools.dynamite}`));
+
+  const cur = mine.currentDepth();
+  container.appendChild(hintEl(`Currently digging: ${cur?.name || '—'}`));
+
+  const digRow = row('');
+  digRow.appendChild(button(`Dig with ${itemIcon('pickaxe')} Pickaxe`, () => {
+    const result = mine.digAt(state.mine.currentDepth, 'pickaxe');
+    if (result) {
+      audio.harvest();
+      const line = result.item ? `${itemIcon(result.item)} x${result.qty}` : 'nothing this time';
+      toast(`Found ${line}${result.artifact ? ' + an artifact!' : ''}`, 'success');
+      refreshPanel();
+    } else { audio.error(); toast('No pickaxe in the barn.', 'error'); }
+  }, { disabled: tools.pickaxe <= 0 }));
+  digRow.appendChild(button(`Dig with ${itemIcon('dynamite')} Dynamite`, () => {
+    const result = mine.digAt(state.mine.currentDepth, 'dynamite');
+    if (result) {
+      audio.harvest();
+      const line = result.item ? `${itemIcon(result.item)} x${result.qty}` : 'nothing this time';
+      toast(`Found ${line}${result.artifact ? ' + an artifact!' : ''}`, 'success');
+      refreshPanel();
+    } else { audio.error(); toast('No dynamite in the barn.', 'error'); }
+  }, { disabled: tools.dynamite <= 0 }));
+  container.appendChild(digRow);
+
+  container.appendChild(hintEl('Depths:'));
+  const grid = slotGrid();
+  for (const depth of mine.depths()) {
+    const card = document.createElement('div');
+    card.className = `build-card${depth.unlocked ? '' : ' locked'}`;
+    card.innerHTML = `<span class="icon">⛰️</span><strong>${depth.name}</strong>${depth.current ? '<span>Current</span>' : ''}`;
+    if (!depth.unlocked) {
+      if (!depth.levelMet) {
+        card.appendChild(hintEl(`Unlocks at level ${depth.unlockLevel}.`));
+      } else if (depth.requires) {
+        const matLine = Object.entries(depth.requires.materials || {}).map(([id, qty]) => `${itemIcon(id)} x${qty}`).join(' ');
+        card.appendChild(hintEl(`🪙${depth.requires.coins} · ${matLine}`));
+        card.appendChild(button('Open', () => {
+          const ok = mine.unlockDepth(depth.id);
+          if (ok) { audio.place(); toast(`${depth.name} opened!`, 'success'); refreshPanel(); }
+          else { audio.error(); toast('Not enough to open this depth.', 'error'); }
+        }));
+      }
+    } else if (!depth.current) {
+      card.appendChild(button('Switch to', () => {
+        state.mine.currentDepth = depth.id;
+        refreshPanel();
+      }));
+    }
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Merge Meadow (merge.js) — a 7x9 tap-to-merge board (select, then merge/move/claim).
+// ---------------------------------------------------------------------------
+let mergeSelected = null;
+
+function renderMerge(container) {
+  merge.initBoard();
+  const energy = merge.currentEnergy(Date.now());
+  container.appendChild(hintEl(`Energy: ${energy}/${MERGE.energy.max}`));
+  container.appendChild(hintEl('Tap a generator to spawn items. Tap two matching items to merge. Tap a maxed item to claim its reward.'));
+
+  const grid = document.createElement('div');
+  grid.className = 'merge-grid';
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = `repeat(${MERGE.board.cols}, 1fr)`;
+  grid.style.gap = '3px';
+
+  const m = state.merge;
+  m.cells.forEach((cell, i) => {
+    const cellBtn = document.createElement('button');
+    cellBtn.className = 'btn';
+    cellBtn.style.aspectRatio = '1';
+    cellBtn.style.minWidth = '0';
+    cellBtn.style.padding = '2px';
+    cellBtn.style.fontSize = '16px';
+    if (i === mergeSelected) cellBtn.style.outline = '3px solid #f0b52e';
+
+    if (!cell) {
+      cellBtn.textContent = '';
+    } else if (cell.generator) {
+      const gen = MERGE.generators[cell.generator];
+      cellBtn.textContent = '📦';
+      cellBtn.title = gen?.name || cell.generator;
+    } else {
+      const chain = MERGE.chains[cell.chain];
+      const tierName = chain?.tiers?.[cell.tier] || `Tier ${cell.tier + 1}`;
+      cellBtn.textContent = String(cell.tier + 1);
+      cellBtn.title = `${chain?.name || cell.chain} — ${tierName}`;
+    }
+
+    cellBtn.addEventListener('click', () => {
+      if (!cell) {
+        if (mergeSelected !== null) {
+          const ok = merge.moveItem(mergeSelected, i);
+          mergeSelected = null;
+          if (ok) refreshPanel();
+        }
+        return;
+      }
+      if (cell.generator) {
+        const placed = merge.spawnFrom(i);
+        if (placed) { audio.place(); refreshPanel(); }
+        else { audio.error(); toast('Not enough energy, or the board is full.', 'error'); }
+        return;
+      }
+      if (mergeSelected === null) { mergeSelected = i; refreshPanel(); return; }
+      if (mergeSelected === i) { mergeSelected = null; refreshPanel(); return; }
+      if (merge.canMerge(mergeSelected, i)) {
+        const result = merge.merge(mergeSelected, i);
+        mergeSelected = null;
+        if (result) { audio.merge(); toast('Merged!', 'success'); refreshPanel(); }
+        return;
+      }
+      if (merge.claimableReward(i)) {
+        merge.claim(i);
+        mergeSelected = null;
+        audio.coin();
+        toast('Claimed!', 'success');
+        refreshPanel();
+        return;
+      }
+      mergeSelected = i; // switch the selection to this cell instead
+      refreshPanel();
+    });
+    grid.appendChild(cellBtn);
+  });
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Town (town.js) — houses raise population, community buildings raise the cap.
+// ---------------------------------------------------------------------------
+function findFreeTownTile(w, h) {
+  const { x: dx, y: dy, w: dw, h: dh } = TOWN.district;
+  const occupied = state.town.buildings;
+  for (let y = dy; y <= dy + dh - h; y++) {
+    for (let x = dx; x <= dx + dw - w; x++) {
+      const free = occupied.every((b) => {
+        const [bw, bh] = b.size || [1, 1];
+        return !(x < b.x + bw && x + w > b.x && y < b.y + bh && y + h > b.y);
+      });
+      if (free) return [x, y];
+    }
+  }
+  return null;
+}
+
+function buildTownCard(id, def, kind) {
+  const card = document.createElement('div');
+  const affordable = town.canBuild(kind, id);
+  card.className = `build-card${affordable ? '' : ' locked'}`;
+  const matLine = Object.entries(def.materials || {}).map(([m, qty]) => `${itemIcon(m)} x${qty}`).join(' ');
+  card.innerHTML = `<span class="icon">🏘️</span><strong>${def.name}</strong><span>🪙${def.cost}</span><span class="minigame-hint">${matLine}</span>`;
+  card.appendChild(button('Build', () => {
+    const spot = findFreeTownTile(def.size[0], def.size[1]);
+    if (!spot) { audio.error(); toast('No free space in town.', 'error'); return; }
+    const ok = town.build(kind, id, spot[0], spot[1]);
+    if (ok) { audio.place(); toast(`Built ${def.name}!`, 'success'); refreshPanel(); }
+    else { audio.error(); toast('Cannot build that yet.', 'error'); }
+  }, { disabled: !affordable }));
+  return card;
+}
+
+function renderTown(container) {
+  const info = town.populationInfo();
+  container.appendChild(hintEl(`Population: ${info.population}/${info.capacity}`));
+
+  const claimable = town.claimableMilestones();
+  for (const idx of claimable) {
+    const m = TOWN.milestones[idx];
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = `<strong>${m.population} population reached!</strong><span>🪙${m.rewards.coins ?? 0} · 💎${m.rewards.diamonds ?? 0}</span>`;
+    card.appendChild(button('Claim', () => {
+      town.claimMilestone(idx);
+      audio.reward();
+      toast('Milestone claimed!', 'success');
+      refreshPanel();
+    }));
+    container.appendChild(card);
+  }
+
+  const tier = town.unlockedTier();
+  container.appendChild(hintEl('Houses (raise population):'));
+  const houseGrid = slotGrid();
+  for (const [id, def] of Object.entries(TOWN.houses)) {
+    if (def.tier > tier) continue;
+    houseGrid.appendChild(buildTownCard(id, def, 'house'));
+  }
+  container.appendChild(houseGrid);
+
+  container.appendChild(hintEl('Community buildings (raise the cap):'));
+  const commGrid = slotGrid();
+  for (const [id, def] of Object.entries(TOWN.communityBuildings)) {
+    if (def.tier > tier) continue;
+    commGrid.appendChild(buildTownCard(id, def, 'community'));
+  }
+  container.appendChild(commGrid);
+}
+
+// ---------------------------------------------------------------------------
+// Trains + the airport (trains.js) — cargo transports of the Township layer.
+// ---------------------------------------------------------------------------
+function renderTrains(container) {
+  trains.tick(Date.now());
+  if (state.trains.readyToCollect) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = '<strong>The train has returned!</strong>';
+    card.appendChild(button('Collect materials', () => {
+      const ok = trains.collectDelivery();
+      if (ok) { audio.coin(); toast('Materials collected!', 'success'); refreshPanel(); }
+      else { audio.error(); toast('Barn is full — make room first.', 'error'); }
+    }));
+    container.appendChild(card);
+    return;
+  }
+
+  const t = trains.currentTrain();
+  if (!t) { container.appendChild(hintEl('No train at the station right now.')); return; }
+
+  container.appendChild(hintEl(`Departs in ${fmtDuration(t.departsBy - Date.now())}.`));
+  const grid = slotGrid();
+  t.wagons.forEach((wagon, i) => {
+    const full = wagon.filled >= wagon.requested;
+    const card = document.createElement('div');
+    card.className = `build-card${full ? ' locked' : ''}`;
+    card.innerHTML = `<span class="icon">${itemIcon(wagon.itemId)}</span><strong>${itemName(wagon.itemId)}</strong><span>${wagon.filled}/${wagon.requested}</span>`;
+    if (!full) {
+      card.appendChild(button('Load', () => {
+        const ok = trains.fillWagon(i);
+        if (ok) { audio.place(); refreshPanel(); }
+        else { audio.error(); toast('Not enough in storage.', 'error'); }
+      }));
+    }
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+
+  if (t.wagons.length && t.wagons.every((w) => w.filled >= w.requested)) {
+    const dispatchRow = row('');
+    dispatchRow.appendChild(button('Dispatch train', () => {
+      trains.dispatchTrain();
+      audio.depart();
+      toast('Train dispatched!', 'success');
+      refreshPanel();
+    }));
+    container.appendChild(dispatchRow);
+  }
+}
+
+function renderAirport(container) {
+  trains.tick(Date.now());
+  if (state.airport.readyToCollect) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = '<strong>The plane has returned!</strong>';
+    card.appendChild(button('Collect delivery', () => {
+      const ok = trains.collectFlight();
+      if (ok) { audio.coin(); toast('Delivery collected!', 'success'); refreshPanel(); }
+      else { audio.error(); toast('Barn is full — make room first.', 'error'); }
+    }));
+    container.appendChild(card);
+    return;
+  }
+
+  const p = trains.currentPlane();
+  if (!p) { container.appendChild(hintEl('No plane at the airport right now.')); return; }
+
+  container.appendChild(hintEl(`Departs in ${fmtDuration(p.departsBy - Date.now())}.`));
+  const grid = slotGrid();
+  p.crates.forEach((crate, i) => {
+    const full = crate.filled >= crate.requested;
+    const card = document.createElement('div');
+    card.className = `build-card${full ? ' locked' : ''}`;
+    card.innerHTML = `<span class="icon">${itemIcon(crate.itemId)}</span><strong>${itemName(crate.itemId)}</strong><span>${crate.filled}/${crate.requested}</span>`;
+    if (!full) {
+      card.appendChild(button('Load', () => {
+        const ok = trains.fillCrate(i);
+        if (ok) { audio.place(); refreshPanel(); }
+        else { audio.error(); toast('Not enough in storage.', 'error'); }
+      }));
+    }
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// The zoo (zoo.js) — enclosures, feeding, visitor income, zoo orders.
+// ---------------------------------------------------------------------------
+function renderZoo(container) {
+  zoo.tick(Date.now());
+  const income = zoo.pendingIncome(Date.now());
+  const incomeRow = row('');
+  incomeRow.appendChild(hintEl(`Visitor income: 🪙${income}`));
+  if (income > 0) {
+    incomeRow.appendChild(button('Collect', () => {
+      const amount = zoo.collectIncome();
+      audio.coin();
+      toast(`Collected 🪙${amount}!`, 'success');
+      refreshPanel();
+    }));
+  }
+  container.appendChild(incomeRow);
+
+  container.appendChild(hintEl('Enclosures:'));
+  const grid = slotGrid();
+  const owned = state.zoo.enclosures;
+  for (const [id, def] of Object.entries(ZOO.enclosures)) {
+    const has = owned[id];
+    const card = document.createElement('div');
+    if (!has) {
+      const locked = state.level < def.unlockLevel;
+      card.className = `build-card${locked ? ' locked' : ''}`;
+      const matLine = Object.entries(def.materials || {}).map(([m, qty]) => `${itemIcon(m)} x${qty}`).join(' ');
+      card.innerHTML = `<span class="icon">🦁</span><strong>${def.name}</strong><span>🪙${def.cost}</span><span class="minigame-hint">${matLine}</span>`;
+      if (locked) {
+        card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
+      } else {
+        card.appendChild(button('Buy', () => {
+          const ok = zoo.buyEnclosure(id);
+          if (ok) { audio.place(); toast(`Built ${def.name}!`, 'success'); refreshPanel(); }
+          else { audio.error(); toast('Not enough to buy this.', 'error'); }
+        }));
+      }
+    } else {
+      card.className = 'build-card';
+      const now = Date.now();
+      const ready = has.readyAt > 0 && now >= has.readyAt;
+      const feeding = has.readyAt > 0 && !ready;
+      card.innerHTML = `<span class="icon">${itemIcon(def.product)}</span><strong>${def.name}</strong>`;
+      if (ready) {
+        card.appendChild(button('Collect', () => {
+          const ok = zoo.collect(id);
+          if (ok) { audio.harvest(); toast(`Collected ${itemName(def.product)}!`, 'success'); refreshPanel(); }
+        }));
+      } else if (feeding) {
+        card.appendChild(hintEl(`Producing… ${fmtDuration(has.readyAt - now)}`));
+      } else {
+        const feedLine = Object.entries(def.feed).map(([g, qty]) => `${itemIcon(g)} x${qty}`).join(' ');
+        const haveFeed = Object.entries(def.feed).every(([g, qty]) => stockCount(g) >= qty);
+        card.appendChild(hintEl(feedLine));
+        card.appendChild(button('Feed', () => {
+          const ok = zoo.feed(id);
+          if (ok) { audio.animal(); toast('Feeding…', 'success'); refreshPanel(); }
+          else { audio.error(); toast('Not enough feed.', 'error'); }
+        }, { disabled: !haveFeed }));
+      }
+    }
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+
+  const zooOrders = state.zoo.orders || [];
+  if (zooOrders.length) {
+    container.appendChild(hintEl('Zoo orders:'));
+    for (const order of zooOrders) {
+      const canFulfill = order.items.every((it) => stockCount(it.itemId) >= it.qty);
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      const reqs = order.items.map((it) => `${itemIcon(it.itemId)} x${it.qty}`).join(', ');
+      card.innerHTML = `<strong>Zoo Order</strong><div>${reqs}</div><div>Reward: 🪙${order.rewardCoins}</div>`;
+      card.appendChild(button('Fulfill', () => {
+        const ok = zoo.fulfillOrder(order.id);
+        if (ok) { audio.orderComplete(); toast('Zoo order fulfilled!', 'success'); refreshPanel(); }
+      }, { disabled: !canFulfill }));
+      container.appendChild(card);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The helicopter pad (helicopter.js) — the fastest materials channel.
+// ---------------------------------------------------------------------------
+function renderHelicopter(container) {
+  helicopter.tick(Date.now());
+  const fuel = helicopter.currentFuel(Date.now());
+  container.appendChild(hintEl(`Fuel: ${fuel}/${HELICOPTER.fuel.max}`));
+
+  const flight = helicopter.currentFlight();
+  if (flight) {
+    const now = Date.now();
+    if (now >= flight.returningAt) {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      card.innerHTML = '<strong>The helicopter has returned!</strong>';
+      card.appendChild(button('Collect delivery', () => {
+        const result = helicopter.collectDelivery();
+        if (result) { audio.coin(); toast('Delivery collected!', 'success'); refreshPanel(); }
+      }));
+      container.appendChild(card);
+    } else {
+      container.appendChild(hintEl(`Returning in ${fmtDuration(flight.returningAt - now)}.`));
+    }
+    return;
+  }
+
+  container.appendChild(hintEl('Load crates, then dispatch:'));
+  const grid = slotGrid();
+  const loading = state.helicopter.loading || [];
+  for (let i = 0; i < HELICOPTER.crates; i++) {
+    const slot = loading[i];
+    const card = document.createElement('div');
+    card.className = 'build-card';
+    if (slot) {
+      card.innerHTML = `<span class="icon">${itemIcon(slot.item)}</span><strong>${itemName(slot.item)}</strong>`;
+    } else {
+      card.innerHTML = '<span class="icon">➕</span><strong>Empty</strong>';
+      card.appendChild(button('Load', () => {
+        const ok = helicopter.fillCrate(i);
+        if (ok) { audio.place(); refreshPanel(); }
+        else { audio.error(); toast('Nothing in the barn to load.', 'error'); }
+      }));
+    }
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+
+  const filled = loading.filter(Boolean).length;
+  const dispatchRow = row('');
+  dispatchRow.appendChild(button('Dispatch', () => {
+    const ok = helicopter.dispatch();
+    if (ok) { audio.depart(); toast('Helicopter dispatched!', 'success'); refreshPanel(); }
+    else { audio.error(); toast('Load a crate and check fuel first.', 'error'); }
+  }, { disabled: filled === 0 || fuel < HELICOPTER.fuel.costPerDispatch }));
+  container.appendChild(dispatchRow);
+}
+
+// ---------------------------------------------------------------------------
+// The laboratory (lab.js) — permanent research; one node runs at a time.
+// ---------------------------------------------------------------------------
+function renderLab(container) {
+  safeTick(lab.tick, Date.now());
+
+  if (!state.lab.built) {
+    const cost = LAB.buildCost;
+    const matLine = Object.entries(cost.materials || {}).map(([m, qty]) => `${itemIcon(m)} x${qty}`).join(' ');
+    container.appendChild(hintEl(`Build the Laboratory: 🪙${cost.coins} · ${matLine}`));
+    const buildRow = row('');
+    buildRow.appendChild(button('Build', () => {
+      const ok = lab.build();
+      if (ok) { audio.place(); toast('Laboratory built!', 'success'); refreshPanel(); }
+      else { audio.error(); toast('Not enough to build the lab.', 'error'); }
+    }));
+    container.appendChild(buildRow);
+    return;
+  }
+
+  if (state.lab.active) {
+    const node = LAB.tree[state.lab.active.id];
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = `<strong>Researching ${node?.name || state.lab.active.id}</strong><div>${fmtDuration(state.lab.active.readyAt - Date.now())} remaining</div>`;
+    card.appendChild(button('Cancel', () => {
+      lab.cancelResearch();
+      toast('Research cancelled — refunded.', 'info');
+      refreshPanel();
+    }));
+    container.appendChild(card);
+  }
+
+  container.appendChild(hintEl(`Completed: ${state.lab.researched.length} / ${Object.keys(LAB.tree).length}`));
+  container.appendChild(hintEl('Available research:'));
+  const grid = slotGrid();
+  for (const id of lab.availableNodes()) {
+    const node = LAB.tree[id];
+    const can = lab.canResearch(id);
+    const card = document.createElement('div');
+    card.className = `build-card${can ? '' : ' locked'}`;
+    const cost = node.cost || {};
+    const itemsLine = Object.entries(cost.items || {}).map(([g, qty]) => `${itemIcon(g)} x${qty}`).join(' ');
+    const matsLine = Object.entries(cost.materials || {}).map(([m, qty]) => `${itemIcon(m)} x${qty}`).join(' ');
+    card.innerHTML = `<span class="icon">🔬</span><strong>${node.name}</strong><span>🪙${cost.coins ?? 0}</span><span class="minigame-hint">${itemsLine} ${matsLine}</span>`;
+    card.appendChild(button('Research', () => {
+      const ok = lab.startResearch(id);
+      if (ok) { audio.place(); toast(`Researching ${node.name}…`, 'success'); refreshPanel(); }
+      else { audio.error(); toast('Cannot research that right now.', 'error'); }
+    }, { disabled: !can }));
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// The museum (museum.js) — exhibits made of found artifacts (never in the barn).
+// ---------------------------------------------------------------------------
+function renderMuseum(container) {
+  container.appendChild(hintEl('Exhibits:'));
+  const grid = slotGrid();
+  for (const [id, exhibit] of Object.entries(MUSEUM.exhibits)) {
+    const progress = museum.exhibitProgress(id);
+    const claimed = state.museum.claimedRewards.includes(id);
+    const card = document.createElement('div');
+    card.className = 'build-card';
+    card.innerHTML = `<span class="icon">🏛️</span><strong>${exhibit.name}</strong><span>${progress.found}/${progress.total} found</span>`;
+    if (progress.found >= progress.total && !claimed) {
+      card.appendChild(button('Claim', () => {
+        const ok = museum.claimExhibit(id);
+        if (ok) { audio.reward(); toast(`${exhibit.name} exhibit complete!`, 'success'); refreshPanel(); }
+      }));
+    } else if (claimed) {
+      card.appendChild(hintEl('Claimed ✅'));
+    }
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+
+  const owned = Object.entries(state.museum.artifacts).filter(([, qty]) => qty > 0);
+  if (owned.length) {
+    container.appendChild(hintEl('Your artifacts:'));
+    const artGrid = slotGrid();
+    for (const [id, qty] of owned) {
+      const def = ARTIFACTS[id];
+      const card = document.createElement('div');
+      card.className = 'build-card';
+      card.innerHTML = `<span class="icon">🏺</span><strong>${def?.name || id}</strong><span>x${qty}</span>`;
+      if (qty > 1) {
+        card.appendChild(button(`Sell 1 for 🪙${def?.sellPrice ?? 0}`, () => {
+          const sold = museum.sellDuplicate(id, 1);
+          if (sold) { audio.coin(); toast('Sold a duplicate.', 'success'); refreshPanel(); }
+        }));
+      }
+      artGrid.appendChild(card);
+    }
+    container.appendChild(artGrid);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Expeditions (expeditions.js) — hire specialists, send a crew, collect loot.
+// ---------------------------------------------------------------------------
+function renderExpeditions(container) {
+  container.appendChild(hintEl('Crew:'));
+  const activeIdxs = new Set(state.expeditions.active.map((a) => a.crewIdx));
+  const crewGrid = slotGrid();
+  state.expeditions.crew.forEach((member, idx) => {
+    const specialist = EXPEDITIONS.specialists[member.specialistId];
+    const trip = state.expeditions.active.find((a) => a.crewIdx === idx);
+    const card = document.createElement('div');
+    card.className = 'build-card';
+    card.innerHTML = `<span class="icon">🧑‍🌾</span><strong>${specialist?.name || member.specialistId}</strong>`;
+    if (trip) {
+      const now = Date.now();
+      if (now >= trip.readyAt) {
+        card.appendChild(button('Collect', () => {
+          const result = expeditions.collect(idx);
+          if (result) {
+            audio[result.failed ? 'error' : 'reward']();
+            toast(result.failed ? 'The expedition came back empty-handed.' : 'Expedition returned with loot!', result.failed ? 'error' : 'success');
+            refreshPanel();
+          }
+        }));
+      } else {
+        card.appendChild(hintEl(`Out on ${EXPEDITIONS.sites[trip.siteId]?.name || trip.siteId}… ${fmtDuration(trip.readyAt - now)}`));
+      }
+    } else {
+      card.appendChild(hintEl('Available for a site.'));
+    }
+    crewGrid.appendChild(card);
+  });
+  if (crewGrid.children.length) container.appendChild(crewGrid);
+  else container.appendChild(hintEl('No specialists hired yet.'));
+
+  container.appendChild(hintEl('Hire a specialist:'));
+  const hireGrid = slotGrid();
+  for (const [id, specialist] of Object.entries(EXPEDITIONS.specialists)) {
+    const card = document.createElement('div');
+    card.className = 'build-card';
+    card.innerHTML = `<span class="icon">🧑‍🌾</span><strong>${specialist.name}</strong><span>🪙${specialist.cost}</span>`;
+    card.appendChild(button('Hire', () => {
+      const idx = expeditions.hireSpecialist(id);
+      if (idx !== false) { audio.place(); toast(`Hired ${specialist.name}!`, 'success'); refreshPanel(); }
+      else { audio.error(); toast('Not enough coins.', 'error'); }
+    }, { disabled: state.coins < specialist.cost }));
+    hireGrid.appendChild(card);
+  }
+  container.appendChild(hireGrid);
+
+  container.appendChild(hintEl('Launch a site:'));
+  const siteGrid = slotGrid();
+  for (const id of expeditions.sites()) {
+    const site = EXPEDITIONS.sites[id];
+    const can = expeditions.canLaunch(id);
+    const freeIdx = state.expeditions.crew.findIndex((_, idx) => !activeIdxs.has(idx));
+    const card = document.createElement('div');
+    card.className = `build-card${can && freeIdx !== -1 ? '' : ' locked'}`;
+    const suppliesLine = Object.entries(site.supplies || {}).map(([g, qty]) => `${itemIcon(g)} x${qty}`).join(' ');
+    card.innerHTML = `<span class="icon">🗺️</span><strong>${site.name}</strong><span class="minigame-hint">${suppliesLine} · ${fmtDuration(site.duration * 1000)}</span>`;
+    card.appendChild(button('Launch', () => {
+      const ok = expeditions.launch(id, freeIdx);
+      if (ok) { audio.depart(); toast(`${site.name} expedition launched!`, 'success'); refreshPanel(); }
+      else { audio.error(); toast('Need a free crew member and supplies.', 'error'); }
+    }, { disabled: !can || freeIdx === -1 }));
+    siteGrid.appendChild(card);
+  }
+  container.appendChild(siteGrid);
+}
+
+// ---------------------------------------------------------------------------
+// The newspaper (newspaper.js) — browse simulated neighbours' shops.
+// ---------------------------------------------------------------------------
+function renderNewspaper(container) {
+  safeTick(newspaper.tick, Date.now());
+  const issue = newspaper.currentIssue(Date.now());
+  const refreshRow = row('');
+  refreshRow.appendChild(button('Refresh', () => {
+    newspaper.refresh(Date.now());
+    toast('Newspaper refreshed.', 'info');
+    refreshPanel();
+  }));
+  container.appendChild(refreshRow);
+
+  const listings = issue.listings || [];
+  if (!listings.length) { renderComingSoon(container, 'The newspaper'); return; }
+  const grid = slotGrid();
+  for (const listing of listings) {
+    const nb = neighbours.get(listing.neighbourId);
+    const card = document.createElement('div');
+    card.className = 'build-card';
+    card.innerHTML = `<span class="icon">${itemIcon(listing.item)}</span><strong>${itemName(listing.item)}</strong>
+      <span>x${listing.qty} — 🪙${listing.price}${listing.bargain ? ' 🔥' : ''}</span>
+      <span class="minigame-hint">${nb ? `${nb.first} ${nb.last}'s Farm` : ''}</span>`;
+    card.appendChild(button('Buy', () => {
+      const ok = newspaper.buy(listing.id);
+      if (ok) { audio.coin(); toast(`Bought ${itemName(listing.item)}!`, 'success'); refreshPanel(); }
+      else { audio.error(); toast('Could not buy that.', 'error'); }
+    }, { disabled: state.coins < listing.price }));
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Collections + building mastery (collections.js).
+// ---------------------------------------------------------------------------
+function renderCollections(container) {
+  container.appendChild(hintEl('Collection books:'));
+  for (const [id, def] of Object.entries(COLLECTIONS.books)) {
+    const entries = collections.bookEntries(id);
+    const found = collections.found(id);
+    const claimableCount = collections.claimable(id);
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = `<strong>${def.name}</strong><div>${found.length}/${entries.length} found</div>`;
+    if (claimableCount > 0) {
+      card.appendChild(button(`Claim x${claimableCount}`, () => {
+        const n = collections.claim(id);
+        if (n) { audio.reward(); toast(`Claimed ${n} milestone reward${n === 1 ? '' : 's'}!`, 'success'); refreshPanel(); }
+      }));
+    }
+    container.appendChild(card);
+  }
+
+  container.appendChild(hintEl('Building mastery:'));
+  const masteryEntries = Object.keys(state.collections.mastery);
+  if (!masteryEntries.length) {
+    container.appendChild(hintEl('Craft recipes to start earning mastery stars.'));
+    return;
+  }
+  const grid = slotGrid();
+  for (const buildingId of masteryEntries) {
+    const info = collections.masteryOf(buildingId);
+    const def = BUILDINGS[buildingId];
+    const card = document.createElement('div');
+    card.className = 'build-card';
+    const stars = info.star > 0 ? '⭐'.repeat(info.star) : '—';
+    card.innerHTML = `<strong>${def?.name || buildingId}</strong><span>${stars}</span>
+      <span class="minigame-hint">${info.makes} made${info.nextTier ? ` · ${info.nextTier.remaining} to next star` : ' · max star'}</span>`;
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Co-op + the regatta (coop.js / regatta.js) — one dock panel, two systems.
+// ---------------------------------------------------------------------------
+function renderCoop(container) {
+  if (state.level < COOP.unlockLevel) {
+    container.appendChild(hintEl(`The co-op unlocks at level ${COOP.unlockLevel}.`));
+    return;
+  }
+  safeTick(coop.tick, Date.now());
+
+  container.appendChild(hintEl(`Co-op points: ${coop.contributionPoints()}`));
+
+  container.appendChild(hintEl('Daily tasks:'));
+  for (const task of coop.dailyTasks()) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = `<strong>${task.desc}</strong>${progressBarHtml(task.progress / task.target)}<span>${task.progress}/${task.target}</span>`;
+    if (task.claimed) {
+      card.appendChild(hintEl('Claimed ✅'));
+    } else if (task.complete) {
+      card.appendChild(button('Claim', () => {
+        const ok = coop.claimTask(task.id);
+        if (ok) { audio.reward(); toast('Task reward claimed!', 'success'); refreshPanel(); }
+      }));
+    }
+    container.appendChild(card);
+  }
+
+  container.appendChild(hintEl('Request board:'));
+  for (const req of coop.requests()) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    if (req.posterIsPlayer) {
+      const now = Date.now();
+      const ready = req.readyAt !== null && now >= req.readyAt;
+      card.innerHTML = `<strong>Your request</strong><div>${itemIcon(req.item)} ${itemName(req.item)} x${req.qty}</div>`;
+      if (ready) {
+        card.appendChild(button('Collect', () => {
+          const result = coop.collectRequest(req.id);
+          if (result) { audio.coin(); toast('Request filled!', 'success'); refreshPanel(); }
+        }));
+      } else {
+        card.appendChild(hintEl(`Waiting… ${fmtDuration((req.readyAt || 0) - now)}`));
+        card.appendChild(button('Cancel', () => { coop.cancelRequest(req.id); refreshPanel(); }));
+      }
+    } else {
+      const have = stockCount(req.item) >= req.qty;
+      card.innerHTML = `<strong>Neighbour request</strong><div>${itemIcon(req.item)} ${itemName(req.item)} x${req.qty}</div>`;
+      card.appendChild(button('Help', () => {
+        const ok = coop.helpRequest(req.id);
+        if (ok) { audio.coin(); toast('Helped a neighbour!', 'success'); refreshPanel(); }
+      }, { disabled: !have }));
+    }
+    container.appendChild(card);
+  }
+
+  container.appendChild(hintEl('Post a request:'));
+  const [minQ] = COOP.requestBoard.requestSizeRange;
+  const postRow = row('');
+  postRow.appendChild(button(`Request ${itemIcon('wheat')} Wheat x${minQ}`, () => {
+    const ok = coop.postRequest('wheat', minQ);
+    if (ok) { toast('Request posted!', 'success'); refreshPanel(); }
+    else { audio.error(); toast('Cannot post a request right now.', 'error'); }
+  }));
+  container.appendChild(postRow);
+
+  container.appendChild(hintEl('Regatta:'));
+  if (state.level < REGATTA.unlockLevel) {
+    container.appendChild(hintEl(`Unlocks at level ${REGATTA.unlockLevel}.`));
+    return;
+  }
+  safeTick(regatta.tick, Date.now());
+  const season = regatta.activeSeason(Date.now());
+  const league = REGATTA.leagues.find((l) => l.id === season.league);
+  container.appendChild(hintEl(`League: ${league?.name || season.league} · Season ends in ${fmtDuration(season.endsAt - Date.now())}`));
+  for (const standing of regatta.standings()) {
+    const line = row(`<span>${standing.isPlayer ? '⭐ ' : ''}${standing.name}</span><span>${standing.points} pts</span>`);
+    line.style.display = 'flex';
+    line.style.justifyContent = 'space-between';
+    container.appendChild(line);
+  }
+  if (season.lastRewards && !season.placementClaimed) {
+    const claimRow = row('');
+    claimRow.appendChild(button('Claim last season reward', () => {
+      const ok = regatta.claimPlacement();
+      if (ok) { audio.reward(); toast('Placement reward claimed!', 'success'); refreshPanel(); }
+    }));
+    container.appendChild(claimRow);
+  }
+
+  container.appendChild(hintEl('Regatta tasks:'));
+  for (const task of regatta.board()) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    if (task.claimedAt === null) {
+      card.innerHTML = `<strong>${task.desc}</strong>`;
+      card.appendChild(button('Start', () => { regatta.claimTask(task.id); refreshPanel(); }));
+    } else {
+      const prog = regatta.taskProgress(task.id);
+      const progress = prog?.progress || 0;
+      card.innerHTML = `<strong>${task.desc}</strong>${progressBarHtml(progress / task.target)}<span>${progress}/${task.target}</span>`;
+      if (task.handedIn) card.appendChild(hintEl('Handed in ✅'));
+      else if (prog?.complete && !prog.expired) {
+        card.appendChild(button('Hand in', () => {
+          const ok = regatta.completeTask(task.id);
+          if (ok) { audio.reward(); toast('Task handed in!', 'success'); refreshPanel(); }
+        }));
+      } else if (prog?.expired) card.appendChild(hintEl('Expired'));
+    }
     container.appendChild(card);
   }
 }
 
-/** Which bucket a recipe input lives in — crops sit in the silo, everything else (goods AND
- *  raw MATERIALS) sits in the barn. Mirrors production.js's own stockOf(), which isn't
- *  exported; kept identical on purpose so the UI never disagrees with what enqueue() checks. */
-function stockOf(id) {
-  return CROPS[id] ? state.silo.items : state.barn.items;
+// ---------------------------------------------------------------------------
+// Photo mode (decorate.js: setFrame/addSticker/capture).
+// ---------------------------------------------------------------------------
+function renderPhoto(container) {
+  container.appendChild(hintEl('Choose a frame:'));
+  const grid = slotGrid();
+  for (const frameId of PHOTO.frames) {
+    const label = frameId.replace('frame_', '').replace(/^\w/, (c) => c.toUpperCase()) || 'None';
+    const active = state.photo.frame === frameId;
+    const card = document.createElement('div');
+    card.className = `build-card${active ? ' locked' : ''}`;
+    card.innerHTML = `<span class="icon">🖼️</span><strong>${label}</strong>`;
+    if (active) card.appendChild(hintEl('Selected'));
+    else card.appendChild(button('Use', () => {
+      decorate.setFrame(frameId);
+      toast('Frame changed.', 'info');
+      refreshPanel();
+    }));
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+  container.appendChild(hintEl(`Stickers placed: ${state.photo.stickers.length}/${PHOTO.maxStickers}`));
+  const captureRow = row('');
+  captureRow.appendChild(button('Take Photo', () => {
+    decorate.capture();
+    audio.click();
+    toast('Photo captured!', 'success');
+  }));
+  container.appendChild(captureRow);
+}
+
+// ---------------------------------------------------------------------------
+// Daily Wheel + Pets + the occasional NPC visitor offer (extras.js).
+// These have no world structure of their own, so they share the "wheel" dock panel.
+// ---------------------------------------------------------------------------
+function renderWheel(container) {
+  const canSpin = extras.canSpin(Date.now());
+  container.appendChild(hintEl(`Streak: ${state.daily.streak} day${state.daily.streak === 1 ? '' : 's'}`));
+  const spinRow = row('');
+  spinRow.appendChild(button(canSpin ? 'Spin the wheel!' : 'Come back tomorrow', () => {
+    const result = extras.spin();
+    if (!result) { audio.error(); return; }
+    const parts = [];
+    if (result.coins) parts.push(`🪙${result.coins}`);
+    if (result.diamonds) parts.push(`💎${result.diamonds}`);
+    if (result.item) parts.push(`${itemIcon(result.item)} x${result.qty || 1}`);
+    if (result.material) parts.push(`${itemIcon(result.material)} x${result.qty || 1}`);
+    audio.reward();
+    toast(`You won: ${parts.join(', ')}!`, 'success');
+    refreshPanel();
+  }, { disabled: !canSpin }));
+  container.appendChild(spinRow);
+
+  container.appendChild(hintEl('Pets:'));
+  const grid = slotGrid();
+  for (const [id, def] of Object.entries(PETS)) {
+    const owned = state.pets[id];
+    const card = document.createElement('div');
+    card.innerHTML = `<span class="icon">${id === 'dog' ? '🐶' : '🐱'}</span><strong>${def.name}</strong>`;
+    if (!owned?.owned) {
+      const locked = state.level < def.unlockLevel;
+      card.className = `build-card${locked ? ' locked' : ''}`;
+      card.appendChild(hintEl(`🪙${def.cost}`));
+      card.appendChild(button('Adopt', () => {
+        const ok = extras.buyPet(id);
+        if (ok) { audio.place(); toast(`${def.name} adopted!`, 'success'); refreshPanel(); }
+        else { audio.error(); toast('Not enough coins.', 'error'); }
+      }, { disabled: locked || state.coins < def.cost }));
+    } else {
+      card.className = 'build-card';
+      const fedToday = owned.lastFedAt && new Date(owned.lastFedAt).toDateString() === new Date().toDateString();
+      card.appendChild(button(fedToday ? 'Fed today' : 'Feed', () => {
+        const ok = extras.feedPet(id);
+        if (ok) { audio.harvest(); toast(`+${def.feedXp} XP!`, 'success'); refreshPanel(); }
+      }, { disabled: fedToday }));
+    }
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+
+  const visitor = state.visitor;
+  if (visitor) {
+    container.appendChild(hintEl('A visitor has an offer:'));
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = `<strong>${itemIcon(visitor.itemId)} ${itemName(visitor.itemId)} x${visitor.qty}</strong><div>🪙${visitor.price} total</div>`;
+    card.appendChild(button('Accept', () => {
+      extras.resolveVisitor(true);
+      audio.coin();
+      toast('Sold to the visitor!', 'success');
+      refreshPanel();
+    }));
+    card.appendChild(button('Decline', () => { extras.resolveVisitor(false); refreshPanel(); }));
+    container.appendChild(card);
+  }
 }
 
 /** Every input this recipe is short on right now, as readable "icon Name (have/need)" strings. */
@@ -315,13 +1555,6 @@ function inputsLine(recipe) {
   return Object.entries(recipe.inputs || {})
     .map(([id, qty]) => `${itemIcon(id)} ${stockOf(id)[id] || 0}/${qty}`)
     .join('  ');
-}
-
-function hintEl(text) {
-  const s = document.createElement('span');
-  s.className = 'minigame-hint';
-  s.textContent = text;
-  return s;
 }
 
 /**
@@ -398,7 +1631,7 @@ function renderQueue(container, entries, recipeOf, collectFn) {
     const card = document.createElement('div');
     card.className = 'order-card';
     card.innerHTML = `<strong>${itemIcon(entry.recipeId)} ${itemName(entry.recipeId)}</strong>
-      <div class="event-progress"><div class="event-progress-fill" style="width:${Math.round(frac * 100)}%"></div></div>
+      ${progressBarHtml(frac)}
       <span>${statusLine(entry, ready)}</span>`;
     if (ready && needsPlay(entry)) {
       // A PLAYABLE craft: the prep timer is done, but the item only exists once its game has
@@ -430,8 +1663,7 @@ function renderBuildingQueue(container, buildingId) {
     () => production.collectBuilding(buildingId));
 
   const queueFull = entries.length >= (def.queueSlots ?? Infinity);
-  const grid = document.createElement('div');
-  grid.className = 'build-grid';
+  const grid = slotGrid();
   for (const recipe of recipes) {
     const locked = economy.isUnlocked ? !economy.isUnlocked(recipe.id) : false;
     const short = missingInputs(recipe);
@@ -514,8 +1746,7 @@ function renderWorkshop(container) {
   if (!workshopObj) {
     const def = BUILDINGS.build_workshop;
     container.appendChild(hintEl('Build the Workshop to start turning raw materials into components, components into kits, and kits into buildings.'));
-    const grid = document.createElement('div');
-    grid.className = 'build-grid';
+    const grid = slotGrid();
     const card = document.createElement('div');
     card.className = 'build-card';
     card.innerHTML = `<span class="icon">🏗️</span><strong>${def.name}</strong><span>🪙${def.cost ?? 0}</span>`;
@@ -532,8 +1763,7 @@ function renderWorkshop(container) {
     (entry, index) => workshop.collect(index));
 
   container.appendChild(hintEl('Craft components from materials, then kits from components:'));
-  const craftGrid = document.createElement('div');
-  craftGrid.className = 'build-grid';
+  const craftGrid = slotGrid();
   const queueFull = entries.length >= (BUILDINGS.build_workshop.queueSlots ?? Infinity);
   for (const recipe of recipes) {
     const locked = !economy.isUnlocked(recipe.id);
@@ -562,8 +1792,7 @@ function renderWorkshop(container) {
   // --- 2. Build: place a crafted kit as its production building ----------------------
   const built = new Set(state.farm.objects.map((o) => o.type));
   container.appendChild(hintEl('Place a building — a kit-gated one needs its kit crafted above, on top of the coin cost:'));
-  const buildGrid = document.createElement('div');
-  buildGrid.className = 'build-grid';
+  const buildGrid = slotGrid();
   for (const [id, def] of Object.entries(BUILDINGS)) {
     if (id === 'build_workshop' || built.has(id)) continue;
     const locked = !economy.isUnlocked(id);
@@ -589,8 +1818,7 @@ function renderWorkshop(container) {
   container.appendChild(buildGrid);
 
   // --- 3. Livestock: pens stay coin-only, no kit involved -----------------------------
-  const penGrid = document.createElement('div');
-  penGrid.className = 'build-grid';
+  const penGrid = slotGrid();
   for (const [id, def] of Object.entries(ANIMALS)) {
     if (built.has(id)) continue;
     const locked = !economy.isUnlocked(id);
@@ -676,16 +1904,25 @@ function renderSettings(container) {
 
 function renderAchievements(container) {
   const unlocked = state.achievements?.unlocked || [];
-  const p = document.createElement('p');
-  p.className = 'minigame-hint';
-  p.textContent = `${unlocked.length} achievement${unlocked.length === 1 ? '' : 's'} unlocked so far.`;
-  container.appendChild(p);
+  container.appendChild(hintEl(`${unlocked.length}/${ACHIEVEMENTS.length} unlocked.`));
+  const grid = slotGrid();
+  for (const a of ACHIEVEMENTS) {
+    const have = a.stat === 'level' ? state.level : (state.stats[a.stat] || 0);
+    const done = unlocked.includes(a.id);
+    const card = document.createElement('div');
+    card.className = `build-card${done ? '' : ' locked'}`;
+    card.innerHTML = `<span class="icon">${done ? '⭐' : '🔒'}</span><strong>${a.name}</strong>
+      <span class="minigame-hint">${a.desc}</span>
+      <span>${Math.min(have, a.target)}/${a.target}</span>`;
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
 }
 
 function renderDecorate(container) {
   const active = !!state.decorate?.active;
   const btn = button(active ? 'Exit Decorate Mode' : 'Enter Decorate Mode', () => {
-    state.decorate.active = !state.decorate.active;
+    if (active) decorate.exit(); else decorate.enter();
     save();
     closePanel();
     toast(state.decorate.active ? 'Decorate mode on — drag decorations to arrange your farm.' : 'Decorate mode off.', 'info');
@@ -701,9 +1938,28 @@ function renderPanelContent(panelId, ctx = null) {
     case 'silo': renderBarnOrSilo(container, 'silo'); tutorial.emit('panel_opened:inventory'); break;
     case 'barn': renderBarnOrSilo(container, 'barn'); tutorial.emit('panel_opened:inventory'); break;
     case 'orders': renderOrders(container); break;
+    case 'truck': renderTruck(container); break;
     case 'shop': renderShop(container); break;
+    case 'market': renderMarket(container); break;
+    case 'boat': renderBoat(container); break;
+    case 'fishing': renderFishing(container); break;
+    case 'mine': renderMine(container); break;
+    case 'merge': renderMerge(container); break;
     case 'building': renderBuildingQueue(container, ctx); break;
     case 'workshop': renderWorkshop(container); break;
+    case 'town': renderTown(container); break;
+    case 'trains': renderTrains(container); break;
+    case 'airport': renderAirport(container); break;
+    case 'zoo': renderZoo(container); break;
+    case 'helicopter': renderHelicopter(container); break;
+    case 'lab': renderLab(container); break;
+    case 'museum': renderMuseum(container); break;
+    case 'expeditions': renderExpeditions(container); break;
+    case 'newspaper': renderNewspaper(container); break;
+    case 'collections': renderCollections(container); break;
+    case 'coop': renderCoop(container); break;
+    case 'photo': renderPhoto(container); break;
+    case 'wheel': renderWheel(container); break;
     case 'settings': renderSettings(container); break;
     case 'achievements': renderAchievements(container); break;
     case 'decorate': renderDecorate(container); break;
@@ -748,6 +2004,19 @@ export function init() {
     if (isPanelOpen() && openPanelId === panelId) closePanel();
     else openPanel(panelId);
   });
+
+  // The Daily Wheel (+ pets, + the occasional NPC visitor offer) has no world structure of its
+  // own to be clicked, so — like decorate/achievements/settings — it lives on the dock. Added
+  // here at runtime rather than in index.html, matching how the "coop" button already ships
+  // hidden in markup and is only unhidden once unlocked (see syncDockVisibility above).
+  if (el.dock && !findDockButton('wheel')) {
+    const wheelBtn = document.createElement('button');
+    wheelBtn.className = 'dock-btn';
+    if (wheelBtn.dataset) wheelBtn.dataset.panel = 'wheel';
+    wheelBtn.title = 'Daily Wheel';
+    wheelBtn.textContent = '🎡';
+    el.dock.appendChild(wheelBtn);
+  }
 
   economy.onCoinsChanged(() => updateHud());
   economy.onXpChanged((info) => {

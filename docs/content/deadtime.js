@@ -253,6 +253,11 @@ reads it, so nothing can quietly drift out of date.</p>
 <em>items</em> the nodes can yield, and the six node types share items between them
 while two of them can drop farm produce. Its two-entry reward tier makes it the
 fastest book to see a payout from, which suits a book you fill by tapping bushes.</p>
+<figure class="shot">
+  <img src="./screenshots/32-panel-bookshelf.webp" alt="A sliding panel titled Collections reading that the Collections Shelf is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Collections Shelf.</strong> The collections module was implemented at that commit, and this panel opened on the placeholder.</figcaption>
+</figure>
 `,
     },
 
@@ -473,6 +478,18 @@ unobtainable by any path — and a decoration with two, where it is genuinely un
 which price applies. The earn flags are checked against a closed list rather than
 "any truthy flag", so a typo such as <code>coopOnly2: true</code> is caught as an
 unobtainable decoration instead of silently becoming one.</p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/07-dock-decorate-off.webp" alt="A sliding bottom sheet panel titled Decorate with a single &quot;Enter Decorate Mode&quot; button."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Decorate, off.</strong> Opened from the paintbrush button on the dock, showing the toggle in its default state.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/07b-dock-decorate-on.webp" alt="The Decorate panel closed with an info toast reading that decorate mode is on and the player can drag decorations to arrange the farm, though no such dragging exists yet."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Decorate, on.</strong> The toggle flips and a toast confirms it, and that is still the whole of it: nothing in the renderer, the input layer or the farm module reads the flag, so there is no drag-to-arrange yet.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -511,6 +528,11 @@ thing be tested without a browser.</p>
 <p>The default frame on a new farm is <code>frame_none</code> and the sticker list is
 empty, so photo mode starts as an unadorned view of the farm rather than as a
 pre-decorated template.</p>
+<figure class="shot">
+  <img src="./screenshots/33-panel-tripod.webp" alt="A sliding panel titled Photo Mode reading that the Camera Tripod is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Camera Tripod.</strong> Photo mode had fields in the decorating module at that commit and no panel case, so the tripod opens on the placeholder.</figcaption>
+</figure>
 `,
     },
 
@@ -609,6 +631,11 @@ target did not follow, so the achievement fires at eight of fourteen. Nothing is
 — the validator only checks that the target is positive — but the name currently
 promises more than the number asks for.</p>
 </div>
+<figure class="shot">
+  <img src="./screenshots/08-dock-achievements-panel.webp" alt="A sliding bottom sheet panel titled Achievements reading &quot;0 achievements unlocked so far.&quot;"
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>Achievements.</strong> The star button on the dock opens the count summary. Zero unlocked, on the fresh save these captures were taken from.</figcaption>
+</figure>
 `,
     },
 
@@ -1184,12 +1211,12 @@ framework: plain Node, exiting non-zero on the first failure category.</p>
       list; <code>record</code> is idempotent and a tier pays exactly once; mastery
       advances a star on repetition and its effect key is a member of
       <code>EFFECT_KEYS</code>, with the merged effect never worse than neutral.</li>
-  <li><strong>Decorating and photo mode, 5 assertions.</strong> A move undoes and redoes
+  <li><strong>Decorating and photo mode, 4 assertions.</strong> A move undoes and redoes
       to the exact prior layout; a colliding move is refused and leaves both the position
       and the history untouched; a full cycle of rotations returns to the starting
       orientation; and photo mode rejects an unknown frame, enforces
       <code>maxStickers</code>, and captures the composition it was given.</li>
-  <li><strong>The newspaper, 4 assertions</strong>, which is documented in its own
+  <li><strong>The newspaper, 5 assertions</strong>, which is documented in its own
       article.</li>
 </ul>
 

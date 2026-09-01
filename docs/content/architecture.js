@@ -5,9 +5,11 @@
  * export called `article`. Every number, id and behaviour below was read out
  * of the real source tree, not from memory or from a summary document.
  *
- * Measured at commit 5a18cf7. Where a count can move (test assertions, line
- * counts) the article says so and names the command that prints the current
- * value, rather than pretending a snapshot is permanent.
+ * Measured at commit 5a18cf7; the counts that move (test assertions, tool line
+ * counts) were re-measured against a clean checkout of 7edfa26 and carry that
+ * pin where they are stated. Where a count can move the article says so and
+ * names the command that prints the current value, rather than pretending a
+ * snapshot is permanent.
  * ========================================================================= */
 
 export const article = {
@@ -585,6 +587,18 @@ return [ox + (tx - ty) * T, oy + (tx + ty) * (T / 2)];</pre>
   <code>field</code> entry existed: a real defect, found because the fallback was loud rather
   than silent.
 </p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/34-world-zoom-out.webp" alt="A wide, zoomed-out view of the farm showing the meadow, several fields and nearby buildings together."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Zoomed out to 0.5x.</strong> The floor the camera allows, framing the widest slice of meadow, fields and structures it can hold at once.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/35-world-zoom-in.webp" alt="A close-up, zoomed-in view of a few farm fields and ground texture."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Zoomed in to 2.5x.</strong> The ceiling, close on the planted fields, with crop art and ground detail at their largest on screen.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -834,7 +848,7 @@ npm start          # electron .</pre>
       html: `
 <pre>npm test</pre>
 <p>
-  That runs a content validator followed by eight suites, in order. There is no test framework:
+  That runs a content validator followed by nine suites, in order. There is no test framework:
   each file is a plain Node script using <code>node:assert/strict</code> and a fifteen-line
   <code>test()</code> helper, exiting non-zero on the first failure category and printing a
   summary either way. That is a direct consequence of the no-dependencies rule, and it costs
@@ -843,7 +857,7 @@ npm start          # electron .</pre>
 
 <h3>The validator runs first, deliberately</h3>
 <p>
-  <code>tools/validate-data.mjs</code> is 808 lines of integrity checks over
+  <code>tools/validate-data.mjs</code> is 825 lines of integrity checks over
   <code>data.js</code>: that every recipe input resolves to a real crop, good or material; that
   every animal's feed is a real feed-mill recipe and its product a real good; that no id is
   duplicated; that no unlock references something that does not exist; that materials come from
@@ -863,7 +877,7 @@ town: 16 houses + 10 community, 14 zoo enclosures, 8 islands, 23 materials</pre>
 <table>
   <thead><tr><th>Suite</th><th>Covers</th><th>Assertions</th></tr></thead>
   <tbody>
-    <tr><td><code>test-camera.mjs</code></td><td>Projection, inverse projection, world bounds, clamping, focus, depth sort</td><td>22</td></tr>
+    <tr><td><code>test-camera.mjs</code></td><td>Projection, inverse projection, world bounds, clamping, focus, depth sort, structure reachability</td><td>29</td></tr>
     <tr><td><code>test-core.mjs</code></td><td><code>state</code>, <code>economy</code>, <code>farm</code>, <code>production</code></td><td>27</td></tr>
     <tr><td><code>test-logistics.mjs</code></td><td><code>orders</code>, <code>shop</code>, <code>fishing</code>, <code>boat</code></td><td>19</td></tr>
     <tr><td><code>test-crafting.mjs</code></td><td><code>workshop</code>, <code>minigames</code>, <code>mine</code>, <code>merge</code></td><td>23</td></tr>
@@ -871,16 +885,19 @@ town: 16 houses + 10 community, 14 zoo enclosures, 8 islands, 23 materials</pre>
     <tr><td><code>test-research.mjs</code></td><td><code>lab</code>, <code>museum</code>, <code>expeditions</code>, <code>extras</code></td><td>15</td></tr>
     <tr><td><code>test-deadtime.mjs</code></td><td><code>foraging</code>, <code>newspaper</code>, <code>collections</code>, <code>decorate</code></td><td>16</td></tr>
     <tr><td><code>test-social.mjs</code></td><td><code>neighbours</code>, <code>coop</code>, <code>regatta</code>, <code>helicopter</code></td><td>24</td></tr>
-    <tr><td colspan="2"><strong>Total</strong></td><td><strong>156</strong></td></tr>
+    <tr><td><code>test-ui-workshop.mjs</code></td><td>The Workshop panel's kit gate: refusal, consumption, and the coin-only exceptions</td><td>8</td></tr>
+    <tr><td colspan="2"><strong>Total</strong></td><td><strong>171</strong></td></tr>
   </tbody>
 </table>
 <div class="callout callout-info">
   <p>
-    <strong>That total is a measurement, not a constant.</strong> It was 156 passing and 0
-    failing across all eight suites at commit <code>5a18cf7</code>, run against a clean
-    checkout. Older documents in this repository quote 147; they predate several suites
-    growing. Whatever <code>npm test</code> prints when you run it is the authoritative number.
-    Treat any figure written down, including this one, as a snapshot.
+    <strong>That total is a measurement, not a constant.</strong> It is 171 passing and 0
+    failing across all nine suites at commit <code>7edfa26</code>, run against a clean
+    checkout. It has read 147, 148, 156 and 167 at earlier commits, and this table itself
+    said 156 across eight suites until the camera suite grew to 29 and
+    <code>test-ui-workshop.mjs</code> was added. Whatever <code>npm test</code> prints when
+    you run it is the authoritative number. Treat any figure written down, including this
+    one, as a snapshot.
   </p>
 </div>
 

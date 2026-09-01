@@ -10,6 +10,7 @@
 // Run: node tools/test-playables.mjs
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import * as state from '../src/state.js';
 import * as farm from '../src/farm.js';
 import * as production from '../src/production.js';
@@ -442,6 +443,49 @@ test('a discard into a full silo pays the refund out in coins rather than losing
   assert.ok(out.paidOut > 0, 'the un-refundable half must be paid, not silently dropped');
   assert.equal(s.coins, coinsBefore + out.paidOut, 'and the coins must actually arrive');
 });
+
+// ---------------------------------------------------------------------------------------
+// Telling the player the rule exists.
+//
+// The gate contradicts what a farming game trains everyone to expect - a timer finishes and the
+// thing is yours - and for roughly one recipe in three it does not. Nothing was saying so: the
+// recipe card carries a 🎮 and the queue says "Ready to make", which is enough to work out once
+// you know the rule and not enough to teach it, and the tutorial ends at the order board, several
+// levels before the first playable recipe can come up.
+//
+// Both checks below are on the SOURCE rather than behaviour, because the explanation is a modal and
+// the thing worth protecting is not its wording. It is that it is still wired in, and that it still
+// costs no migration.
+// ---------------------------------------------------------------------------------------
+{
+  const uiSource = fs.readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
+  const stateSource = fs.readFileSync(new URL('../src/state.js', import.meta.url), 'utf8');
+
+  test('the gate explains itself the first time a craft is waiting to be played', () => {
+    // Anchored to the start of a line so a commented-out call cannot satisfy it, which is how a
+    // one-shot explanation would most likely die - somebody silencing it while testing something
+    // else and not noticing, because by then their own save has already seen it.
+    assert.match(uiSource, /^\s*explainTheGateOnce\(\);/m,
+      'renderQueue must call explainTheGateOnce() on a live line where a craft needs playing');
+    assert.match(uiSource, /^function explainTheGateOnce\(\) \{/m, 'and the function must still exist');
+  });
+
+  test('the explained flag is never initialised, so an old save needs no migration', () => {
+    // This is the whole reason there is no SAVE_VERSION 5. An ABSENT field reads as false, which
+    // is exactly right for a save written before the explanation existed: that player has not seen
+    // it either. Initialising it to false in resetGame would be harmless; initialising it to TRUE,
+    // or adding a migration that sets it, would silently rob every existing save of the one
+    // explanation it needs most.
+    // Comments stripped first. The save-shape comment in state.js documents the field by name,
+    // and a bare source scan matched that documentation and reported it as an assignment - the
+    // test failing on the very comment explaining why the test exists.
+    const code = stateSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    assert.doesNotMatch(code, /explained\s*:/,
+      'state.js must not set minigames.explained - its absence is what makes old saves work');
+    assert.match(uiSource, /state\.minigames\.explained = true;/,
+      'ui.js is the only place that sets it, at the moment it is actually explained');
+  });
+}
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) process.exit(1);

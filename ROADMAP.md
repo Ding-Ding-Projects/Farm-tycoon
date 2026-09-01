@@ -126,6 +126,19 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 
 ## Open items
 
+- [x] **The gate now explains itself, once.** Nothing told a player that roughly one recipe in
+      three can ONLY be collected by making it by hand - the card carries a 🎮 and the queue says
+      "Ready to make", which is enough to work out if you already know the rule and not enough to
+      teach it. The tutorial ends at the order board, several levels before the first playable
+      recipe (cookie, bakery, level 8) can come up. A one-time note now fires the first time a
+      craft is waiting to be played, covering the three things a player would otherwise worry
+      about: it will not spoil, they are not stuck with it, and Assist mode exists.
+
+      The flag lives on `state.minigames` and is never initialised, so its absence reads as
+      "not explained yet" - no SAVE_VERSION bump, and an existing save gets the explanation too,
+      which is right, because that player has never seen it either.
+
+
 - [x] **Screenshots and recordings.** Both recordings are committed and linked from the
       README: `screenshots/farm-tycoon-android.mp4` from the emulator and
       `screenshots/farm-tycoon-desktop.mp4` from the Windows build, the latter captured from the

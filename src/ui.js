@@ -1632,6 +1632,45 @@ function playLabel(entry) {
 }
 
 /**
+ * Say ONCE, the first time a craft is waiting to be played, that some things are made by hand.
+ *
+ * This is the one rule in the game that contradicts what a farming game has trained everyone to
+ * expect: a timer finishes and the thing is yours. Here, for roughly one recipe in three, the
+ * timer only gets you as far as being ABLE to make it, and there is no other way to collect it.
+ *
+ * Nothing was telling anybody that. The recipe card carries a 🎮 and the queue says "Ready to
+ * make", which is enough to work out once you already know the rule and not enough to teach it -
+ * and the tutorial ends at the order board, twelve steps and several levels before the first
+ * playable recipe (cookie, at the bakery, level 8) can possibly come up.
+ *
+ * The three things it has to say are the three a player would otherwise worry about: it will not
+ * spoil, you are not trapped with it, and there is a gentler setting if you want one.
+ *
+ * The flag lives on state.minigames, which every save already has, and its ABSENCE reads as
+ * "not explained yet" - so this needs no migration and an older save gets the explanation too,
+ * which is right, because that player has never seen it either.
+ */
+function explainTheGateOnce() {
+  if (!state.minigames || state.minigames.explained) return;
+  state.minigames.explained = true;
+  save();
+  openModal(`
+    <h3>🎮 This one is made by hand</h3>
+    <p>Most things finish on their own. Some — about one recipe in three — need you to
+       <strong>make them yourself</strong> once the prep is done. It is the only way to collect them,
+       and how well you do decides the quality, the XP and sometimes an extra one.</p>
+    <p><strong>It will wait.</strong> Nothing spoils and nothing expires, so you can come back to it
+       whenever you like. Anything finished behind it in the queue can still be collected.</p>
+    <p><strong>You are not stuck with it.</strong> <em>Throw it out</em> frees the slot and returns
+       half the ingredients.</p>
+    <p><strong>It cannot be failed</strong>, only done well or less well. If you would rather it were
+       gentler, <em>Assist mode</em> in Settings gives longer stages and wider margins.</p>
+    <div class="minigame-actions">
+      <button class="btn" data-close>Got it</button>
+    </div>`);
+}
+
+/**
  * Open one stage of a playable craft. The shell is imported HERE, lazily, so neither it nor any
  * verb is on the boot path — the game loads exactly as fast as it did before this feature.
  */
@@ -1680,6 +1719,7 @@ function renderQueue(container, entries, recipeOf, collectFn) {
     if (ready && needsPlay(entry)) {
       // A PLAYABLE craft: the prep timer is done, but the item only exists once its game has
       // been played through. Nothing expires while it waits here.
+      explainTheGateOnce();
       card.appendChild(button(playLabel(entry), () => openStagePlayer(entry)));
       // The release valve. A playable craft can only be collected by playing it, so without a
       // way out a player who does not fancy three cakes would hold three slots for ever.

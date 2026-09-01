@@ -51,7 +51,10 @@ const storage = (() => {
  *
  *   // --- expansion systems ---
  *   workshop: { queue: [{recipeId, readyAt}], kits: {kitId: qty} },
- *   minigames: { results, played, best },
+ *   minigames: { results, played, best, explained },
+ *     explained: set once the game has told the player that some recipes are made by hand.
+ *     Deliberately NOT initialised anywhere - an absent field reads as false, which is exactly
+ *     right for a save written before this existed, so it needs no SAVE_VERSION bump.
  *   neighbours: { roster: [{id, first, last, farm, level, profile}], seed },
  *   coop: { points, perksUnlocked, dailyTasks, tasksRefreshedAt, requests, ownRequestCooldownUntil },
  *   regatta: { seasonId, endsAt, board, points, rivals, league, seasonsWon, placementClaimed },

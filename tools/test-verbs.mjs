@@ -180,6 +180,11 @@ const OPTIMAL = {
   boil_size: () => (snap) => ({ held: snap.thickness < snap.ceiling * 0.97, heldMs: 16 }),
 
   dip_wick: () => (snap) => (snap.slot === 1 ? { taps: [{ tMs: 0 }] } : { taps: [] }),
+
+  set_stone: () => (snap) => (snap.want >= 0 ? { padIndex: snap.want } : { padIndex: null }),
+
+  // Zero-sum: only the ratio counts, so hand it the target share directly.
+  blend_notes: () => (snap) => ({ left: snap.target, right: 1 - snap.target }),
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

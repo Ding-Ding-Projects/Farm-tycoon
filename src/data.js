@@ -553,7 +553,8 @@ export const BUILDINGS = {
     name: 'Perfumery', unlockLevel: 64, cost: 50000, size: [2, 2], kit: 'kit_perfumery', minigame: 'blend_nose', queueSlots: 3,
     recipes: [
       { id: 'air_freshener',  inputs: { lavender: 3 },                                time: 4500,  xp: 42, unlockLevel: 64 },
-      { id: 'perfume',        inputs: { peony: 3, lavender: 2 },                      time: 6300,  xp: 56, unlockLevel: 71 },
+      { id: 'perfume',        inputs: { peony: 3, lavender: 2 },                      time: 6300,  xp: 56, unlockLevel: 71,
+        play: { stages: [{ verb: 'blend_notes' }] } },
       { id: 'lotion',         inputs: { peony: 2, olive_oil: 1 },                     time: 5400,  xp: 50, unlockLevel: 71 },
     ],
   },
@@ -596,7 +597,8 @@ export const BUILDINGS = {
     name: 'Jeweler', unlockLevel: 85, cost: 200000, size: [2, 2], kit: 'kit_jeweler', minigame: 'stone_set', queueSlots: 3,
     recipes: [
       { id: 'pearl_necklace', inputs: { pearls: 3, silver_bar: 1 },                   time: 12600, xp: 110, unlockLevel: 85 },
-      { id: 'gold_ring',      inputs: { gold_bar: 2, pearls: 1 },                     time: 14400, xp: 125, unlockLevel: 85 },
+      { id: 'gold_ring',      inputs: { gold_bar: 2, pearls: 1 },                     time: 14400, xp: 125, unlockLevel: 85,
+        play: { stages: [{ verb: 'set_stone' }] } },
       { id: 'plume_brooch',   inputs: { turkey_plume: 2, platinum_bar: 1 },           time: 16200, xp: 145, unlockLevel: 85 },
     ],
   },
@@ -1047,6 +1049,18 @@ export const VERBS = {
     purpose: 'A centred wick burns down evenly.',
     hint: 'Dip, dip, rest - in threes. Tapping through a rest spoils it as surely as missing a dip.',
     stageClass: 'stage-rhythm', durationMs: 12000,
+  },
+  set_stone: {
+    name: 'Set the Stones', verbWord: 'set', family: 'sequence',
+    purpose: 'Every stone seated true, and each one harder than the last.',
+    hint: 'Seat each stone. The window narrows with every one you get right. Keys 1-9.',
+    stageClass: 'stage-targets', durationMs: 15000,
+  },
+  blend_notes: {
+    name: 'Blend the Notes', verbWord: 'blend', family: 'dual',
+    purpose: 'Balanced notes carry; a heavy one just shouts.',
+    hint: 'The two notes share one bottle - raising the top lowers the base. Q/A and P/L.',
+    stageClass: 'stage-dual', durationMs: 13000,
   },
 };
 export const QUALITY = {

@@ -30,6 +30,8 @@ export const VERB_LOADERS = {
   roll_press: () => import('./verbs/roll_press.js'),
   boil_size: () => import('./verbs/boil_size.js'),
   dip_wick: () => import('./verbs/dip_wick.js'),
+  set_stone: () => import('./verbs/set_stone.js'),
+  blend_notes: () => import('./verbs/blend_notes.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

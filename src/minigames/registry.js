@@ -44,6 +44,7 @@ export const VERB_LOADERS = {
   jar_fill: () => import('./verbs/jar_fill.js'),
   pull_taffy: () => import('./verbs/pull_taffy.js'),
   match_seam: () => import('./verbs/match_seam.js'),
+  stir_figure: () => import('./verbs/stir_figure.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

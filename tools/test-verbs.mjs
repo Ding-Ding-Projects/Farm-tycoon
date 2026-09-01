@@ -286,6 +286,15 @@ const OPTIMAL = {
   // Chained rule: the seam continues the piece BEFORE it. Routing by the falling piece - the
   // instinct sort_chillies teaches - scores 0.14 to 0.57 here, which is the point.
   match_seam: () => (snap) => ({ lane: snap.needs === null ? 0 : snap.needs, commit: true }),
+  // Repetition, so the optimal play is simply the SAME circle every lap. A driver that varied
+  // its radius scored 0.618 against this one's 0.900, which is the gap the verb exists to make.
+  stir_figure: () => {
+    let a = 0;
+    return () => {
+      a += 0.05;
+      return { x: 0.5 + Math.cos(a) * 0.3, y: 0.5 + Math.sin(a) * 0.3, down: true };
+    };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

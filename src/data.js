@@ -592,7 +592,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'cheese_fondue',  inputs: { cheese: 2, bread: 1 },                        time: 4500,  xp: 56, unlockLevel: 76 },
       { id: 'choco_fondue',   inputs: { cocoa: 2, cream: 1, strawberry: 2 },          time: 6300,  xp: 72, unlockLevel: 76 },
-      { id: 'herb_fondue',    inputs: { cheese: 2, bell_pepper: 2, olive_oil: 1 },    time: 7200,  xp: 80, unlockLevel: 76 },
+      { id: 'herb_fondue',    inputs: { cheese: 2, bell_pepper: 2, olive_oil: 1 },    time: 7200,  xp: 80, unlockLevel: 76,
+        play: { stages: [{ verb: 'stir_figure' }] } },
     ],
   },
   preservation_station: {
@@ -1145,6 +1146,12 @@ export const VERBS = {
     purpose: 'A seam that carries through holds the garment together.',
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
+  },
+  stir_figure: {
+    name: 'Stir the Figure', verbWord: 'stir', family: 'path',
+    purpose: 'An even figure of eight keeps the fondue smooth instead of splitting it.',
+    hint: 'Your FIRST lap sets the shape. Every lap after is judged against that one, not against any line we drew.',
+    stageClass: 'stage-trace', durationMs: 15000,
   },
 };
 export const QUALITY = {

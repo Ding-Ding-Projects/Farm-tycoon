@@ -16,6 +16,7 @@ import {
   clampCamera,
   focusTile,
   sortedObjects,
+  DISPATCH_KINDS,
 } from '../src/render/renderer.js';
 
 let passed = 0;
@@ -233,6 +234,28 @@ test('worldBounds accepts structures and grows to include one placed outside the
   const withStruct = worldBounds(['expansion_9'], [farStructure]);
   assert.ok(withStruct.maxX >= 37, `expected bounds to extend to structure at x=35..37, got maxX=${withStruct.maxX}`);
   assert.ok(withStruct.maxX > base.maxX, 'bounds must grow when a structure sits outside the unlocked zones');
+});
+
+// ---------------------------------------------------------------------------------------------
+// KIND_DISPATCH completeness: every render-object kind main.js's buildWorld() can emit needs a
+// real dispatch entry, or objects of that kind silently fall through to drawPlaceholder — the
+// magenta debug circle with the kind/type name stamped in it. This is exactly the shape of the
+// defect that shipped: buildWorld() pushes {kind:'field'} for every unplanted field, and with
+// no 'field' entry in KIND_DISPATCH every one of the 6 starting fields rendered as a magenta
+// blob reading "field" instead of a soil plot.
+// ---------------------------------------------------------------------------------------------
+
+test('KIND_DISPATCH has a real entry for every kind buildWorld() (src/main.js) can emit', () => {
+  // Kept in sync by hand with src/main.js's buildWorld(): farm 'field' objects become either
+  // {kind:'field'} (unplanted) or {kind:'crop'} (planted), farm 'pen'/'building' objects keep
+  // their kind, farm 'decoration'|'pond'|'mine' objects become {kind:'decoration'}, and every
+  // STRUCTURES entry becomes {kind:'structure'}.
+  const emittedKinds = ['field', 'crop', 'pen', 'building', 'decoration', 'structure'];
+  for (const kind of emittedKinds) {
+    assert.ok(DISPATCH_KINDS.includes(kind),
+      `KIND_DISPATCH is missing a "${kind}" entry — objects of that kind fall through to ` +
+      'drawPlaceholder (the magenta debug circle) instead of their real sprite');
+  }
 });
 
 // ---------------------------------------------------------------------------------------------

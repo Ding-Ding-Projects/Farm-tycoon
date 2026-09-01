@@ -189,9 +189,33 @@ export function sortedObjects(objects = []) {
   });
 }
 
-// kind -> dispatch fn(ctx, x, y, size, obj). Keeps drawFrame() a plain loop instead of a
+/**
+ * Linear grow fraction 0..1 for a field object still carrying its raw cropId/plantedAt/readyAt
+ * (rather than main.js's buildWorld(), which already resolves that into a precomputed
+ * {kind:'crop', growProgress} object). Lives here, not in production.js, so the renderer never
+ * needs a game-logic import to answer "how grown is this" — no crop.growTime lookup required.
+ */
+function fieldGrowProgress(obj, now) {
+  const t = typeof now === 'number' ? now : Date.now();
+  if (!obj.plantedAt || !obj.readyAt || obj.readyAt <= obj.plantedAt) return 1;
+  return Math.max(0, Math.min(1, (t - obj.plantedAt) / (obj.readyAt - obj.plantedAt)));
+}
+
+// kind -> dispatch fn(ctx, x, y, size, obj, now). Keeps drawFrame() a plain loop instead of a
 // growing if/else ladder; add a new kind here, not inline below.
 const KIND_DISPATCH = {
+  // Bare soil plot — buildWorld() pushes exactly this for an unplanted field (kind:'field',
+  // no cropId). Defensive: if a caller ever hands a field object that still carries its raw
+  // cropId/plantedAt/readyAt instead of buildWorld's {kind:'crop', growProgress} translation,
+  // draw the crop growing on the soil rather than falling through to drawPlaceholder.
+  field: (ctx, x, y, size, obj, now) => {
+    sprites.drawSoilPlot(ctx, x, y, size);
+    if (obj.cropId) {
+      const fn = sprites.CROP_DRAW[obj.cropId];
+      if (fn) fn(ctx, x, y, size, fieldGrowProgress(obj, now));
+      else sprites.drawPlaceholder(ctx, x, y, size, obj.cropId);
+    }
+  },
   crop: (ctx, x, y, size, obj) => {
     const fn = sprites.CROP_DRAW[obj.type];
     if (fn) fn(ctx, x, y, size, obj.growProgress ?? 1);
@@ -216,6 +240,14 @@ const KIND_DISPATCH = {
     fn(ctx, x, y, size, obj.idleFrame ?? 0);
   },
 };
+
+/**
+ * Kinds this dispatch table can actually draw. Exported so tests/tools can prove every kind
+ * main.js's buildWorld() emits (field/crop/pen/building/decoration/structure) has a real entry
+ * here — an unlisted kind silently falls through to drawPlaceholder's magenta debug circle,
+ * which is exactly how every starting field rendered before the 'field' entry above existed.
+ */
+export const DISPATCH_KINDS = Object.freeze(Object.keys(KIND_DISPATCH));
 
 /**
  * Draw one frame: ground → sorted objects (via sprites.js) → progress rings → effects →
@@ -251,7 +283,7 @@ export function drawFrame(now, world = {}) {
     const [x, y] = tileToScreen(obj.tx, obj.ty, w, h);
     const size = camera.zoom * (obj.scale ?? 1);
     const dispatch = KIND_DISPATCH[obj.kind];
-    if (dispatch) dispatch(ctx, x, y, size, obj);
+    if (dispatch) dispatch(ctx, x, y, size, obj, now);
     else sprites.drawPlaceholder(ctx, x, y, size, obj.type || obj.kind);
 
     if (typeof obj.progress === 'number' && obj.progress < 1) {

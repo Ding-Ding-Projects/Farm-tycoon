@@ -55,7 +55,8 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   // no kit field. These must each require one; the three coin-only ones must NOT.
   const MUST_HAVE_KIT = ['dairy', 'sugar_mill', 'popcorn_pot', 'grill', 'pie_oven', 'loom', 'sewing_machine', 'juice_press', 'jam_maker', 'coffee_kiosk', 'candy_machine', 'tropical_cafe', 'smelter',
     'oil_press', 'tea_house', 'sushi_bar', 'perfumery', 'salad_bar', 'pasta_kitchen',
-    'fondue_pot', 'preservation_station', 'jeweler', 'yogurt_maker', 'cake_oven'];
+    'fondue_pot', 'preservation_station', 'jeweler', 'yogurt_maker', 'cake_oven',
+    'ice_cream_maker', 'soup_kitchen', 'flower_shop', 'sauce_maker'];
   const COIN_ONLY = ['feed_mill', 'bakery', 'build_workshop'];
   for (const bid of MUST_HAVE_KIT) {
     if (!d.BUILDINGS[bid]) errors.push(`kit inventory names unknown building '${bid}'`);

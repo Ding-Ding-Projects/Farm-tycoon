@@ -16,6 +16,10 @@ export const VERB_LOADERS = {
   mind_oven: () => import('./verbs/mind_oven.js'),
   pipe_frosting: () => import('./verbs/pipe_frosting.js'),
   place_decor: () => import('./verbs/place_decor.js'),
+  swirl_cone: () => import('./verbs/swirl_cone.js'),
+  tie_bouquet: () => import('./verbs/tie_bouquet.js'),
+  sort_chillies: () => import('./verbs/sort_chillies.js'),
+  season_pinch: () => import('./verbs/season_pinch.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

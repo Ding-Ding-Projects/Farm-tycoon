@@ -293,6 +293,24 @@ export const GOODS = {
   kit_sugar_mill:       { icon: '🍬', name: 'Sugar Mill Kit',       sellPrice: 290 },
   kit_popcorn_pot:      { icon: '🍿', name: 'Popcorn Pot Kit',      sellPrice: 320 },
   kit_grill:            { icon: '🍔', name: 'BBQ Grill Kit',        sellPrice: 640 },
+  // Four factories added from the Hay Day / Township rosters, chosen because every input they
+  // need already exists in this game. Township's Rubber and Paper factories gate more of ITS
+  // tree, but they need Rubber Tree and Pine Tree plots this game has no model for, and nothing
+  // here depends on them yet — so they buy nothing today and cost a whole crop subsystem.
+  ice_cream:        { icon: '🍨', name: 'Ice Cream',        sellPrice: 130 },
+  strawberry_swirl: { icon: '🍧', name: 'Strawberry Swirl', sellPrice: 200 },
+  honey_gelato:     { icon: '🍦', name: 'Honey Gelato',     sellPrice: 210 },
+  posy:             { icon: '💐', name: 'Posy',             sellPrice: 866 },
+  bridal_bouquet:   { icon: '🌸', name: 'Bridal Bouquet',   sellPrice: 1800 },
+  tomato_sauce:     { icon: '🥫', name: 'Tomato Sauce',     sellPrice: 420 },
+  chilli_sauce:     { icon: '🌶️', name: 'Chilli Sauce',     sellPrice: 800 },
+  veg_soup:         { icon: '🍲', name: 'Vegetable Soup',   sellPrice: 185 },
+  corn_chowder:     { icon: '🌽', name: 'Corn Chowder',     sellPrice: 285 },
+  kit_ice_cream_maker: { icon: '🍨', name: 'Ice Cream Maker Kit', sellPrice: 380 },
+  kit_flower_shop:     { icon: '💐', name: 'Flower Shop Kit',     sellPrice: 520 },
+  kit_sauce_maker:     { icon: '🥫', name: 'Sauce Maker Kit',     sellPrice: 560 },
+  kit_soup_kitchen:    { icon: '🍲', name: 'Soup Kitchen Kit',    sellPrice: 500 },
+
   // Dessert tier — the Cake Oven's own intermediates and its cakes. batter/frosting/fondant are
   // made in the Cake Oven itself and feed its later recipes, which is what gives the building an
   // internal chain rather than five unrelated one-shot recipes.
@@ -590,6 +608,48 @@ export const BUILDINGS = {
         ] } },
     ],
   },
+  ice_cream_maker: {
+    name: 'Ice Cream Maker', unlockLevel: 29, cost: 6400, size: [2, 2],
+    kit: 'kit_ice_cream_maker', minigame: 'swirl_set', queueSlots: 3,
+    recipes: [
+      { id: 'ice_cream',        inputs: { milk: 2, cream: 1, sugar: 1 },                time: 1800, xp: 18, unlockLevel: 29 },
+      // PLAYABLE — rate: hold the pour steady while the cone turns.
+      { id: 'strawberry_swirl', inputs: { milk: 1, cream: 1, strawberry: 2 },           time: 3600, xp: 30, unlockLevel: 31,
+        play: { stages: [{ verb: 'swirl_cone' }] } },
+      { id: 'honey_gelato',     inputs: { cream: 2, honey: 1, sugar: 1 },               time: 5400, xp: 38, unlockLevel: 34 },
+    ],
+  },
+  soup_kitchen: {
+    name: 'Soup Kitchen', unlockLevel: 46, cost: 21000, size: [2, 2],
+    kit: 'kit_soup_kitchen', minigame: 'season_touch', queueSlots: 3,
+    recipes: [
+      { id: 'veg_soup',     inputs: { carrot: 2, potato: 2, tomato: 1 },                time: 2700, xp: 26, unlockLevel: 46 },
+      // PLAYABLE — release: charge a pinch of seasoning and let go at the right moment.
+      { id: 'corn_chowder', inputs: { corn: 3, potato: 2, cream: 2, butter: 1 },        time: 5400, xp: 42, unlockLevel: 48,
+        play: { stages: [{ verb: 'season_pinch' }] } },
+    ],
+  },
+  flower_shop: {
+    name: 'Flower Shop', unlockLevel: 71, cost: 34000, size: [2, 2],
+    kit: 'kit_flower_shop', minigame: 'stem_trim', queueSlots: 3,
+    recipes: [
+      { id: 'posy',            inputs: { peony: 1, lavender: 1 },                       time: 3600, xp: 44, unlockLevel: 71 },
+      // PLAYABLE — rhythm: bind the stems on the beat, one turn of twine at a time.
+      { id: 'bridal_bouquet',  inputs: { peony: 2, lavender: 2, cotton: 2 },            time: 9000, xp: 78, unlockLevel: 74,
+        play: { stages: [{ verb: 'tie_bouquet' }] } },
+    ],
+  },
+  sauce_maker: {
+    name: 'Sauce Maker', unlockLevel: 55, cost: 42000, size: [2, 2],
+    kit: 'kit_sauce_maker', minigame: 'heat_balance', queueSlots: 3,
+    recipes: [
+      { id: 'tomato_sauce', inputs: { tomato: 3, olive: 1 },                            time: 4200, xp: 40, unlockLevel: 55 },
+      // PLAYABLE — route: send each chilli down the chute that matches it, before it lands.
+      { id: 'chilli_sauce', inputs: { tomato: 2, chili: 2, bell_pepper: 1 },            time: 7200, xp: 66, unlockLevel: 66,
+        play: { stages: [{ verb: 'sort_chillies' }] } },
+    ],
+  },
+
   build_workshop: {
     name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
     recipes: [
@@ -605,6 +665,10 @@ export const BUILDINGS = {
       { id: 'kit_sugar_mill',       inputs: { beam: 2, frame: 2, shingle: 3 },                  time: 6300,  xp: 23, unlockLevel: 6,  sink: true },
       { id: 'kit_popcorn_pot',      inputs: { beam: 2, panel: 3, fitting: 1 },                  time: 7200,  xp: 26, unlockLevel: 6,  sink: true },
       { id: 'kit_grill',            inputs: { beam: 3, fitting: 2, shingle: 4 },                time: 8100,  xp: 29, unlockLevel: 6,  sink: true },
+      { id: 'kit_ice_cream_maker', inputs: { frame: 2, panel: 2, plumbing: 1 },         time: 8400,  xp: 30, unlockLevel: 6, sink: true },
+      { id: 'kit_soup_kitchen',    inputs: { beam: 2, panel: 3, plumbing: 1 },          time: 10800, xp: 38, unlockLevel: 6, sink: true },
+      { id: 'kit_flower_shop',     inputs: { frame: 2, glazing: 2, panel: 2 },          time: 12600, xp: 44, unlockLevel: 6, sink: true },
+      { id: 'kit_sauce_maker',     inputs: { beam: 3, fitting: 2, plumbing: 1 },        time: 14400, xp: 48, unlockLevel: 6, sink: true },
       { id: 'kit_cake_oven', inputs: { frame: 3, panel: 2, fitting: 2, glazing: 1 }, time: 9000, xp: 34, unlockLevel: 6, sink: true },
       { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 6,  sink: true },
       { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 6,  sink: true },
@@ -670,6 +734,10 @@ export const MINIGAMES = {
   stone_set:       { name: 'Set the Stone',      building: 'jeweler',                effect: 'settingAccuracy',    cap: 0.2,  purpose: 'Seat the stone dead centre. Off-centre and the claw shows.' },
   culture_temp:    { name: 'Hold the Culture',   building: 'yogurt_maker',           effect: 'cultureVigour',      cap: 0.3,  purpose: 'Hold the warmth steady. A cold spot and the culture stalls.' },
   crumb_even: { name: 'Even the Crumb', building: 'cake_oven', effect: 'crumbEvenness', cap: 0.30, purpose: 'A cake that rises level slices clean and sells for more.' },
+  swirl_set: { name: 'Set the Swirl', building: 'ice_cream_maker', effect: 'swirlSmooth', cap: 0.30, purpose: 'An even swirl sets firm and scoops clean.' },
+  season_touch: { name: 'Season by Touch', building: 'soup_kitchen', effect: 'seasoningEdge', cap: 0.25, purpose: 'Seasoned right, a pot goes further.' },
+  stem_trim: { name: 'Trim the Stems', building: 'flower_shop', effect: 'bloomLife', cap: 0.30, purpose: 'Cleanly cut stems keep a bouquet alive longer.' },
+  heat_balance: { name: 'Balance the Heat', building: 'sauce_maker', effect: 'sauceBalance', cap: 0.25, purpose: 'Heat and sweetness in balance sells at a premium.' },
 };
 
 /**
@@ -684,7 +752,7 @@ export const EFFECT_KEYS = [
   'mouldPrecision', 'tipChance', 'purityChance', 'materialRefund',
   'oilClarity', 'steepQuality', 'knifePrecision', 'blendHarmony', 'plateFreshness',
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
-  'crumbEvenness',
+  'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -764,6 +832,30 @@ export const VERBS = {
     purpose: 'Remember the pattern and lay it back.',
     hint: 'Watch the pattern once, then tap it back in order. Keys 1-4 work too.',
     stageClass: 'stage-pads', durationMs: 14000,
+  },
+  swirl_cone: {
+    name: 'Swirl the Cone', verbWord: 'swirl', family: 'rate',
+    purpose: 'An even swirl sets firm and scoops clean.',
+    hint: 'Match the lever to the mark — open wide at the base, ease off near the top. [ and ] work too.',
+    stageClass: 'stage-swirl', durationMs: 10000,
+  },
+  tie_bouquet: {
+    name: 'Tie the Bouquet', verbWord: 'tie', family: 'rhythm',
+    purpose: 'Bound on the beat, the stems sit true.',
+    hint: 'Tap each turn of twine on the beat. It tightens as you go. Space works too.',
+    stageClass: 'stage-rhythm', durationMs: 9000,
+  },
+  sort_chillies: {
+    name: 'Sort the Chillies', verbWord: 'sort', family: 'route',
+    purpose: 'Sorted by heat, the sauce comes out balanced.',
+    hint: 'Open the chute that matches each pepper before it lands. Keys 1-3 work too.',
+    stageClass: 'stage-route', durationMs: 14000,
+  },
+  season_pinch: {
+    name: 'Season by Touch', verbWord: 'season', family: 'release',
+    purpose: 'Seasoned right, a pot goes further.',
+    hint: 'Hold to build a pinch, let go at the right size. Too much is worse than too little.',
+    stageClass: 'stage-pinch', durationMs: 14000,
   },
 };
 export const QUALITY = {
@@ -1007,7 +1099,7 @@ export const LEVELS = {
     26: ['candy_machine'],
     27: ['duck'],
     28: ['expansion_5', 'airport'],
-    29: ['coffee'],
+    29: ['coffee', 'ice_cream_maker'],
     30: ['coffee_kiosk'],
     31: ['expansion_6'],
     32: ['silo_mega_upgrade'],
@@ -1024,7 +1116,7 @@ export const LEVELS = {
     43: ['isle_coral'],
     44: ['zoo_lion'],
     45: ['isle_lagoon'],
-    46: ['zoo_panda'],
+    46: ['zoo_panda', 'soup_kitchen'],
     47: ['isle_volcano'],
     48: ['zoo_giraffe'],
     49: ['town_mega_milestone'],
@@ -1035,7 +1127,7 @@ export const LEVELS = {
     52: ['oil_press', 'isle_frutus'],
     53: ['lamb'],
     54: ['expansion_10'],
-    55: ['olive'],
+    55: ['olive', 'sauce_maker'],
     56: ['tea_house', 'zoo_otter'],
     57: ['silo_titan_upgrade'],
     58: ['lavender', 'quail', 'isle_olivia'],
@@ -1051,7 +1143,7 @@ export const LEVELS = {
     68: ['salad_bar', 'zoo_koala'],
     69: ['master_orders_ii'],
     70: ['grand_fair'],
-    71: ['peony'],
+    71: ['peony', 'flower_shop'],
     72: ['pasta_kitchen', 'otter'],
     73: ['expansion_14'],
     74: ['harvest_festival', 'isle_bonita'],

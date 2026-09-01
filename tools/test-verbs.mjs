@@ -85,6 +85,34 @@ const OPTIMAL = {
       return null;
     };
   },
+
+  swirl_cone: () => (snap) => ({ rate: snap.want }),
+
+  tie_bouquet: () => {
+    // Tap once per beat, at the top of the pulse. Tracking the turn index stops one long
+    // near-the-beat window being answered several times.
+    let lastTurn = -1;
+    return (snap) => {
+      if (snap.pulse >= 0.95 && snap.turns !== lastTurn) {
+        lastTurn = snap.turns;
+        return { taps: [{ tMs: 0 }] };
+      }
+      return { taps: [] };
+    };
+  },
+
+  sort_chillies: () => (snap) => ({ lane: snap.kind, commit: true }),
+
+  season_pinch: () => {
+    // The input layer builds charge while held; the driver has to model that itself, at the
+    // same rate input.js uses (dt / 900), then let go once the pinch matches the ask.
+    let charge = 0;
+    return (snap) => {
+      if (charge >= snap.want) { const out = { charge, fired: true }; charge = 0; return out; }
+      charge = Math.min(1, charge + 16 / 900);
+      return { charge, fired: false };
+    };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

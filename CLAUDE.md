@@ -14,7 +14,7 @@ world for whoever picks this up next (full detail and verification evidence in
 `HANDOFF.md`):
 
 - `src/data.js` is **complete, final content** (validated by `npm test`): 24 crops,
-  12 animals, 44 buildings / 195 recipes, 259 goods, 23 construction materials in four
+  12 animals, 49 buildings / 215 recipes, 279 goods, 23 construction materials in four
   purpose-scoped sets, Merge Meadow, full event system (weekend/mini/Farm Fair/holidays),
   Township layer (town, trains, airport, zoo, islands, market), the expansion subsystems
   (workshop kits, per-factory minigames, mine depths, artifacts + museum, expeditions,

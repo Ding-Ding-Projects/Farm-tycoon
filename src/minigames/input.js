@@ -150,6 +150,23 @@ export function createInput(family, host, opts = {}) {
       if (!ev.repeat) taps.push({ tMs: ev.timeStamp });
       down = true;
       if (family === 'route') commit = true;
+      // Dragging by keyboard is TWO presses: the first picks up whatever is focused, the second
+      // puts it down on whatever is focused then. Before this, `grabbed` was only ever assigned
+      // from a pointerdown, so a keyboard user could not pick anything up AT ALL - and keyup's
+      // `dropOn = grabbed` then dropped each thing back onto itself. The whole drag family was
+      // unplayable without a mouse, on crafts that cannot be collected any other way, which made
+      // it a gate rather than a game. Tab moves between the pegs; Enter grabs, Enter drops.
+      if (family === 'drag' && !ev.repeat) {
+        const el = doc.activeElement;
+        const near = (attr) => (el && el.closest ? el.closest(`[${attr}]`) : null);
+        if (grabbed < 0) {
+          const src = near('data-grab');
+          if (src) grabbed = Number(src.dataset.grab);
+        } else {
+          const dst = near('data-drop');
+          if (dst) { dropOn = Number(dst.dataset.drop); dropped = true; }
+        }
+      }
       ev.preventDefault();
       return;
     }
@@ -186,7 +203,9 @@ export function createInput(family, host, opts = {}) {
       if (family === 'release') fired = true;
       if (family === 'aim') aimFired = true;
       if (family === 'steer') throttle = 0;
-      if (family === 'drag' && grabbed >= 0) { dropOn = grabbed; dropped = true; }
+      // drag's keyboard drop happens on keydown above, so that a press can mean 'pick up' or
+      // 'put down' depending on whether a thing is already in hand. Dropping here as well would
+      // fire both halves off one press and put every item straight back where it came from.
       down = false;
     }
   });

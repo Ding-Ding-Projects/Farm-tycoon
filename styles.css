@@ -617,6 +617,84 @@ a:hover { color: var(--color-primary); }
 .stage-pads .pad.lit { background: #fffdf6 !important; box-shadow: 0 0 18px rgba(255, 235, 170, 0.95); }
 .stage-pads .status { display: block; margin-top: 11px; text-align: center; font-weight: 800; font-size: 12px; color: #6d3f14; }
 
+/* drag, closed-loop flavour — the thread may never cross a line already laid. */
+.stage-weave { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); height: auto; overflow: visible; }
+.stage-weave .weave-board { position: relative; height: 190px; border-radius: 14px; background: linear-gradient(#e6f0e4, #cfe0cc); border: 4px solid var(--color-outline); }
+.stage-weave .weave-board svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage-weave .weave-thread { stroke: var(--color-primary-deep); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.stage-weave .weave-thread.closed { stroke: #2f7f4f; stroke-width: 2.4; }
+.stage-weave .weave-peg { position: absolute; width: 26px; height: 26px; padding: 0; margin: -13px 0 0 -13px; cursor: pointer; border-radius: 50%; background: rgba(255, 250, 234, 0.95); border: 3px solid var(--color-outline); }
+.stage-weave .weave-peg.threaded { background: var(--color-primary); }
+.stage-weave .weave-peg.current { box-shadow: 0 0 0 4px rgba(255, 250, 234, 0.9); transform: scale(1.15); }
+/* Blocked is never colour alone: the peg also loses its outline weight and shrinks. */
+.stage-weave .weave-peg.blocked { opacity: 0.4; border-style: dashed; border-width: 2px; transform: scale(0.82); }
+.stage-weave .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* release, spread flavour — no target size, only how alike the five are. */
+/* align-items and height are restated because the host ALSO carries .stage-gauge, whose
+   align-items: flex-end shrank every slot to 6px wide, and a rule that does not mention a
+   property cannot win it however far down the file it sits. Measured, not assumed. */
+.stage-portions { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+.stage-portions .portion-row { display: flex; align-items: flex-end; gap: var(--sp-2); height: 130px; }
+.stage-portions .portion { position: relative; flex: 1; height: 100%; border-radius: 10px 10px 6px 6px; background: rgba(58, 37, 16, 0.1); border: 3px solid var(--color-outline); overflow: hidden; }
+/* The ceiling this cut can reach, drawn as a line across the slot so the row visibly falls away. */
+.stage-portions .portion::before { content: ''; position: absolute; left: 0; right: 0; bottom: calc(var(--yield, 1) * 100%); height: 3px; background: repeating-linear-gradient(90deg, rgba(58, 37, 16, 0.55) 0 5px, transparent 5px 9px); }
+.stage-portions .portion i { position: absolute; left: 0; right: 0; bottom: 0; display: block; background: linear-gradient(#e0894a, #c2622c); border-top: 3px solid var(--color-outline); }
+.stage-portions .portion.now { box-shadow: inset 0 0 0 3px rgba(255, 250, 234, 0.9); }
+.stage-portions .portion.done { opacity: 0.85; }
+.stage-portions .gauge { height: 16px; border-radius: var(--radius-pill); background: rgba(58, 37, 16, 0.16); border: 3px solid var(--color-outline); overflow: hidden; }
+.stage-portions .gauge i { display: block; height: 100%; background: var(--color-primary); }
+.stage-portions .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* aim, packing flavour — no target at all; every drop is judged against the ones already down. */
+.stage-pool { display: flex; flex-direction: column; gap: var(--sp-3); align-items: center; height: auto; }
+.stage-pool .pool { width: 100%; max-height: 200px; border-radius: 50%; }
+.stage-pool .pool-water { fill: #bcd9e8; stroke: var(--color-outline); stroke-width: 0.05; }
+.stage-pool .pool-rock { fill: #8d8577; stroke: var(--color-outline); stroke-width: 0.03; }
+.stage-pool .pool-territory { fill: rgba(47, 127, 79, 0.18); stroke: rgba(47, 127, 79, 0.6); stroke-width: 0.012; }
+.stage-pool .pool-pot { fill: var(--color-primary); stroke: var(--color-outline); stroke-width: 0.025; }
+.stage-pool .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* path, restraint flavour — travel freely, arrive slowly. */
+.stage-calm { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+/* SQUARE on purpose, not for looks. The model measures the hand in screen WIDTHS per second and
+   its patches are circles in a unit square, so a board that is wider than it is tall makes the
+   same speed limit feel stricter vertically than horizontally - and it made the patches near the
+   bottom overflow the board entirely, because their size comes from the width and their position
+   from the height. */
+.stage-calm .calm-board { position: relative; width: 100%; max-width: 260px; margin: 0 auto; aspect-ratio: 1 / 1; border-radius: 14px; background: linear-gradient(#f6ead3, #e6d3ad); border: 4px solid var(--color-outline); touch-action: none; }
+.stage-calm .calm-patch { position: absolute; border-radius: 50%; border: 3px solid var(--color-outline); background: rgba(255, 250, 234, 0.6); }
+/* Tender patches are marked by their border too, not only by being a different shade. */
+.stage-calm .calm-patch.tender { border-style: double; border-width: 5px; }
+.stage-calm .calm-patch i { position: absolute; inset: 3px; display: block; border-radius: 50%; background: var(--color-primary); }
+.stage-calm .calm-patch.here { box-shadow: 0 0 0 4px rgba(255, 250, 234, 0.9); }
+.stage-calm .calm-patch.done { border-color: #2f7f4f; }
+.stage-calm .calm-meter { height: 16px; border-radius: var(--radius-pill); background: rgba(58, 37, 16, 0.16); border: 3px solid var(--color-outline); overflow: hidden; }
+.stage-calm .calm-meter i { display: block; height: 100%; background: var(--color-primary); }
+.stage-calm .calm-meter.over i { background: repeating-linear-gradient(45deg, #c2622c 0 6px, #8f3f18 6px 12px); }
+.stage-calm .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* route, changeover flavour — the cost is in the swaps, not in the tickets. */
+/* Same trap from the other direction: the host also carries .stage-route, which is a fixed
+   116px tall with overflow hidden, and this stage needs 169px - so the die lanes were cut in
+   half with nothing to say why. */
+.stage-dies { display: flex; flex-direction: column; gap: var(--sp-3); height: auto; overflow: visible; }
+.stage-dies .ticket-rack { display: flex; flex-wrap: wrap; gap: 6px; }
+.stage-dies .ticket { padding: 5px 7px; border-radius: 7px; border: 3px solid var(--color-outline); font-weight: 800; font-size: 11px; color: #4a2f12; }
+.stage-dies .ticket.die-0 { background: #f0c96a; }
+.stage-dies .ticket.die-1 { background: #a8cfe0; }
+.stage-dies .ticket.die-2 { background: #d5a8e0; }
+/* Done is struck through as well as faded, so the state does not rest on colour or opacity. */
+.stage-dies .ticket.filled { opacity: 0.4; text-decoration: line-through; }
+.stage-dies .die-lanes { display: flex; gap: var(--sp-2); }
+.stage-dies .die-lane { flex: 1; padding: 12px 6px; cursor: pointer; border-radius: 12px; background: rgba(255, 250, 234, 0.9); border: 4px solid var(--color-outline); font-weight: 800; font-size: 12px; color: #4a2f12; }
+/* Which die is on is said in words too - the lane carries "fitted" and its remaining count. */
+.stage-dies .die-lane.fitted { background: var(--color-primary); box-shadow: 0 0 0 3px rgba(255, 250, 234, 0.85); }
+.stage-dies .die-lane.fitted::after { content: ' (on)'; }
+.stage-dies .die-lane::before { content: attr(data-left) ' left'; display: block; font-size: 10px; font-weight: 700; opacity: 0.75; }
+.stage-dies .die-lane.empty { opacity: 0.45; text-decoration: line-through; }
+.stage-dies .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
 /* ---------- Buttons ---------- */
 .btn {
   font-family: var(--font-display); font-weight: 800; font-size: 16px; cursor: pointer;

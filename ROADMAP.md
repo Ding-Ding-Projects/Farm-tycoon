@@ -82,10 +82,14 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       discardable for half its inputs back
 - [x] Verified in the packaged Windows app, including that dynamic `import()` resolves over
       `file://` - without which every playable craft would be unreachable once installed
-- [ ] The remaining wiki factories. 44 of roughly 67 exist; five named ones are still absent -
-      doner kebab stand, duck salon, lobster pool, net maker, pasta maker
-- [x] **The playable share reached its 1-in-3 design target.** 39 of 136 recipes are playable
-      across 41 verbs in 12 input families. `npm test` prints the real figure on every run, so
+- [x] **The wiki factory roster is complete.** All five that were missing have landed: net maker
+      (30), lobster pool (44), duck salon (50), doner kebab stand (54) and pasta maker (67). The
+      doner stand is at 54 rather than the wiki level 32 because lamb does not arrive here until
+      53, and a factory that cannot cook anything for twenty-one levels is not an unlock. Net
+      maker feeds the lobster pool, and the pasta maker sits UPSTREAM of the level-72 pasta
+      kitchen: it extrudes the dry shapes, the kitchen cooks dishes out of them.
+- [x] **The playable share reached its 1-in-3 design target.** 44 of 151 recipes are playable
+      across 46 verbs in 12 input families. `npm test` prints the real figure on every run, so
       the ratio cannot drift out of sight in either direction
 - [ ] Two verbs were designed, measured and CUT rather than shipped thin, and their reasons are
       recorded in `src/minigames/registry.js` so nobody rebuilds them: `work_rush`, because with

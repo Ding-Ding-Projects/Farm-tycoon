@@ -369,6 +369,98 @@ const OPTIMAL = {
       return { x: 0.5 + Math.cos(a) * 0.3, y: 0.5 + Math.sin(a) * 0.3, down: true };
     };
   },
+
+  // ---- the last five wiki factories ---------------------------------------------------------
+
+  weave_mesh: () => {
+    // Sweep the pegs in angular order about their centroid. Sorting points by angle about an
+    // interior point always produces a simple polygon, so this route can never cross itself and
+    // always has a way home. Taking the NEAREST free peg instead is the natural play and tangles
+    // the net on most boards, which is measured separately below.
+    let plan = null;
+    let i = 0;
+    return (snap) => {
+      if (!plan) {
+        const cx = snap.points.reduce((a, q) => a + q.x, 0) / snap.pegs;
+        const cy = snap.points.reduce((a, q) => a + q.y, 0) / snap.pegs;
+        plan = snap.points
+          .map((q, idx) => ({ idx, a: Math.atan2(q.y - cy, q.x - cx) }))
+          .sort((u, v) => u.a - v.a)
+          .map((e) => e.idx);
+      }
+      const to = i < plan.length ? plan[i++] : plan[0];
+      return { grabbed: snap.current, dropOn: to, dropped: true };
+    };
+  },
+
+  match_portions: () => {
+    // The spit only ever thins, so the biggest size EVERY cut can still make is the last cut's
+    // yield. Aim all five at that, and the spread goes to nothing. The input layer builds charge
+    // at dt/900, so the driver models the same climb and lets go at the computed point.
+    let charge = 0;
+    return (snap) => {
+      const target = Math.min(...snap.yields);
+      const want = Math.min(1, target / snap.yieldNow);
+      if (charge >= want) { const out = { charge, fired: true }; charge = 0; return out; }
+      charge = Math.min(1, charge + 16 / 900);
+      return { charge, fired: false };
+    };
+  },
+
+  set_pots: () => (snap) => {
+    // Walk the water on a coarse polar grid and take the first spot that clears the wall, the
+    // rocks and every territory already claimed. There is no target to aim at, so "optimal" here
+    // means searching rather than aiming.
+    const clear = (x, y) => {
+      if (Math.hypot(x, y) > 0.97) return false;
+      for (const rk of snap.rocks) if (Math.hypot(x - rk.x, y - rk.y) < rk.r + 0.05) return false;
+      for (const q of snap.placed) if (Math.hypot(x - q.x, y - q.y) < snap.territory * 2) return false;
+      return true;
+    };
+    for (const r of [0.8, 0.62, 0.44, 0.9, 0.26, 0.1]) {
+      for (let k = 0; k < 48; k++) {
+        const a = (k / 48) * Math.PI * 2;
+        if (clear(Math.cos(a) * r, Math.sin(a) * r)) return { angle: a, power: r / 0.95, fired: true };
+      }
+    }
+    return { angle: 0, power: 0.5, fired: true };
+  },
+
+  calm_hands: () => {
+    // Travel fast between patches, because travel is free, then decelerate below the patch's own
+    // limit before crossing its edge and dwell there. Crawling the whole way round is the mistake
+    // that looks careful: it is slow enough to run out of clock with half the bird undone.
+    let pos = { x: 0.5, y: 0.5 };
+    return (snap) => {
+      let best = -1;
+      let bd = Infinity;
+      for (let i = 0; i < snap.patches.length; i++) {
+        const q = snap.patches[i];
+        if (q.fill >= 1) continue;
+        const d = Math.hypot(q.x - pos.x, q.y - pos.y);
+        if (d < bd) { bd = d; best = i; }
+      }
+      if (best < 0) return { x: pos.x, y: pos.y, down: true };
+      const q = snap.patches[best];
+      const dx = q.x - pos.x;
+      const dy = q.y - pos.y;
+      const d = Math.hypot(dx, dy) || 1e-9;
+      const vel = d > q.r * 1.4 ? 2.2 : q.limit * 0.55;      // screen widths per second
+      const stepd = Math.min(d, vel * (16 / 1000));
+      pos = { x: pos.x + (dx / d) * stepd, y: pos.y + (dy / d) * stepd };
+      return { x: pos.x, y: pos.y, down: true };
+    };
+  },
+
+  batch_dies: () => (snap) => {
+    // Finish every ticket for the die already fitted, then change once. Two changes for three
+    // dies instead of the eight or ten that serving them in arrival order costs.
+    if (snap.busy) return { lane: snap.fitted, commit: false };
+    const left = (d) => snap.tickets.filter((t) => !t.filled && t.die === d).length;
+    if (left(snap.fitted) > 0) return { lane: snap.fitted, commit: true };
+    for (let d = 0; d < snap.dies; d++) if (left(d) > 0) return { lane: d, commit: true };
+    return { lane: snap.fitted, commit: false };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */
@@ -738,6 +830,241 @@ await testAsync('set_hook: pulling one thread then the other never sets it', asy
       `seed ${seed}: jamming both taut (${held.toFixed(3)}) must not approach playing it `
       + `(${both.toFixed(3)}) - only rising edges may count, or holding beats timing`);
   }
+});
+
+
+// ---------------------------------------------------------------------------------------
+// The last five factories. Each verb below claims something specific about what it measures,
+// and a claim that only lives in a header comment is a claim nobody has checked. The generic
+// sweep above already proves each one is winnable and beats idling; these prove the thing that
+// makes it a different game from its neighbours.
+// ---------------------------------------------------------------------------------------
+
+const SEEDS = [1, 42, 555, 9001, 31337, 777, 2024, 4242, 8, 13, 99, 12345];
+
+/** Run a verb to completion with a driver built per-run, returning its final snapshot and score. */
+const runVerb = (mod, seed, makeDriver, opts = {}) => {
+  const g = mod.create(seed, opts);
+  const drive = makeDriver();
+  let t = 0;
+  while (!g.done() && t < 200000) {
+    g.step(16, drive(g.snapshot()));
+    t += 16;
+  }
+  return { score: g.score(), snap: g.snapshot(), ms: t };
+};
+
+await testAsync('weave_mesh: a net that must not cross itself really does refuse the greedy route', async () => {
+  const mod = await VERB_LOADERS.weave_mesh();
+
+  const sweep = () => {
+    let plan = null;
+    let i = 0;
+    return (snap) => {
+      if (!plan) {
+        const cx = snap.points.reduce((a, q) => a + q.x, 0) / snap.pegs;
+        const cy = snap.points.reduce((a, q) => a + q.y, 0) / snap.pegs;
+        plan = snap.points.map((q, idx) => ({ idx, a: Math.atan2(q.y - cy, q.x - cx) }))
+          .sort((u, v) => u.a - v.a).map((e) => e.idx);
+      }
+      return { grabbed: snap.current, dropOn: i < plan.length ? plan[i++] : plan[0], dropped: true };
+    };
+  };
+  // The instinct: always take the nearest peg that is still legal.
+  const nearest = () => (snap) => {
+    if (snap.current < 0) return { grabbed: -1, dropOn: 0, dropped: true };
+    const here = snap.points[snap.current];
+    const open = snap.legal.filter((q) => !snap.order.includes(q));
+    const pool = open.length ? open : snap.legal;
+    if (!pool.length) return { grabbed: snap.current, dropOn: -1, dropped: false };
+    let best = pool[0];
+    let bd = Infinity;
+    for (const q of pool) {
+      const d = (snap.points[q].x - here.x) ** 2 + (snap.points[q].y - here.y) ** 2;
+      if (d < bd) { bd = d; best = q; }
+    }
+    return { grabbed: snap.current, dropOn: best, dropped: true };
+  };
+
+  let tangled = 0;
+  for (const seed of SEEDS) {
+    const a = runVerb(mod, seed, sweep);
+    const b = runVerb(mod, seed, nearest);
+    assert.equal(a.snap.closed, true,
+      `seed ${seed}: an angular sweep is always a simple polygon, so it must always close - `
+      + 'if it does not, the crossing test is rejecting legal moves');
+    assert.ok(a.score >= 0.99, `seed ${seed}: sweeping every peg and closing should score full, got ${a.score.toFixed(3)}`);
+    if (b.score < a.score - 0.001) tangled += 1;
+  }
+  // Not every board punishes greed, and it should not: easy boards are how a player learns the
+  // rule. But if greed were ALWAYS fine there would be no puzzle here at all.
+  assert.ok(tangled >= SEEDS.length / 3,
+    `taking the nearest peg lost on only ${tangled}/${SEEDS.length} boards - if the greedy route `
+    + 'nearly always works, the no-crossing rule is not doing anything and this is not a game');
+});
+
+await testAsync('match_portions: it scores the SPREAD, so the proud first portion loses everything', async () => {
+  const mod = await VERB_LOADERS.match_portions();
+
+  // Aim every cut at the biggest size the LAST cut could still make.
+  const planned = () => {
+    let charge = 0;
+    return (snap) => {
+      const want = Math.min(1, Math.min(...snap.yields) / snap.yieldNow);
+      if (charge >= want) { const out = { charge, fired: true }; charge = 0; return out; }
+      charge = Math.min(1, charge + 16 / 900);
+      return { charge, fired: false };
+    };
+  };
+  // The trap: match the first cut, which the thinning spit can never repeat.
+  const anchorOnFirst = () => {
+    let charge = 0;
+    return (snap) => {
+      const want = Math.min(1, snap.yields[0] / snap.yieldNow);
+      if (charge >= want) { const out = { charge, fired: true }; charge = 0; return out; }
+      charge = Math.min(1, charge + 16 / 900);
+      return { charge, fired: false };
+    };
+  };
+  // Lean on the blade every time. Perfectly consistent INPUT, five different weights.
+  const maxHold = () => {
+    let charge = 0;
+    return () => {
+      if (charge >= 1) { const out = { charge, fired: true }; charge = 0; return out; }
+      charge = Math.min(1, charge + 16 / 900);
+      return { charge, fired: false };
+    };
+  };
+  // Tap it five times. Perfectly consistent OUTPUT, and five portions of nothing.
+  const shavings = () => () => ({ charge: 0.004, fired: true });
+
+  for (const seed of SEEDS) {
+    const plan = runVerb(mod, seed, planned).score;
+    const first = runVerb(mod, seed, anchorOnFirst).score;
+    const held = runVerb(mod, seed, maxHold).score;
+    const thin = runVerb(mod, seed, shavings).score;
+
+    assert.ok(plan >= 0.9,
+      `seed ${seed}: aiming every cut at what the last cut can still give should score full, got ${plan.toFixed(3)}`);
+    assert.ok(first < 0.3,
+      `seed ${seed}: matching the FIRST portion must fail (${first.toFixed(3)}) - the spit thins, so `
+      + 'that size is unrepeatable, and this trap is the whole reason the yields are published');
+    assert.ok(held < 0.3,
+      `seed ${seed}: holding to the stop every time gives five DIFFERENT weights and must not pass `
+      + `(${held.toFixed(3)}), or the laziest input in the family beats playing it`);
+    assert.ok(thin < 0.3,
+      `seed ${seed}: five identical shavings are perfectly consistent and must still score `
+      + `nothing (${thin.toFixed(3)}), or consistency alone is farmable with no skill at all`);
+  }
+});
+
+await testAsync('set_pots: packing is the game, so an even ring that ignores the water fills fewer pots', async () => {
+  const mod = await VERB_LOADERS.set_pots();
+
+  const searched = () => (snap) => {
+    const clear = (x, y) => {
+      if (Math.hypot(x, y) > 0.97) return false;
+      for (const rk of snap.rocks) if (Math.hypot(x - rk.x, y - rk.y) < rk.r + 0.05) return false;
+      for (const q of snap.placed) if (Math.hypot(x - q.x, y - q.y) < snap.territory * 2) return false;
+      return true;
+    };
+    for (const r of [0.8, 0.62, 0.44, 0.9, 0.26, 0.1]) {
+      for (let k = 0; k < 48; k++) {
+        const a = (k / 48) * Math.PI * 2;
+        if (clear(Math.cos(a) * r, Math.sin(a) * r)) return { angle: a, power: r / 0.95, fired: true };
+      }
+    }
+    return { angle: 0, power: 0.5, fired: true };
+  };
+  // Throw at a comfortable middle distance, evenly spaced, without looking at what is down.
+  const evenRing = () => { let k = 0; return () => ({ angle: (k++) * 1.1, power: 0.47, fired: true }); };
+
+  for (const seed of SEEDS) {
+    const good = runVerb(mod, seed, searched);
+    const blind = runVerb(mod, seed, evenRing);
+    assert.ok(good.score >= 0.99,
+      `seed ${seed}: a board that cannot be filled by searching it is a board that is unfair, got ${good.score.toFixed(3)}`);
+    assert.ok(blind.score <= good.score - 0.2,
+      `seed ${seed}: ignoring the pots already down scored ${blind.score.toFixed(3)} against `
+      + `${good.score.toFixed(3)} - if throwing blind is nearly as good, nothing here is a packing problem`);
+  }
+});
+
+await testAsync('calm_hands: hurrying is the only way to fail it, and it fails completely', async () => {
+  const mod = await VERB_LOADERS.calm_hands();
+
+  const calm = () => {
+    let pos = { x: 0.5, y: 0.5 };
+    return (snap) => {
+      let best = -1;
+      let bd = Infinity;
+      for (let i = 0; i < snap.patches.length; i++) {
+        const q = snap.patches[i];
+        if (q.fill >= 1) continue;
+        const d = Math.hypot(q.x - pos.x, q.y - pos.y);
+        if (d < bd) { bd = d; best = i; }
+      }
+      if (best < 0) return { x: pos.x, y: pos.y, down: true };
+      const q = snap.patches[best];
+      const dx = q.x - pos.x;
+      const dy = q.y - pos.y;
+      const d = Math.hypot(dx, dy) || 1e-9;
+      const vel = d > q.r * 1.4 ? 2.2 : q.limit * 0.55;
+      const stepd = Math.min(d, vel * (16 / 1000));
+      pos = { x: pos.x + (dx / d) * stepd, y: pos.y + (dy / d) * stepd };
+      return { x: pos.x, y: pos.y, down: true };
+    };
+  };
+  // What every OTHER path verb wants: cover as much ground as possible, quickly.
+  const hurried = () => { let k = 0; return () => { k += 1; const a = k * 0.09; return { x: 0.5 + Math.cos(a) * 0.34, y: 0.5 + Math.sin(a) * 0.34, down: true }; }; };
+
+  for (const seed of SEEDS) {
+    const a = runVerb(mod, seed, calm);
+    const b = runVerb(mod, seed, hurried);
+    // Every patch must be reachable. Before the sampler stopped letting patches overlap, half the
+    // seeds stranded four of the six behind another one, and nothing on screen said why.
+    assert.ok(a.score >= 0.99,
+      `seed ${seed}: a calm hand should finish every patch, got ${a.score.toFixed(3)} - a patch that `
+      + 'cannot be reached at all is a board defect, not a hard round');
+    assert.ok(b.score <= 0.05,
+      `seed ${seed}: sweeping the board fast scored ${b.score.toFixed(3)} - covering ground is what `
+      + 'every other path verb rewards, and here it must be worth nothing');
+  }
+});
+
+await testAsync('batch_dies: grouping provably beats arrival order, which is what work_rush could never manage', async () => {
+  const mod = await VERB_LOADERS.batch_dies();
+
+  const left = (snap, d) => snap.tickets.filter((t) => !t.filled && t.die === d).length;
+  const batched = () => (snap) => {
+    if (snap.busy) return { lane: snap.fitted, commit: false };
+    if (left(snap, snap.fitted) > 0) return { lane: snap.fitted, commit: true };
+    for (let d = 0; d < snap.dies; d++) if (left(snap, d) > 0) return { lane: d, commit: true };
+    return { lane: snap.fitted, commit: false };
+  };
+  // Serve them in the order they arrived, changing the die whenever the next one differs.
+  const arrivalOrder = () => (snap) => {
+    if (snap.busy) return { lane: snap.fitted, commit: false };
+    const i = snap.tickets.findIndex((t) => !t.filled);
+    if (i < 0) return { lane: snap.fitted, commit: false };
+    return { lane: snap.tickets[i].die, commit: true };
+  };
+
+  for (const seed of SEEDS) {
+    const a = runVerb(mod, seed, batched);
+    const b = runVerb(mod, seed, arrivalOrder);
+    assert.ok(a.score >= 0.99,
+      `seed ${seed}: clearing each die before changing should finish the rack, got ${a.score.toFixed(3)}`);
+    assert.ok(a.snap.swaps <= snap_dies_minus_one(a),
+      `seed ${seed}: grouping three dies needs two changes, not ${a.snap.swaps}`);
+    // The number that matters. work_rush died because triage scored IDENTICALLY to not bothering;
+    // if this gap ever closes, the same thing has happened here and the verb should be cut.
+    assert.ok(a.score - b.score >= 0.15,
+      `seed ${seed}: batching ${a.score.toFixed(3)} vs arrival order ${b.score.toFixed(3)} - a gap `
+      + 'this small means the ordering does not matter and this is work_rush all over again');
+  }
+
+  function snap_dies_minus_one(run) { return run.snap.dies - 1; }
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

@@ -93,6 +93,14 @@ export const VERB_LOADERS = {
   peek_pour: () => import('./verbs/peek_pour.js'),
   press_luck: () => import('./verbs/press_luck.js'),
   set_hook: () => import('./verbs/set_hook.js'),
+
+  // The last five wiki factories. Each one earns its slot against the neighbours already in its
+  // family, and the argument is at the top of its own file rather than here.
+  weave_mesh: () => import('./verbs/weave_mesh.js'),
+  match_portions: () => import('./verbs/match_portions.js'),
+  set_pots: () => import('./verbs/set_pots.js'),
+  calm_hands: () => import('./verbs/calm_hands.js'),
+  batch_dies: () => import('./verbs/batch_dies.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

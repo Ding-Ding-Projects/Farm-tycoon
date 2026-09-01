@@ -376,6 +376,34 @@ export const GOODS = {
   kit_paper_mill:     { icon: '📄', name: 'Paper Mill Kit',     sellPrice: 520 },
   kit_rubber_factory: { icon: '🛞', name: 'Rubber Factory Kit', sellPrice: 580 },
   kit_candle_maker:   { icon: '🕯', name: 'Candle Maker Kit',   sellPrice: 440 },
+  kit_net_maker:      { icon: '🕸', name: 'Net Maker Kit',      sellPrice: 380 },
+  kit_doner_stand:    { icon: '🥙', name: 'Doner Stand Kit',    sellPrice: 420 },
+  kit_lobster_pool:   { icon: '🦞', name: 'Lobster Pool Kit',   sellPrice: 560 },
+  kit_duck_salon:     { icon: '🦆', name: 'Duck Salon Kit',     sellPrice: 600 },
+  kit_pasta_maker:    { icon: '🍝', name: 'Pasta Maker Kit',    sellPrice: 720 },
+
+  // Net maker. Its three outputs are INPUTS to the lobster pool rather than sale goods, which is
+  // the same upstream/downstream shape the paper mill and rubber factory already have: a building
+  // whose products are worth making because something later wants them.
+  fishing_net:    { icon: '🕸', name: 'Fishing Net',    sellPrice: 500 },
+  lobster_trap:   { icon: '🧺', name: 'Lobster Trap',   sellPrice: 580 },
+  crab_trap:      { icon: '🦺', name: 'Crab Trap',      sellPrice: 640 },
+
+  doner_kebab:    { icon: '🥙', name: 'Doner Kebab',    sellPrice: 275 },
+  doner_wrap:     { icon: '🌯', name: 'Doner Wrap',     sellPrice: 400 },
+  kofta_plate:    { icon: '🍖', name: 'Kofta Plate',    sellPrice: 900 },
+
+  lobster:        { icon: '🦞', name: 'Lobster',        sellPrice: 1020 },
+  blue_crab:      { icon: '🦀', name: 'Blue Crab',      sellPrice: 1150 },
+  prawn_tail:     { icon: '🦐', name: 'Prawn Tail',     sellPrice: 1090 },
+
+  feather_duster: { icon: '🧹', name: 'Feather Duster', sellPrice: 310 },
+  down_pillow:    { icon: '🛏', name: 'Down Pillow',    sellPrice: 650 },
+  down_jacket:    { icon: '🧥', name: 'Down Jacket',    sellPrice: 1250 },
+
+  macaroni:       { icon: '🍜', name: 'Macaroni',       sellPrice: 620 },
+  penne:          { icon: '🍝', name: 'Penne',          sellPrice: 900 },
+  ravioli:        { icon: '🥟', name: 'Ravioli',        sellPrice: 2200 },
 
   // Dessert tier — the Cake Oven's own intermediates and its cakes. batter/frosting/fondant are
   // made in the Cake Oven itself and feed its later recipes, which is what gives the building an
@@ -864,6 +892,74 @@ export const BUILDINGS = {
     ],
   },
 
+  // The last five factories from the two wikis. The net maker deliberately feeds the lobster pool
+  // rather than the barn, so the pair reads as one chain instead of two unrelated buildings, and
+  // the pasta maker sits at 67 UPSTREAM of the level-72 pasta kitchen: it extrudes the dry shapes,
+  // the kitchen cooks dishes out of them. That ordering is why the maker cannot use fresh_pasta.
+  net_maker: {
+    name: 'Net Maker', unlockLevel: 30, cost: 7000, size: [2, 2],
+    kit: 'kit_net_maker', minigame: 'mesh_even', queueSlots: 3,
+    recipes: [
+      { id: 'fishing_net',    inputs: { cotton_fabric: 2, wool: 1 },                      time: 2400, xp: 26, unlockLevel: 30 },
+      { id: 'lobster_trap',   inputs: { driftwood: 2, cotton_fabric: 1, wiring_loom: 1 }, time: 3600, xp: 36, unlockLevel: 30 },
+      // PLAYABLE - drag, and the only verb whose moves are made illegal by the SHAPE of your
+      // earlier ones. A net has to close, and it must not cross itself.
+      { id: 'crab_trap',      inputs: { driftwood: 4, wiring_loom: 1, wool: 2 },          time: 5400, xp: 52, unlockLevel: 34,
+        play: { stages: [{ verb: 'weave_mesh' }] } },
+    ],
+  },
+  // Hay Day puts the kebab stand at 32. Here lamb does not arrive until 53, so 32 would be a
+  // factory that cannot cook anything for twenty-one levels. It sits at 54 instead, one level
+  // after its meat, in a level that had nothing but an expansion.
+  doner_stand: {
+    name: 'Doner Kebab Stand', unlockLevel: 54, cost: 32000, size: [2, 2],
+    kit: 'kit_doner_stand', minigame: 'even_portion', queueSlots: 3,
+    recipes: [
+      { id: 'doner_kebab',    inputs: { lamb_chop: 2, bread: 1 },                         time: 2400, xp: 26, unlockLevel: 54 },
+      { id: 'doner_wrap',     inputs: { lamb_chop: 2, bread: 1, tomato: 2 },              time: 3600, xp: 38, unlockLevel: 54 },
+      // PLAYABLE - release, and the only verb in the game scored on the SPREAD of your attempts
+      // rather than on how good any one of them was. Five identical portions beat four great ones.
+      { id: 'kofta_plate',    inputs: { lamb_chop: 3, chili: 2, cheese: 1 },              time: 6000, xp: 58, unlockLevel: 58,
+        play: { stages: [{ verb: 'match_portions' }] } },
+    ],
+  },
+  lobster_pool: {
+    name: 'Lobster Pool', unlockLevel: 44, cost: 20000, size: [2, 2],
+    kit: 'kit_lobster_pool', minigame: 'pot_spacing', queueSlots: 3,
+    recipes: [
+      { id: 'lobster',        inputs: { lobster_trap: 1, driftwood: 1 },                  time: 5400, xp: 52, unlockLevel: 44 },
+      { id: 'blue_crab',      inputs: { crab_trap: 1 },                                   time: 6000, xp: 58, unlockLevel: 44 },
+      // PLAYABLE - aim, and the only PACKING problem here. There is no target to hit at all; a
+      // drop is judged against every drop already on the water.
+      { id: 'prawn_tail',     inputs: { fishing_net: 1, driftwood: 2 },                   time: 7200, xp: 70, unlockLevel: 47,
+        play: { stages: [{ verb: 'set_pots' }] } },
+    ],
+  },
+  duck_salon: {
+    name: 'Duck Salon', unlockLevel: 50, cost: 24000, size: [2, 2],
+    kit: 'kit_duck_salon', minigame: 'calm_touch', queueSlots: 3,
+    recipes: [
+      { id: 'feather_duster', inputs: { feathers: 3, driftwood: 1 },                      time: 2700, xp: 28, unlockLevel: 50 },
+      { id: 'down_pillow',    inputs: { down_feather: 3, cotton_fabric: 2 },              time: 4800, xp: 48, unlockLevel: 50 },
+      // PLAYABLE - path, and the only one where moving WELL means moving slowly. Every other path
+      // verb rewards covering ground; this one punishes it.
+      { id: 'down_jacket',    inputs: { down_feather: 4, cotton_fabric: 3, wool: 2 },     time: 7800, xp: 76, unlockLevel: 54,
+        play: { stages: [{ verb: 'calm_hands' }] } },
+    ],
+  },
+  pasta_maker: {
+    name: 'Pasta Maker', unlockLevel: 67, cost: 58000, size: [2, 2],
+    kit: 'kit_pasta_maker', minigame: 'die_batching', queueSlots: 3,
+    recipes: [
+      { id: 'macaroni',       inputs: { wheat: 4, egg: 2 },                               time: 3600, xp: 38, unlockLevel: 67 },
+      { id: 'penne',          inputs: { wheat: 5, egg: 3, cheese: 2 },                    time: 5400, xp: 56, unlockLevel: 67 },
+      // PLAYABLE - route, and it survives the trap that killed work_rush: the cost lives in the
+      // TRANSITIONS, not the items, so grouping by die is provably better than first-come order.
+      { id: 'ravioli',        inputs: { wheat: 5, egg: 3, cheese: 3, olive_oil: 1 },      time: 7800, xp: 78, unlockLevel: 70,
+        play: { stages: [{ verb: 'batch_dies' }] } },
+    ],
+  },
+
   build_workshop: {
     name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
     recipes: [
@@ -891,6 +987,11 @@ export const BUILDINGS = {
       { id: 'kit_rubber_factory', inputs: { beam: 3, frame: 2, plumbing: 1 }, time: 13800, xp: 44, unlockLevel: 6, sink: true },
       { id: 'kit_candle_maker',   inputs: { frame: 2, panel: 2, glazing: 1 }, time: 10200, xp: 34, unlockLevel: 6, sink: true },
       { id: 'kit_cake_oven', inputs: { frame: 3, panel: 2, fitting: 2, glazing: 1 }, time: 9000, xp: 34, unlockLevel: 6, sink: true },
+      { id: 'kit_net_maker',    inputs: { frame: 2, panel: 2 },                  time: 7200,  xp: 26, unlockLevel: 6, sink: true },
+      { id: 'kit_doner_stand',  inputs: { beam: 2, panel: 2, fitting: 1 },       time: 8400,  xp: 30, unlockLevel: 6, sink: true },
+      { id: 'kit_lobster_pool', inputs: { beam: 3, plumbing: 2, glazing: 1 },    time: 13200, xp: 42, unlockLevel: 6, sink: true },
+      { id: 'kit_duck_salon',   inputs: { frame: 3, panel: 3, glazing: 1 },      time: 14400, xp: 46, unlockLevel: 6, sink: true },
+      { id: 'kit_pasta_maker',  inputs: { beam: 3, fitting: 3, wiring_loom: 1 }, time: 16800, xp: 54, unlockLevel: 6, sink: true },
       { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 6,  sink: true },
       { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 6,  sink: true },
       { id: 'kit_sewing_machine',   inputs: { frame: 4, fitting: 3, wiring_loom: 1 },           time: 12600, xp: 42, unlockLevel: 6,  sink: true },
@@ -978,6 +1079,11 @@ export const MINIGAMES = {
   press_sheet: { name: 'Press the Sheet', building: 'paper_mill', effect: 'sheetEvenness', cap: 0.30, purpose: 'An even sheet takes ink without blotting.' },
   tap_flow: { name: 'Tap the Flow', building: 'rubber_factory', effect: 'latexPurity', cap: 0.25, purpose: 'Cleanly tapped latex sets without bubbles.' },
   wick_true: { name: 'True the Wick', building: 'candle_maker', effect: 'wickTrueness', cap: 0.30, purpose: 'A centred wick burns down evenly.' },
+  mesh_even: { name: 'Even the Mesh', building: 'net_maker', effect: 'meshEvenness', cap: 0.25, purpose: 'An even mesh holds its catch instead of letting it slip.' },
+  even_portion: { name: 'Match the Portions', building: 'doner_stand', effect: 'portionMatch', cap: 0.25, purpose: 'Portions that all weigh the same are what turns a stand into a business.' },
+  pot_spacing: { name: 'Space the Pots', building: 'lobster_pool', effect: 'potSpacing', cap: 0.30, purpose: 'Lobsters are territorial. Pots set too close come up empty.' },
+  calm_touch: { name: 'Keep Them Calm', building: 'duck_salon', effect: 'calmTouch', cap: 0.25, purpose: 'A calm duck sits still, and a duck that sits still preens well.' },
+  die_batching: { name: 'Batch the Dies', building: 'pasta_maker', effect: 'dieBatching', cap: 0.30, purpose: 'Every die change costs minutes. Doing like with like buys them back.' },
 };
 
 /**
@@ -995,6 +1101,7 @@ export const EFFECT_KEYS = [
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
   'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl', 'pourJudgement', 'combNerve', 'hookTiming',
+  'meshEvenness', 'portionMatch', 'potSpacing', 'calmTouch', 'dieBatching',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1279,6 +1386,36 @@ export const VERBS = {
     hint: 'The tea falls as it flies, so aim ABOVE the cup. Range comes from angle and power together - two different arcs reach the same cup.',
     stageClass: 'stage-aim', durationMs: 15000,
   },
+  weave_mesh: {
+    name: 'Weave the Mesh', verbWord: 'weave', family: 'drag',
+    purpose: 'A net is one thread that has to come back to where it started without crossing itself.',
+    hint: 'Drag the thread peg to peg and finish where you began. A line that crosses one you already laid is refused, so leave yourself a way home.',
+    stageClass: 'stage-drag', durationMs: 20000,
+  },
+  match_portions: {
+    name: 'Match the Portions', verbWord: 'portion', family: 'release',
+    purpose: 'A kebab stand lives on every wrap weighing the same, not on any one being perfect.',
+    hint: 'Hold to shave, let go to drop a portion. You are scored on how ALIKE the five are - there is no right size, so pick one and repeat it.',
+    stageClass: 'stage-gauge', durationMs: 16000,
+  },
+  set_pots: {
+    name: 'Space the Pots', verbWord: 'drop', family: 'aim',
+    purpose: 'Lobsters will not share ground, so a pot is only worth what its neighbours leave it.',
+    hint: 'There is nothing to hit. Drop each pot so its ring clears every ring already down and stays off the rocks - the water gets tighter as you go.',
+    stageClass: 'stage-aim', durationMs: 18000,
+  },
+  calm_hands: {
+    name: 'Keep Them Calm', verbWord: 'preen', family: 'path',
+    purpose: 'A duck startles at a fast hand, and a startled duck cannot be preened at all.',
+    hint: 'Cover every patch, but SLOWLY. Each patch has its own speed limit and the tender ones are the strictest - going quickly is the only way to fail this.',
+    stageClass: 'stage-trace', durationMs: 18000,
+  },
+  batch_dies: {
+    name: 'Batch the Dies', verbWord: 'batch', family: 'route',
+    purpose: 'Swapping the die costs minutes, so the order you work the tickets in is the whole job.',
+    hint: 'Tickets can be taken in any order. Clearing every ticket for the die already fitted before you change it is worth far more than serving them as they came.',
+    stageClass: 'stage-route', durationMs: 13500,
+  },
   stir_figure: {
     name: 'Stir the Figure', verbWord: 'stir', family: 'path',
     purpose: 'An even figure of eight keeps the fondue smooth instead of splitting it.',
@@ -1528,7 +1665,7 @@ export const LEVELS = {
     27: ['duck'],
     28: ['expansion_5', 'airport', 'taco_kitchen', 'lure_workbench'],
     29: ['coffee', 'ice_cream_maker'],
-    30: ['coffee_kiosk'],
+    30: ['coffee_kiosk', 'net_maker'],
     31: ['expansion_6'],
     32: ['silo_mega_upgrade'],
     33: ['grapes', 'hat_maker'],
@@ -1542,19 +1679,19 @@ export const LEVELS = {
     41: ['zoo_penguin'],
     42: ['zoo_flamingo', 'paper_mill'],
     43: ['isle_coral'],
-    44: ['zoo_lion', 'rubber_tree'],
+    44: ['zoo_lion', 'rubber_tree', 'lobster_pool'],
     45: ['isle_lagoon'],
     46: ['zoo_panda', 'soup_kitchen', 'rubber_factory'],
     47: ['isle_volcano'],
     48: ['zoo_giraffe'],
     49: ['town_mega_milestone'],
-    50: ['zoo_elephant', 'golden_town_statue'],
+    50: ['zoo_elephant', 'golden_town_statue', 'duck_salon'],
     // Levels 51-95. Every level carries at least one unlock: the validator refuses a
     // dead level, which is what keeps the late game from becoming a silent XP corridor.
     51: ['rice'],
     52: ['oil_press', 'isle_frutus'],
     53: ['lamb'],
-    54: ['expansion_10'],
+    54: ['expansion_10', 'doner_stand'],
     55: ['olive', 'sauce_maker'],
     56: ['tea_house', 'zoo_otter'],
     57: ['silo_titan_upgrade'],
@@ -1567,7 +1704,7 @@ export const LEVELS = {
     64: ['perfumery', 'alpaca'],
     65: ['golden_meadow'],
     66: ['bell_pepper', 'isle_fishers'],
-    67: ['expansion_13'],
+    67: ['expansion_13', 'pasta_maker'],
     68: ['salad_bar', 'zoo_koala'],
     69: ['master_orders_ii'],
     70: ['grand_fair'],

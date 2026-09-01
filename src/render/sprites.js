@@ -712,6 +712,11 @@ const BUILDING_CONFIG = {
 
   // apiary
   honey_extractor: { roof: '#f0b52e',   form: 'barrel',   accent: 'wheel',  extras: ['crates', 'planter'], sign: '#f2c94c' },
+  net_maker:      { roof: '#3f7f6f',   form: 'sawtooth', accent: 'wheel',  extras: ['crates', 'barrels'] },
+  doner_stand:    { roof: '#c94f3d',   form: 'kiosk',    accent: 'smoke',  extras: ['awning', 'lantern'], sign: '#f2a03d' },
+  lobster_pool:   { roof: '#2f6f9f',   form: 'flat',     accent: 'drips',  extras: ['barrels', 'pipes'] },
+  duck_salon:     { roof: '#e8a0c0',   form: 'pagoda',   accent: 'steam',  extras: ['awning', 'planter'], sign: '#f7d6e6' },
+  pasta_maker:    { roof: '#d9b45c',   form: 'hip',      accent: 'gear',   extras: ['silo', 'vents'], sign: '#f2e2b0' },
 
   // preserves + pressing
   jam_maker:   { roof: '#c9382e',       form: 'barrel',   accent: 'pot',    extras: ['crates'] },

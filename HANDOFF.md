@@ -46,11 +46,11 @@ browser, at `http://127.0.0.1:8123`** (use the loopback address — a stale serv
 suites. Real output from this checkout:
 
 ```
-data.js OK - 24 crops, 12 animals, 44 buildings, 195 recipes, 259 goods, 3 merge
+data.js OK - 24 crops, 12 animals, 49 buildings, 215 recipes, 279 goods, 3 merge
 chains, 43 achievements, 95 levels all with unlocks, 10 weekend events + 6
 mini-events + 25 fair tasks + 6 holidays, town: 16 houses + 10 community, 14 zoo
 enclosures, 8 islands, 23 materials
-playable share: 39/136 recipes (1 in 3.5), 41 verbs - at the 1-in-3 target
+playable share: 44/151 recipes (1 in 3.4), 46 verbs - at the 1-in-3 target
 ```
 
 followed by eight suites (`test-camera`, `test-core`, `test-logistics`, `test-crafting`,
@@ -194,7 +194,7 @@ messages:
    non-positive margin among
    non-sink recipes** (was 45). Every Building Workshop component and kit recipe (41 of them) is
    now explicitly tagged `sink: true` and exempted from the margin check by design — a sink is a
-   (The corpus has since grown to 195 recipes across 44 buildings. That audit has NOT been re-run
+   (The corpus has since grown to 215 recipes across 49 buildings. That audit has NOT been re-run
    over the newer content, so treat the figure above as a result about the set it was measured
    on, not a standing property of the game.)
    good meant to be consumed, not resold, exactly like feed. Checking those 41 sink recipes
@@ -237,7 +237,7 @@ through its own API says nothing about whether anything calls it.
 
 ### Buildings look different, and look busy
 
-All 44 factories used to be one box, one gable roof and one of five accents, keyed only by roof
+All 49 factories used to be one box, one gable roof and one of five accents, keyed only by roof
 colour. They now pick a roof form (gable, hip, flat, domed, sawtooth, pagoda, barrel, kiosk, tower)
 and hang real furniture off it, and `drawBuilding` takes `{ working, now }` so a factory animates
 ONLY while a craft is genuinely running. An idle one is completely still, which makes "is that one

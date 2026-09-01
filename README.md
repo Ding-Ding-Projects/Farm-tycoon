@@ -19,11 +19,11 @@ economy, logistics, crafting, township, research, dead-time systems, and the
 neighbours/co-op/regatta social layer — for **147 passing assertions across nine files**,
 with zero failures. The content layer, re-validated by that same run:
 
-> data.js OK - 24 crops, 12 animals, 44 buildings, 195 recipes, 259 goods, 3 merge
+> data.js OK - 24 crops, 12 animals, 49 buildings, 215 recipes, 279 goods, 3 merge
 > chains, 43 achievements, 95 levels all with unlocks, 10 weekend events + 6
 > mini-events + 25 fair tasks + 6 holidays, town: 16 houses + 10 community, 14 zoo
 > enclosures, 8 islands, 23 materials
-> playable share: 39/136 recipes (1 in 3.5), 41 verbs - at the 1-in-3 target
+> playable share: 44/151 recipes (1 in 3.4), 46 verbs - at the 1-in-3 target
 
 All 22 world structures are placed with zero overlaps across their occupied tiles, and
 every panel id is unique. Twenty of the twenty-two are locked at level 1 — and, per the
@@ -377,7 +377,7 @@ roughly thirty other rule families in total — followed by eight gameplay-logic
 `test-township.mjs`, `test-research.mjs`, `test-deadtime.mjs`, `test-social.mjs`) that
 exercise the actual running modules: planting and harvesting, offline catch-up, save/load
 round-trips, the merge board, workshop crafting, trains/town/zoo, research, and the
-simulated-neighbours social layer, the playable-item gate and all 41 verbs. 592 assertions
+simulated-neighbours social layer, the playable-item gate and all 46 verbs. 627 assertions
 across 13 suites, all passing, as of this checkout.
 
 Three further suites run against a REAL built artifact rather than the source tree and are not

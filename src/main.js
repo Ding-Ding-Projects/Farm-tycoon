@@ -225,10 +225,15 @@ function boot() {
   const startCenterY = FARM.startZone.y + FARM.startZone.h / 2;
   const level = s?.level ?? 1;
   const unlockedStructures = Object.values(STRUCTURES).filter((d) => level >= d.unlockLevel);
-  const focusPoints = [
-    ...(s?.farm?.objects ?? []).map((o) => ({ x: o.x, y: o.y })),
-    ...unlockedStructures.map((d) => ({ x: d.pos.x + d.size[0] / 2, y: d.pos.y + d.size[1] / 2 })),
-  ];
+  // Prefer what the PLAYER owns. Averaging their plots together with every unlocked structure
+  // drags the opening camera off toward the scenery: on a fresh save it framed the lake and the
+  // truck bay while the six starting fields sat half off the top-left corner, which is the one
+  // thing the tutorial immediately asks the player to use. Structures are the fallback for a
+  // save that somehow owns nothing, not an equal vote.
+  const ownedPoints = (s?.farm?.objects ?? []).map((o) => ({ x: o.x, y: o.y }));
+  const focusPoints = ownedPoints.length
+    ? ownedPoints
+    : unlockedStructures.map((d) => ({ x: d.pos.x + d.size[0] / 2, y: d.pos.y + d.size[1] / 2 }));
   const focusX = focusPoints.length
     ? focusPoints.reduce((sum, p) => sum + p.x, 0) / focusPoints.length
     : startCenterX;

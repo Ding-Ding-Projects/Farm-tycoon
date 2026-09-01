@@ -17,7 +17,7 @@ export const PALETTE = {
   grass: '#8ecb36', grassLight: '#a8dc52', grassDark: '#6da828',
   grassMottleLight: 'rgba(206,238,124,0.45)', grassMottleDark: 'rgba(96,152,40,0.34)',
   flowerWhite: '#fff8ee', flowerYellow: '#ffd94d', flowerPink: '#f48ab0',
-  soil: '#9c6432', soilLight: '#b87c40', soilDark: '#6f4218', soilRow: 'rgba(58,37,16,0.44)',
+  soil: '#7a4f28', soilLight: '#95643a', soilDark: '#4d2f14', soilRow: 'rgba(40,24,8,0.52)',
   water: '#3fb0e0', waterLight: '#86d8f2',
   road: '#e6bd7c', roadEdge: '#a87c42', roadLight: 'rgba(255,231,178,0.72)',
   wood: '#c08a4e', woodDark: '#7a4a18', woodLight: '#dca868',
@@ -210,10 +210,38 @@ export function drawSoilPlot(ctx, x, y, size = 1) {
   const sg = ctx.createLinearGradient(x, y, x, y + T);
   sg.addColorStop(0, PALETTE.soilLight); sg.addColorStop(1, PALETTE.soil);
   ctx.fillStyle = sg; ctx.fill();
+  // Furrows run along the tile's OWN axis, not horizontally across it.
+  //
+  // Horizontal lines drawn over an isometric diamond meet its edges at the wrong angle, so they
+  // read as plank divisions rather than ploughed rows, and a 3x2 block of plots turned into what
+  // looked like a wooden boardwalk laid across the meadow. Following the top-right edge instead
+  // makes them read as furrows immediately, and each dark groove gets a light ridge alongside it
+  // so the soil has some relief rather than being a flat brown lozenge.
   ctx.save(); dia(0); ctx.clip();
-  ctx.strokeStyle = PALETTE.soilRow; ctx.lineWidth = 3.5;
-  for (let f = 0.22; f < 1; f += 0.26) {
-    ctx.beginPath(); ctx.moveTo(x - T, y + T * f); ctx.lineTo(x + T, y + T * f); ctx.stroke();
+  ctx.lineWidth = Math.max(1.6, T * 0.026);
+  for (let f = 0.12; f < 1; f += 0.16) {
+    const sx = x - f * T, sy = y + (f * T) / 2;
+    const ex = x + T - f * T, ey = y + T / 2 + (f * T) / 2;
+    const inset = 0.10;   // stop short of both edges so plots do not join into planks
+    const ax = sx + (ex - sx) * inset, ay = sy + (ey - sy) * inset;
+    const bx = ex - (ex - sx) * inset, by = ey - (ey - sy) * inset;
+    ctx.strokeStyle = PALETTE.soilRow;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.strokeStyle = 'rgba(196,142,86,0.26)';
+    const lift = T * 0.020;
+    ctx.beginPath(); ctx.moveTo(ax, ay - lift); ctx.lineTo(bx, by - lift); ctx.stroke();
+  }
+
+  // Clods. Turned earth is lumpy, and a few irregular specks do more to sell that than any
+  // amount of groove work. Positions come from prand() so a plot never shimmers between frames.
+  for (let i = 0; i < 7; i++) {
+    const u = prand(i, 3), v = prand(i, 7);
+    const cxp = x + (u - 0.5) * T * 1.25;
+    const cyp = y + T * 0.5 + (v - 0.5) * T * 0.62;
+    ctx.fillStyle = i % 2 ? 'rgba(40,24,8,0.30)' : 'rgba(170,122,72,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(cxp, cyp, T * (0.016 + u * 0.014), T * (0.009 + v * 0.008), u * 3, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
   dia(0);

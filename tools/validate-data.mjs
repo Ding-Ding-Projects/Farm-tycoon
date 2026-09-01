@@ -73,6 +73,30 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
       errors.push(`building ${bid} is in neither the kit list nor the coin-only list - classify it`);
 }
 
+// A building must not unlock before the first thing it can actually make.
+//
+// The recipe-versus-inputs rule below already stops a recipe being offered before its ingredients
+// exist. Nothing stopped the BUILDING arriving first, which is a different and quieter failure:
+// the shop offers it, the player pays for it, and it sits on the farm doing nothing until a crop
+// several levels away turns up. Measured when this was written, the oil press opened three levels
+// before olives and the tea house six before tea leaves.
+//
+// The fix is always to move the building, never to drag the crop forward - a crop's level is part
+// of its own balance and has other consumers.
+{
+  for (const [bid, b] of Object.entries(d.BUILDINGS)) {
+    if (!b.recipes || !b.recipes.length) continue;
+    const first = Math.min(...b.recipes.map((r) => r.unlockLevel || 0));
+    const opens = b.unlockLevel || 0;
+    if (first > opens) {
+      errors.push(
+        `building ${bid}: opens at level ${opens} but its earliest recipe is level ${first} - `
+        + `${first - opens} levels of owning a factory that cannot make anything`
+      );
+    }
+  }
+}
+
 // Per-factory minigames. The hand-written list matters more than the rules: a rule alone
 // passes happily on a building that simply has no minigame field, so the thing that would
 // actually go wrong (somebody adds a factory and forgets its game) needs an explicit roster.

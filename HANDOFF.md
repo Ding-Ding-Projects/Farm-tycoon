@@ -184,10 +184,15 @@ messages:
    current data — this is what the audit's "70 recipes" count was measuring, and it is now
    structurally guarded, not just fixed once). Re-checking the three buildings the audit named
    directly: `build_workshop` no longer sits inert on unlock (unlock level 6, earliest usable
-   recipe also 6 — was inert for 15 levels). `tea_house` (unlocks 56, first recipe 62) and
-   `oil_press` (unlocks 52, first recipe 55) still open several levels before their first usable
-   recipe — a 6-level and 3-level gap respectively, unchanged from the original finding and not
-   covered by any guard. This narrower point is real, current, and small; it is not the "70
+   recipe also 6 — was inert for 15 levels). `tea_house` and `oil_press` are now fixed too.
+   Both opened before the crop they exist to process, and in both cases the recipes were correctly
+   gated on their inputs while the BUILDING arrived early: the oil press three levels before
+   olives, the tea house six before tea leaves. Both moved to meet their first usable recipe (oil
+   press 52 → 55, tea house 56 → 62) rather than dragging the crops forward, because a crop's
+   level is part of its own balance and has other consumers. `validate-data.mjs` now refuses ANY
+   building whose earliest recipe outranks its own unlock level, so this cannot come back;
+   reintroducing the oil press defect turns it red with the exact original numbers. It is not the
+   "70
    recipes" problem, which is closed.
 6. **Non-positive recipe margins.** Recomputed directly against the current data with the same
    sell-value logic the validator uses **as of the 128-recipe content set**: 0 of 128 had a
@@ -201,11 +206,17 @@ messages:
    directly against a single-hop raw-input-cost comparison (cost to buy the recipe's direct inputs
    at their own sell price, vs. the recipe's own sell price), 40 of 41 now cost more to craft than
    they would fetch selling directly; one, `shingle` in `build_workshop`, still nets a small +5.
-   **This single-hop check does not rule out a multi-step arbitrage across the full chain** (raw
-   materials → components → kit, summing real material cost rather than component resale price),
-   which was not re-simulated end to end here. Flag this as reduced and very likely closed, not
-   proven eliminated — the original "craft components at a loss, sell the kit for ~9,800" scenario
-   specifically was not re-run.
+   **RESOLVED.** `tools/test-economy.mjs` now expands every kit to its raw leaves, following the
+   CHEAPEST producing recipe at each step so an exploit cannot hide behind an expensive sibling.
+   The best kit margin in the game is `kit_paper_mill` at **-35 coins** (raw 555, sells 520), and
+   nothing is profitable even with every input bought at the market's 1.4x. The original ~9,800
+   scenario is re-run by name on every `npm test`. Nothing is underwater on direct inputs or on
+   fully expanded raw inputs either.
+
+   What the same tool DID surface is a balance gap rather than an exploit: coins per second of
+   queue time spans twelve to one, and `syrup` turns 76 coins of inputs into 78 over a full hour.
+   That is printed on every run and recorded in `ROADMAP.md`; it is a design decision, so the
+   tool reports it instead of failing on it.
 
 Verified TRUE by the original audit and unaffected by any of the above: the 16 rects tile the grid
 to exactly 100% with zero gaps and zero overlaps; 22 structures; every crop has a sink; 26
@@ -312,8 +323,11 @@ Two items that were open problems in the previous version of this document:
   exists too: `screenshots/farm-tycoon-android.mp4`, 25s of the installed APK being played by real
   touch on an Android 14 device. The old text below is kept because its warning has not expired -
   a reference to a file that isn't in the tree is worse than no image.
-- **The two open audit points above** (tea_house/oil_press unlock-inert gap; unverified multi-hop
-  kit arbitrage) are real, small, and unaddressed.
+- **Both of the audit points above are now closed.** The tea_house/oil_press unlock-inert gap is
+  fixed and structurally guarded, and the multi-hop kit arbitrage is proven dead by
+  `tools/test-economy.mjs` (best kit margin -35 coins). What replaced them is a balance finding
+  rather than a defect: coins per second of queue time spans twelve to one, and the bottom of the
+  table is not worth crafting. That is printed on every run and tracked in `ROADMAP.md`.
 - Regatta league reward tables, Township community buildings past level 70, and per-expansion
   cost numbers were never independently verified against the wiki — they were sourced from
   wiki text and images and taken at face value.
@@ -325,10 +339,11 @@ Two items that were open problems in the previous version of this document:
 
 ## Suggested order for the next session
 
-1. Capture matrix — screenshots/recordings of the real running game for the README and the
-   GitHub Pages site, once the in-flight capture pass lands (or pick that up if it hasn't).
-2. The `tea_house`/`oil_press` unlock-inert gap (small; see "Audit findings" #5).
-3. Re-simulate the full component→kit chain end to end for the Building Workshop to settle the
-   multi-hop arbitrage question definitively (see "Audit findings" #6).
+1. The GitHub Pages site still shows neither the screenshots nor either recording, although both
+   recordings are committed and linked from the README.
+2. The coins-per-second balance gap (see `ROADMAP.md`): nothing is broken, but a recipe nobody
+   would ever choose is dead content, and six of them earn under a hundredth of a coin a second.
+3. Phase 6 integration — per-family audio, a Bake Book from `state.minigames.best`, and
+   Masterpiece achievements — which is the last unbuilt piece of the playable-item system.
 4. Re-derive the regatta league reward tables, post-level-70 Township buildings, and expansion
    costs directly from primary sources rather than wiki text/images, if that matters for release.

@@ -91,11 +91,13 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 - [x] **The playable share reached its 1-in-3 design target.** 44 of 151 recipes are playable
       across 46 verbs in 12 input families. `npm test` prints the real figure on every run, so
       the ratio cannot drift out of sight in either direction
-- [ ] Two verbs were designed, measured and CUT rather than shipped thin, and their reasons are
+- [x] **Three verbs were designed, measured and CUT rather than shipped thin**, and their reasons are
       recorded in `src/minigames/registry.js` so nobody rebuilds them: `work_rush`, because with
       uniform item value and a capped number of actions triage is mathematically irrelevant, and
       `steady_spindle`, because a saturating actuator makes high-gain reaction beat anticipation
-      on an inverted pendulum. A third, `test_set`, was cut earlier for the same class of reason
+      on an inverted pendulum. A third, `test_set`, was cut earlier for the same class of reason.
+      A fourth was cut before a line of it was written: a pasta extruder whose output lagged the
+      crank is a re-skin of `jar_fill`, which already owns input dead time
 - [ ] Per-family audio, a Bake Book from `state.minigames.best`, Masterpiece achievements
 
 ## Android
@@ -118,16 +120,31 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 
 ## Open items
 
-- [ ] **Screenshots and recordings.** None exist in the README or on the GitHub Pages site
-      yet. A capture pass is required before either surface can show the real running game.
-- [ ] **`tea_house` and `oil_press` unlock-inert gap.** Both buildings still open several
-      levels before their first usable recipe (6-level and 3-level gaps respectively). Small,
-      real, and not covered by any validator guard. See `HANDOFF.md` → "Audit findings" #5.
-- [ ] **Multi-hop Building Workshop arbitrage, unverified.** The single-hop margin check
-      passes (0 of 128 non-sink recipes underwater), but the full raw-material → component →
-      kit chain was not re-simulated end to end, so the original "craft components at a loss,
-      sell the kit for ~9,800" scenario specifically was not re-run. See `HANDOFF.md` →
-      "Audit findings" #6.
+- [x] **Screenshots and recordings.** Both recordings are committed and linked from the
+      README: `screenshots/farm-tycoon-android.mp4` from the emulator and
+      `screenshots/farm-tycoon-desktop.mp4` from the Windows build, the latter captured from the
+      app's own renderer over the DevTools protocol rather than from a screen. The GitHub Pages
+      site still does not carry them.
+- [x] **`tea_house` and `oil_press` unlock-inert gap, fixed and guarded.** Both opened before
+      the crop they exist to process: the oil press three levels before olives, the tea house six
+      before tea leaves. The recipes were right and the BUILDINGS were early, so both moved to
+      meet their first usable recipe (oil press 52 → 55, tea house 56 → 62) rather than dragging
+      the crops forward. `validate-data.mjs` now refuses any building whose earliest recipe
+      outranks its own unlock level; reintroducing the oil press defect turns it red with the
+      exact original numbers.
+- [x] **Multi-hop Building Workshop arbitrage, closed and proven.** `tools/test-economy.mjs`
+      expands all 46 kits to their raw leaves, following the CHEAPEST producing recipe at each
+      step so an exploit cannot hide behind an expensive sibling. The best kit margin in the game
+      is `kit_paper_mill` at **-35 coins** (raw 555, sells 520); nothing is profitable even when
+      every input is bought at the market's 1.4x. The original ~9,800 scenario is re-run by name.
+      Nothing is underwater on direct inputs or on fully expanded raw inputs either.
+- [ ] **The coins-per-second spread is 12x, and the bottom of the table is not worth crafting.**
+      Surfaced by `tools/test-economy.mjs`, which prints it on every run: the median recipe earns
+      0.045 coins per second of queue time, the best earns 0.541, and syrup earns 0.001 - 76 coins
+      of inputs become 78 over a full hour. Nothing is underwater, so nothing is broken, but a
+      recipe nobody would ever choose is dead content. This is a balance decision rather than an
+      invariant, which is why the tool reports it instead of failing on it.
+
 - [ ] Regatta league reward tables, Township community buildings past level 70, and
       per-expansion cost numbers were sourced from wiki text/images and never independently
       re-derived.

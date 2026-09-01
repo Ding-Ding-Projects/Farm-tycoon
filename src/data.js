@@ -592,7 +592,7 @@ export const BUILDINGS = {
     ],
   },
   oil_press: {
-    name: 'Oil Press', unlockLevel: 52, cost: 18000, size: [2, 2], kit: 'kit_oil_press', minigame: 'press_flow', queueSlots: 3,
+    name: 'Oil Press', unlockLevel: 55, cost: 18000, size: [2, 2], kit: 'kit_oil_press', minigame: 'press_flow', queueSlots: 3,
     recipes: [
       { id: 'olive_oil',      inputs: { olive: 3 },                                   time: 2700,  xp: 22, unlockLevel: 55 },
       { id: 'herb_oil',       inputs: { olive: 2, mint: 2 },                          time: 3600,  xp: 28, unlockLevel: 84,
@@ -601,7 +601,7 @@ export const BUILDINGS = {
     ],
   },
   tea_house: {
-    name: 'Tea House', unlockLevel: 56, cost: 26000, size: [2, 2], kit: 'kit_tea_house', minigame: 'steep_timer', queueSlots: 3,
+    name: 'Tea House', unlockLevel: 62, cost: 26000, size: [2, 2], kit: 'kit_tea_house', minigame: 'steep_timer', queueSlots: 3,
     recipes: [
       { id: 'green_tea',      inputs: { tea_leaf: 3 },                                time: 1800,  xp: 24, unlockLevel: 62 },
       { id: 'milk_tea',       inputs: { tea_leaf: 2, milk: 1 },                       time: 2700,  xp: 30, unlockLevel: 62 },
@@ -1689,17 +1689,17 @@ export const LEVELS = {
     // Levels 51-95. Every level carries at least one unlock: the validator refuses a
     // dead level, which is what keeps the late game from becoming a silent XP corridor.
     51: ['rice'],
-    52: ['oil_press', 'isle_frutus'],
+    52: ['isle_frutus'],
     53: ['lamb'],
     54: ['expansion_10', 'doner_stand'],
-    55: ['olive', 'sauce_maker'],
-    56: ['tea_house', 'zoo_otter'],
+    55: ['olive', 'sauce_maker', 'oil_press'],
+    56: ['zoo_otter'],
     57: ['silo_titan_upgrade'],
     58: ['lavender', 'quail', 'isle_olivia', 'candle_maker'],
     59: ['expansion_11'],
     60: ['sushi_bar'],
     61: ['barn_titan_upgrade'],
-    62: ['tea_leaf', 'zoo_toucan'],
+    62: ['tea_leaf', 'zoo_toucan', 'tea_house'],
     63: ['expansion_12'],
     64: ['perfumery', 'alpaca'],
     65: ['golden_meadow'],

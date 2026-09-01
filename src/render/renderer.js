@@ -15,6 +15,12 @@
 // bounding box, roughly half the farm is unreachable — the expansions exist in data and the
 // player can never look at them.
 //
+// tickCamera() clamps EVERY FRAME, before drawFrame — so whatever bounds it clamps against are
+// the real, permanent ceiling on what the player can ever pan to, no matter how generous a
+// one-off boot()/focusTile() call was. It gets those bounds from a caller-registered provider
+// (see setBoundsProvider() below), not by importing state.js/farm.js itself — this module stays
+// free of game-logic imports and only knows FARM's static tile-space geometry via data.js.
+//
 // worldBounds()/clampCamera()/focusTile()/sortedObjects()/tileToScreen()/screenToTile() below
 // are REAL implementations (not Phase B stubs) — this module is a live defect fix, not a
 // content-stub contract. init() and drawFrame() stay stubs: they need a live canvas and the
@@ -57,6 +63,62 @@ let ctxRef = null;
 let viewportW = 1280;
 let viewportH = 800;
 
+/**
+ * Optional function returning the live camera bounds {minX,minY,maxX,maxY}, registered by the
+ * caller (main.js's boot()) via setBoundsProvider() below. tickCamera() and resizeToWindow() —
+ * every call site that clamps without an explicit `bounds` argument from its own caller — read
+ * this each time they run, instead of always falling back to clampCamera()'s bare worldBounds()
+ * default (start zone only).
+ *
+ * THIS IS THE FIX for the ceiling documented in the module header above and in tickCamera()'s
+ * own comment: tickCamera() runs every frame before drawFrame — before any pixel is ever
+ * painted — so whatever richer bounds boot() computed for its one-off focusTile() call used to
+ * get silently discarded on frame 1 and every frame after, because clampCamera(viewportW,
+ * viewportH) with no third argument always re-derives the bare default. Registering a provider
+ * here means every clamp call in this module (not just boot's one-shot focusTile) shares boot's
+ * real domain.
+ *
+ * A PROVIDER FUNCTION, not a one-shot bounds object, and registered rather than imported,
+ * because of two constraints together: (1) this module deliberately has no game-logic imports —
+ * it knows FARM's static tile-space geometry via data.js, but not which expansions a save has
+ * actually unlocked, which lives in state.js/farm.js; importing state.js here to look that up
+ * itself would break that boundary. (2) The unlocked set genuinely changes during play — an
+ * expansion unlocking must widen the clamp's domain immediately, not just at the next boot — so
+ * a snapshot bounds object captured once at boot would go stale the moment a player unlocks
+ * anything. A provider closing over live state, called fresh every time it's needed, keeps the
+ * domain current without either problem.
+ *
+ * Unset (the default, and the state every test in tools/test-camera.mjs runs under, since none
+ * of them register one) falls back to clampCamera()'s own bare default — safe because that
+ * default still fully enforces the void-protection contract, just over a smaller domain.
+ */
+let boundsProvider = null;
+
+/**
+ * Register the function tickCamera()/resizeToWindow() call to get the live camera bounds. Pass
+ * a function, or null/undefined to clear it back to the bare default. See `boundsProvider`'s own
+ * comment above for why this is a provider rather than a stored bounds object.
+ */
+export function setBoundsProvider(fn) {
+  boundsProvider = typeof fn === 'function' ? fn : null;
+}
+
+/**
+ * Current bounds from the registered provider, or undefined (letting clampCamera fall back to
+ * its own bare default). Wrapped so a throwing provider degrades to that safe bare clamp instead
+ * of breaking the render loop — the void-protection contract must hold even if a caller's
+ * provider is broken.
+ */
+function liveBounds() {
+  if (!boundsProvider) return undefined;
+  try {
+    return boundsProvider();
+  } catch (e) {
+    console.error(e);
+    return undefined;
+  }
+}
+
 function resizeToWindow() {
   if (!canvasRef) return;
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
@@ -69,7 +131,7 @@ function resizeToWindow() {
   canvasRef.style.height = `${h}px`;
   ctxRef = canvasRef.getContext('2d');
   ctxRef.setTransform(dpr, 0, 0, dpr, 0, 0);
-  clampCamera(viewportW, viewportH);
+  clampCamera(viewportW, viewportH, liveBounds());
 }
 
 /** Attach to the canvas, size to window * devicePixelRatio, listen for resize. */
@@ -358,13 +420,21 @@ export function drawFrame(now, world = {}) {
   sprites.drawGoldenHour(ctx, w, h);
 }
 
-/** Smoothly ease camera pan/zoom toward targets, then clamp; called each frame. */
+/**
+ * Smoothly ease camera pan/zoom toward targets, then clamp; called each frame.
+ *
+ * Clamps against liveBounds() — the caller-registered bounds provider (see setBoundsProvider()
+ * above) — rather than always taking clampCamera()'s bare start-zone-only default. Without this,
+ * whatever richer bounds boot() computed for its initial focusTile() call was discarded on the
+ * very next frame: this function runs before drawFrame, every frame, so its own unconditional
+ * bare clamp used to be the last word on where the camera could go, permanently.
+ */
 export function tickCamera(dt) {
   const t = Math.min(1, (dt ?? 1 / 60) * EASE);
   camera.x += (cameraTarget.x - camera.x) * t;
   camera.y += (cameraTarget.y - camera.y) * t;
   cameraTarget.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cameraTarget.zoom));
   camera.zoom += (cameraTarget.zoom - camera.zoom) * t;
-  clampCamera(viewportW, viewportH);
+  clampCamera(viewportW, viewportH, liveBounds());
   return camera;
 }

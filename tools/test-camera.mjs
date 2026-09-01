@@ -18,6 +18,7 @@ import {
   clampCamera,
   focusTile,
   tickCamera,
+  setBoundsProvider,
   sortedObjects,
   DISPATCH_KINDS,
 } from '../src/render/renderer.js';
@@ -27,6 +28,7 @@ const failures = [];
 
 function test(name, fn) {
   camera.x = 0; camera.y = 0; camera.zoom = 1; // reset shared camera state between tests
+  setBoundsProvider(null); // reset shared bounds-provider state between tests too
   try {
     fn();
     passed++;
@@ -434,20 +436,23 @@ test('boot: the starting fields are dramatically less clipped than before, and m
   // History: unfixed, the worst field sat 226px above the canvas. The first landed fix (the
   // clampCamera north/south asymmetry correction) got that to -24px, clearing 4 of 6. This
   // richer bounds+target computation gets the worst field to -8px — still not clear of the HUD,
-  // still 4 of 6, because of the ceiling documented next — but strictly less clipped, verified
-  // by direct calculation, not assumed.
+  // still 4 of 6 — but strictly less clipped, verified by direct calculation, not assumed.
   assert.ok(worstSy > -15,
     `worst-hidden starting field should be close to the verified -8px, got sy=${worstSy.toFixed(1)}`);
   assert.ok(clearOfHud >= 4,
     `expected at least 4 of the 6 starting fields fully clear of the HUD (sy >= ${HUD_INSET_PX}), got ${clearOfHud}/${fieldCount}`);
 
-  // NOT 6/6, and verified this specific richer bounds+target combination cannot get there: the
-  // real ceiling on the LIVE screen is renderer.tickCamera()'s own unconditional
-  // `clampCamera(viewportW, viewportH)` call — no bounds argument, so it always falls back to
-  // the bare start-zone-only worldBounds() — which runs every frame before drawFrame, including
-  // frame 1. See the "boot's richer framing does not survive tickCamera()" test below, which
-  // proves this directly rather than by argument. Reaching 6/6 needs tickCamera() (renderer.js)
-  // to be able to use real bounds, which is outside this module's ownership.
+  // Deliberately NOT 6/6 here, and that is no longer a ceiling — it's this test's own scope.
+  // This test calls focusTile() directly, exactly once, with no tickCamera() involved at all: it
+  // measures the single frame boot() computes before the game loop ever runs. The real live
+  // ceiling used to be renderer.tickCamera()'s own unconditional `clampCamera(viewportW,
+  // viewportH)` call — no bounds argument, so it always fell back to the bare start-zone-only
+  // worldBounds() every frame, discarding whatever boot() had just computed here. That is now
+  // fixed: renderer.setBoundsProvider() lets tickCamera() (and resizeToWindow()) clamp against
+  // the same rich bounds boot() uses, and main.js's boot() registers one. See "boot's richer
+  // framing SURVIVES tickCamera() once a bounds provider is registered" below, which proves 6/6
+  // once the real per-frame loop runs — simulated out to 300 frames, not assumed from this
+  // single-call test.
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -503,20 +508,30 @@ test('every STRUCTURES entry is reachable at zoom 1 except a documented diagonal
 });
 
 // ---------------------------------------------------------------------------------------------
-// The load-bearing discovery this fix is built on: boot()'s richer bounds+target computation
-// only controls the camera for the instant between boot() and the first animation frame.
+// The load-bearing discovery this fix was built on: boot()'s richer bounds+target computation
+// used to control the camera for only the instant between boot() and the first animation frame.
 // renderer.tickCamera() — called every frame, BEFORE drawFrame, so before any pixel is ever
-// painted — ends with `clampCamera(viewportW, viewportH)`, which takes no bounds argument and
-// therefore always falls back to the bare `worldBounds()` (start zone only). Proved directly
-// here rather than asserted from reasoning: simulate exactly what main.js's boot() does, then
-// run tickCamera() the way the real game loop does on its very first frame, and confirm the
-// camera lands back inside the bare, tiny window regardless of the richer target/bounds boot()
-// used. This is a pre-existing renderer.js limitation (tickCamera can't be given bounds by any
-// caller), out of this module's ownership — this test exists so nobody mistakes the boot() fix
-// above for reaching the live screen without checking.
+// painted — used to end with an unconditional `clampCamera(viewportW, viewportH)` that always
+// fell back to the bare `worldBounds()` (start zone only), discarding whatever boot() had just
+// computed. FIXED by renderer.setBoundsProvider(): a caller registers a function returning the
+// live bounds, and tickCamera() (and resizeToWindow()) clamp against that domain instead of the
+// bare default every time they run. main.js's boot() now registers one.
+//
+// The first test below still proves the OLD ceiling is real and still exists as a documented,
+// intentional fallback: with NO provider registered, tickCamera() must still behave exactly as
+// it always did (the bare start-zone-only clamp) — a caller that doesn't opt in gets the same
+// safe, if small, default it always got, never a crash and never an unclamped camera.
+//
+// Every test after it registers a provider (exactly as main.js's boot() now does) and proves the
+// fix by SIMULATING THE REAL FRAME LOOP — many tickCamera() calls in a row, not one call in
+// isolation — because that is the only way the original ceiling was ever actually found: a
+// single tickCamera() call looks identical whether or not a provider is wired correctly (the
+// ease step is a no-op the instant cameraTarget already equals camera, which is exactly the
+// state boot() leaves things in), and only clamping against the wrong bounds — repeatedly, the
+// way the live rAF loop actually runs it — reveals the regression.
 // ---------------------------------------------------------------------------------------------
 
-test("boot's richer framing does not survive tickCamera() — proof, not assumption, that the live ceiling is 4/6", () => {
+test('with NO bounds provider registered, tickCamera() still falls back to the bare start-zone-only clamp — the documented, intentional default for a caller that never opts in', () => {
   camera.x = 0; camera.y = 0; camera.zoom = 1;
   const [focusX, focusY] = bootFocusTargetFreshSave();
   focusTile(focusX, focusY, VIEWPORT_W, VIEWPORT_H, bootBounds()); // boot()'s own call
@@ -526,9 +541,8 @@ test("boot's richer framing does not survive tickCamera() — proof, not assumpt
   tickCamera(1 / 60); // exactly what the first requestAnimationFrame(loop) call runs
 
   assert.ok(camera.x !== beforeFrame1.x || camera.y !== beforeFrame1.y,
-    'expected tickCamera() to move the camera on frame 1 — if this ever stops firing, the ' +
-    "bare-bounds ceiling this test documents may no longer apply and the field-visibility " +
-    'test above should be re-verified for a possible 6/6.');
+    'expected tickCamera() to move the camera on frame 1 when no provider is registered — if ' +
+    'this ever stops firing, the fallback-clamp behaviour this test documents may have changed.');
 
   // Pin the EXACT landing spot, independently derived (same halfNorth arithmetic the "no wasted
   // slack" tests above already use), rather than a loose "somewhere inside a bounds box" check —
@@ -537,7 +551,7 @@ test("boot's richer framing does not survive tickCamera() — proof, not assumpt
   // true even if tickCamera() had (wrongly) kept the richer position, and would never go red.
   // Both focusX and focusY (~13.06, ~12.5) sit below the bare window's own lower edge, so the
   // expected landing spot is exactly that edge: bare.minX/minY + halfNorth.
-  const bare = worldBounds(); // the same call tickCamera() makes internally, independent of boot()
+  const bare = worldBounds(); // the same call tickCamera() makes internally when unprovided
   const T = TILE_BASE * 1;
   const dx = (VIEWPORT_W / 2) / T;
   const northSpan = targetRowPx(VIEWPORT_H) / (T / 2);
@@ -555,12 +569,104 @@ test("boot's richer framing does not survive tickCamera() — proof, not assumpt
 
   // And it stays there forever, not just for one frame — nothing updates cameraTarget once
   // boot() finishes (input.js's pan handling is still a Phase B stub), so the bare clamp is the
-  // permanent steady state, not a transient settling animation.
+  // permanent steady state when unprovided, not a transient settling animation.
   for (let f = 0; f < 60; f++) tickCamera(1 / 60);
   const steady = { x: camera.x, y: camera.y };
   for (let f = 0; f < 60; f++) tickCamera(1 / 60);
   assert.ok(Math.abs(camera.x - steady.x) < 1e-9 && Math.abs(camera.y - steady.y) < 1e-9,
     'expected the camera to have reached a permanent steady state well before 120 frames');
+});
+
+test("boot's richer framing SURVIVES tickCamera() once a bounds provider is registered — the fix, proven by simulating the real per-frame loop", () => {
+  camera.x = 0; camera.y = 0; camera.zoom = 1;
+  setBoundsProvider(bootBounds); // exactly what main.js's boot() now does
+  const [focusX, focusY] = bootFocusTargetFreshSave();
+  focusTile(focusX, focusY, VIEWPORT_W, VIEWPORT_H, bootBounds()); // boot()'s own call
+  cameraTarget.x = camera.x; cameraTarget.y = camera.y; cameraTarget.zoom = camera.zoom; // as boot() does right after
+
+  // Simulate the real rAF loop for 300 frames (five full seconds at 60fps) — not one call, and
+  // not fewer than the "does not survive" scenario above used, so this is a like-for-like proof
+  // rather than a weaker one.
+  for (let f = 0; f < 300; f++) tickCamera(1 / 60);
+
+  const EPS = 1e-9;
+  assert.ok(Math.abs(camera.x - focusX) < EPS,
+    `expected camera.x to stay exactly at the rich boot target ${focusX} across 300 frames with a provider registered, got ${camera.x}`);
+  assert.ok(Math.abs(camera.y - focusY) < EPS,
+    `expected camera.y to stay exactly at the rich boot target ${focusY} across 300 frames with a provider registered, got ${camera.y}`);
+
+  const fieldRow = FARM.startZone.y + 3;
+  let worstSy = Infinity;
+  let clearOfHud = 0;
+  for (let i = 0; i < NEW_GAME.fields; i++) {
+    const tx = FARM.startZone.x + 1 + i;
+    const [, sy] = tileToScreen(tx, fieldRow, VIEWPORT_W, VIEWPORT_H);
+    worstSy = Math.min(worstSy, sy);
+    if (sy >= HUD_INSET_PX) clearOfHud++;
+  }
+  // Verified exact value (computed independently before writing this assertion): 108.75px. The
+  // exact same computation with NO provider registered lands at -8px and clears only 4/6 — see
+  // the fallback test above. All 6 fields clearing the HUD, through the real frame loop, is the
+  // literal deliverable this fix exists to reach.
+  assert.ok(Math.abs(worstSy - 108.75) < 1e-6,
+    `expected the worst starting field to sit at the verified 108.75px once a provider is registered and the real frame loop runs, got ${worstSy}`);
+  assert.equal(clearOfHud, NEW_GAME.fields,
+    `expected all ${NEW_GAME.fields} starting fields clear of the HUD (sy >= ${HUD_INSET_PX}) once tickCamera() uses the real bounds every frame, got ${clearOfHud}/${NEW_GAME.fields}`);
+});
+
+/** Mirrors reachableStructureKeys() above but drives the camera through the real per-frame loop
+ * (tickCamera() easing toward cameraTarget over many frames) instead of focusTile()'s instant
+ * jump — proving tickCamera()'s own clamp, not just focusTile()'s, reaches every structure once
+ * a provider is registered. Registers `bootBounds` as the provider itself, since that is what
+ * every call needs and what main.js's boot() actually wires up. */
+function reachableStructureKeysViaFrameLoop(zoom) {
+  setBoundsProvider(bootBounds);
+  const reachable = [];
+  for (const [key, def] of Object.entries(STRUCTURES)) {
+    camera.x = 0; camera.y = 0; camera.zoom = 1;
+    const cx = def.pos.x + def.size[0] / 2;
+    const cy = def.pos.y + def.size[1] / 2;
+    cameraTarget.x = cx; cameraTarget.y = cy; cameraTarget.zoom = zoom;
+    for (let f = 0; f < 300; f++) tickCamera(1 / 60);
+    const [sx, sy] = tileToScreen(cx, cy, VIEWPORT_W, VIEWPORT_H);
+    if (sx >= 0 && sx <= VIEWPORT_W && sy >= 0 && sy <= VIEWPORT_H) reachable.push(key);
+  }
+  return reachable;
+}
+
+test('structure reachability survives the real per-frame tickCamera() loop too, once a provider is registered — same 17/22 at boot zoom and 22/22 zoomed in that focusTile() achieves directly', () => {
+  const reachableAtZoom1 = reachableStructureKeysViaFrameLoop(1);
+  const stillUnreachableAtZoom1 = Object.keys(STRUCTURES).filter((k) => !reachableAtZoom1.includes(k));
+  const expectedUnreachableAtZoom1 = ['boat_dock', 'museum_hall', 'laboratory', 'expedition_camp', 'zoo_gate'];
+  assert.deepEqual([...stillUnreachableAtZoom1].sort(), [...expectedUnreachableAtZoom1].sort(),
+    `expected exactly the documented diagonal-corner structures unreachable via the frame loop at zoom 1, got: [${stillUnreachableAtZoom1.join(', ')}]`);
+  assert.equal(reachableAtZoom1.length, 17,
+    `expected 17 of 22 structures reachable via the frame loop at zoom 1, got ${reachableAtZoom1.length}`);
+
+  const reachableAtMaxZoom = reachableStructureKeysViaFrameLoop(2.5);
+  assert.equal(reachableAtMaxZoom.length, 22,
+    `expected every structure reachable via the frame loop once zoomed in, got ${reachableAtMaxZoom.length}/22: missing [${Object.keys(STRUCTURES).filter((k) => !reachableAtMaxZoom.includes(k)).join(', ')}]`);
+});
+
+test('void protection through the REAL per-frame loop still holds once a provider is registered — the fix does not loosen the clamp into "no clamp"', () => {
+  // Same shape as "clamp keeps viewport inside bounds after a pan toward the SOUTH/EAST world
+  // edge" above, but driven through tickCamera()'s easing + a registered provider rather than a
+  // single clampCamera() call — proving the void-protection contract survives the exact code
+  // path this fix changed, not just the lower-level function it delegates to.
+  setBoundsProvider(bootBounds);
+  const bounds = bootBounds();
+  camera.x = bounds.minX; camera.y = bounds.minY; camera.zoom = 1;
+  cameraTarget.x = bounds.maxX + 100; cameraTarget.y = bounds.maxY + 100; cameraTarget.zoom = 1; // aim wildly past the edge
+  for (let f = 0; f < 300; f++) tickCamera(1 / 60);
+  assertViewportInsideBounds(bounds, 'after easing far past the south/east edge through the real frame loop with a provider registered');
+});
+
+test('a throwing bounds provider degrades tickCamera() to the safe bare clamp instead of crashing the frame or leaving the camera unclamped', () => {
+  setBoundsProvider(() => { throw new Error('boom — a broken provider must not break the render loop'); });
+  camera.x = 500; camera.y = 500; camera.zoom = 1; // wildly outside any real bounds
+  assert.doesNotThrow(() => tickCamera(1 / 60),
+    'a throwing bounds provider must not propagate out of tickCamera()');
+  assertViewportInsideBounds(worldBounds(), 'after a throwing provider — still clamped to the bare default, not left wherever the throw happened');
 });
 
 // ---------------------------------------------------------------------------------------------

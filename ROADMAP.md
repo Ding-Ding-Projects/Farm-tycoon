@@ -157,12 +157,18 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       judgement: below six the whole list is on screen and there is nothing to find. Verified live
       across 22 panels - 11 above the threshold have it, 11 below do not.
 
-- [ ] **The coins-per-second spread is 12x, and the bottom of the table is not worth crafting.**
-      Surfaced by `tools/test-economy.mjs`, which prints it on every run: the median recipe earns
-      0.045 coins per second of queue time, the best earns 0.541, and syrup earns 0.001 - 76 coins
-      of inputs become 78 over a full hour. Nothing is underwater, so nothing is broken, but a
-      recipe nobody would ever choose is dead content. This is a balance decision rather than an
-      invariant, which is why the tool reports it instead of failing on it.
+- [x] **The dead tail is gone; the spread is still wide and that is fine.** 23 recipes earned
+      under 0.010 coins per second of queue time - syrup turned 76 coins of sugar into 78 over a
+      full hour, which selling the sugar beat. Each was lifted by the SMALLEST amount clearing both
+      that floor and the project own documented 1.6x output-over-inputs rule, iterated to a fixed
+      point because butter and cheese and sugar are inputs to other recipes and lifting one lifts
+      its consumers. The worst margin in the game went from 0.0006 to 0.010 per second.
+
+      `tools/test-economy.mjs` now FAILS below 0.008 rather than reporting it, so the tail cannot
+      grow back. The remaining 11x spread between median and best is untouched on purpose: where a
+      recipe sits between decent and excellent is a design opinion, and a guard on that would be a
+      guard on taste. No migration was needed - prices are read from data.js and never written into
+      a save, so existing games picked up the new values on load.
 
 - [ ] Regatta league reward tables, Township community buildings past level 70, and
       per-expansion cost numbers were sourced from wiki text/images and never independently

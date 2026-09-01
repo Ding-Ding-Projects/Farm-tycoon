@@ -152,6 +152,38 @@ test('no recipe destroys value - crafting is never worse than selling the ingred
     'these cost the player money to make:\n        ' + traps.join('\n        '));
 });
 
+// The floor, which IS asserted, unlike the spread below it.
+//
+// Where a recipe sits between decent and excellent is a design opinion. Where it sits below "worth
+// doing at all" is not: a factory that turns 76 coins of sugar into 78 over a full hour is dead
+// content, because selling the sugar and walking away beats it. Measured before this was written,
+// six recipes earned under a hundredth of a coin a second and syrup earned 0.0006 - an hour of a
+// queue slot for two coins.
+//
+// The floor is deliberately well under the current worst (sweater, at exactly 0.010) rather than
+// tight against it. A guard set at the current minimum fails the moment anyone touches a price by
+// a rounding hair, and a guard that cries wolf gets muted; this one only fires on something
+// genuinely inert, which is what it is for.
+const DEAD_BELOW = 0.008;
+
+test(`no recipe earns less than ${DEAD_BELOW} coins per second - below that nobody would craft it`, () => {
+  const dead = [];
+  for (const b of Object.values(d.BUILDINGS)) {
+    for (const r of b.recipes || []) {
+      if (r.sink || !(r.time > 0)) continue;
+      let direct = 0;
+      for (const [ing, qty] of Object.entries(r.inputs || {})) direct += unitPrice(ing) * qty;
+      const cps = (unitPrice(r.id) - direct) / r.time;
+      if (cps < DEAD_BELOW) {
+        dead.push(`${r.id}: ${cps.toFixed(4)}/s (${direct} of inputs into ${unitPrice(r.id)} over ${r.time}s)`);
+      }
+    }
+  }
+  assert.equal(dead.length, 0,
+    'these cost more queue time than they are worth, so a player would sell the ingredients instead:\n        '
+    + dead.join('\n        '));
+});
+
 // Reported, never asserted. How much a recipe earns per second of queue time is a BALANCE
 // question, and the right answer is a design decision rather than an invariant - so this prints
 // the spread and the worst offenders and leaves the judgement to a person. It is here because a

@@ -6,9 +6,10 @@
 // Run: node tools/test-camera.mjs
 
 import assert from 'node:assert/strict';
-import { FARM } from '../src/data.js';
+import { FARM, STRUCTURES, NEW_GAME } from '../src/data.js';
 import {
   camera,
+  cameraTarget,
   TILE_BASE,
   HUD_INSET_PX,
   tileToScreen,
@@ -16,6 +17,7 @@ import {
   worldBounds,
   clampCamera,
   focusTile,
+  tickCamera,
   sortedObjects,
   DISPATCH_KINDS,
 } from '../src/render/renderer.js';
@@ -384,18 +386,42 @@ test('every far expansion within screen-width reach is reachable by focusTile at
 // The literal reported defect: at boot, the starting fields (src/state.js's
 // makeStartingFields(), planted at FARM.startZone.y + 3 — three rows north of the start zone's
 // own centre) must not render jammed against the top edge / behind the HUD. main.js's boot
-// sequence calls focusTile(startCenterX, startCenterY, vp.w, vp.h) with NO bounds argument, so
-// worldBounds() defaults to the padded start zone alone — reproduce that exact call here.
+// sequence now computes a real `bounds` (start zone ∪ every STRUCTURES entry, since buildWorld()
+// always draws all of them, locked/derelict included) and a real focus target (the centroid of
+// the save's placed farm objects plus whichever STRUCTURES are unlocked at its level) instead of
+// bare worldBounds() and the empty start zone's geometric centre — reproduce that exact
+// computation here, for a fresh level-1 save (unlockedZones=['start'], no farm objects beyond
+// the 6 starting fields, only barn+silo unlocked).
 // ---------------------------------------------------------------------------------------------
 
+/** Mirrors main.js's boot() bounds computation for a fresh save. */
+function bootBounds() {
+  return worldBounds(['start'], Object.values(STRUCTURES));
+}
+
+/** Mirrors main.js's boot() focus-target computation for a fresh level-1 save. */
+function bootFocusTargetFreshSave() {
+  const fieldRow = FARM.startZone.y + 3; // makeStartingFields()'s row
+  const fieldTiles = [];
+  for (let i = 0; i < NEW_GAME.fields; i++) fieldTiles.push({ x: FARM.startZone.x + 1 + i, y: fieldRow });
+  const unlockedStructures = Object.values(STRUCTURES).filter((d) => NEW_GAME.level >= d.unlockLevel);
+  const points = [
+    ...fieldTiles,
+    ...unlockedStructures.map((d) => ({ x: d.pos.x + d.size[0] / 2, y: d.pos.y + d.size[1] / 2 })),
+  ];
+  return [
+    points.reduce((sum, p) => sum + p.x, 0) / points.length,
+    points.reduce((sum, p) => sum + p.y, 0) / points.length,
+  ];
+}
+
 test('boot: the starting fields are dramatically less clipped than before, and most clear the HUD entirely', () => {
-  const startCenterX = FARM.startZone.x + FARM.startZone.w / 2;
-  const startCenterY = FARM.startZone.y + FARM.startZone.h / 2;
   camera.zoom = 1;
-  focusTile(startCenterX, startCenterY, VIEWPORT_W, VIEWPORT_H); // bounds defaults, as main.js calls it
+  const [focusX, focusY] = bootFocusTargetFreshSave();
+  focusTile(focusX, focusY, VIEWPORT_W, VIEWPORT_H, bootBounds()); // exactly what main.js's boot() now does
 
   const fieldRow = FARM.startZone.y + 3; // makeStartingFields()'s row
-  const fieldCount = 6; // NEW_GAME.fields
+  const fieldCount = NEW_GAME.fields;
   let worstSy = Infinity;
   let clearOfHud = 0;
   for (let i = 0; i < fieldCount; i++) {
@@ -405,24 +431,136 @@ test('boot: the starting fields are dramatically less clipped than before, and m
     if (sy >= HUD_INSET_PX) clearOfHud++;
   }
 
-  // Before this fix (symmetric half-extent clamp), every one of the 6 fields rendered behind
-  // the HUD, and the worst (field 1) was 226px ABOVE the top of the canvas entirely — verified
-  // by hand against the pre-fix formula before writing this test. That is the regression this
-  // guards against.
-  assert.ok(worstSy > -100,
-    `worst-hidden starting field should be far closer to on-screen than the old -226px, got sy=${worstSy.toFixed(1)}`);
-  assert.ok(clearOfHud >= fieldCount / 2,
-    `expected at least half the starting fields fully clear of the HUD (sy >= ${HUD_INSET_PX}), got ${clearOfHud}/${fieldCount}`);
+  // History: unfixed, the worst field sat 226px above the canvas. The first landed fix (the
+  // clampCamera north/south asymmetry correction) got that to -24px, clearing 4 of 6. This
+  // richer bounds+target computation gets the worst field to -8px — still not clear of the HUD,
+  // still 4 of 6, because of the ceiling documented next — but strictly less clipped, verified
+  // by direct calculation, not assumed.
+  assert.ok(worstSy > -15,
+    `worst-hidden starting field should be close to the verified -8px, got sy=${worstSy.toFixed(1)}`);
+  assert.ok(clearOfHud >= 4,
+    `expected at least 4 of the 6 starting fields fully clear of the HUD (sy >= ${HUD_INSET_PX}), got ${clearOfHud}/${fieldCount}`);
 
-  // NOTE: at this exact viewport (1280x800) the boot camera ends up pinned by the SOUTH/EAST
-  // void-protection constraint (bounds.maxX - halfSouth), not the north one, because
-  // worldBounds()'s default (no expansions, no structures — just the padded 12x12 start zone)
-  // is barely wider than the camera's own visible span at zoom 1. The "clamp reaches the
-  // south/east edge... with NO wasted slack" test above proves that constraint is already as
-  // tight as it can safely be. Closing the remaining gap for every field needs a wider boot
-  // viewport, a boot focus target closer to the fields themselves, or richer boot-time bounds
-  // (e.g. passing STRUCTURES into worldBounds()) — decisions that belong to src/main.js's boot
-  // sequence, outside this module's ownership.
+  // NOT 6/6, and verified this specific richer bounds+target combination cannot get there: the
+  // real ceiling on the LIVE screen is renderer.tickCamera()'s own unconditional
+  // `clampCamera(viewportW, viewportH)` call — no bounds argument, so it always falls back to
+  // the bare start-zone-only worldBounds() — which runs every frame before drawFrame, including
+  // frame 1. See the "boot's richer framing does not survive tickCamera()" test below, which
+  // proves this directly rather than by argument. Reaching 6/6 needs tickCamera() (renderer.js)
+  // to be able to use real bounds, which is outside this module's ownership.
+});
+
+// ---------------------------------------------------------------------------------------------
+// Structure reachability: buildWorld() (src/main.js) always draws every STRUCTURES entry, even
+// locked/derelict ones — "a level-90 system discoverable at level 5" only works if the camera
+// can actually be brought to look at it. With the bare start-zone-only worldBounds() (the old
+// boot() call's implicit default), verified only 1 of the 22 could ever be centred on-screen via
+// focusTile(); everything else sat outside that tiny domain and got clamped to its edge instead.
+// Unioning every STRUCTURES entry's real pos+size into the bounds (bootBounds() above) fixes the
+// domain itself, independent of whatever focus target a caller uses.
+// ---------------------------------------------------------------------------------------------
+
+function reachableStructureKeys(bounds, zoom) {
+  const reachable = [];
+  for (const [key, def] of Object.entries(STRUCTURES)) {
+    camera.x = 0; camera.y = 0; camera.zoom = zoom;
+    const cx = def.pos.x + def.size[0] / 2;
+    const cy = def.pos.y + def.size[1] / 2;
+    focusTile(cx, cy, VIEWPORT_W, VIEWPORT_H, bounds);
+    const [sx, sy] = tileToScreen(cx, cy, VIEWPORT_W, VIEWPORT_H);
+    if (sx >= 0 && sx <= VIEWPORT_W && sy >= 0 && sy <= VIEWPORT_H) reachable.push(key);
+  }
+  return reachable;
+}
+
+test('the bare start-zone-only domain (the old boot() default) can reach almost none of the 22 structures — the regression this fix closes', () => {
+  const reachable = reachableStructureKeys(worldBounds(), 1);
+  assert.ok(reachable.length <= 2,
+    `expected the bare start-zone-only domain to reach almost no structures (documents the bug), got ${reachable.length}/22: [${reachable.join(', ')}]`);
+});
+
+test('every STRUCTURES entry is reachable at zoom 1 except a documented diagonal-corner set, and every one is reachable once zoomed in', () => {
+  const bounds = bootBounds();
+  const reachableAtZoom1 = reachableStructureKeys(bounds, 1);
+  const stillUnreachableAtZoom1 = Object.keys(STRUCTURES).filter((k) => !reachableAtZoom1.includes(k));
+
+  // Verified exact set: these 5 sit in the far NE (laboratory/museum_hall/expedition_camp) or
+  // far SW (boat_dock/zoo_gate) corner of the grid — a diagonal extreme of both the (tx-ty) and
+  // (tx+ty) clamp axes at once, which is a screen-WIDTH limit (see the "far corner" reasoning
+  // earlier in this file for the expansion tests), not something this bounds fix controls.
+  const expectedUnreachableAtZoom1 = ['boat_dock', 'museum_hall', 'laboratory', 'expedition_camp', 'zoo_gate'];
+  assert.deepEqual([...stillUnreachableAtZoom1].sort(), [...expectedUnreachableAtZoom1].sort(),
+    `expected exactly the documented diagonal-corner structures unreachable at zoom 1, got: [${stillUnreachableAtZoom1.join(', ')}]`);
+  assert.ok(reachableAtZoom1.length >= 17,
+    `expected at least 17 of 22 structures reachable at zoom 1, got ${reachableAtZoom1.length}`);
+
+  // Zooming in (available to the player: camera.zoom goes up to ZOOM_MAX=2.5) shrinks the
+  // screen's world-space footprint, which is exactly what closes a screen-width limit — matches
+  // the same pattern the far-expansion zoom tests above already rely on.
+  const reachableAtMaxZoom = reachableStructureKeys(bounds, 2.5);
+  assert.equal(reachableAtMaxZoom.length, 22,
+    `expected every structure reachable once zoomed in, got ${reachableAtMaxZoom.length}/22: missing [${Object.keys(STRUCTURES).filter((k) => !reachableAtMaxZoom.includes(k)).join(', ')}]`);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The load-bearing discovery this fix is built on: boot()'s richer bounds+target computation
+// only controls the camera for the instant between boot() and the first animation frame.
+// renderer.tickCamera() — called every frame, BEFORE drawFrame, so before any pixel is ever
+// painted — ends with `clampCamera(viewportW, viewportH)`, which takes no bounds argument and
+// therefore always falls back to the bare `worldBounds()` (start zone only). Proved directly
+// here rather than asserted from reasoning: simulate exactly what main.js's boot() does, then
+// run tickCamera() the way the real game loop does on its very first frame, and confirm the
+// camera lands back inside the bare, tiny window regardless of the richer target/bounds boot()
+// used. This is a pre-existing renderer.js limitation (tickCamera can't be given bounds by any
+// caller), out of this module's ownership — this test exists so nobody mistakes the boot() fix
+// above for reaching the live screen without checking.
+// ---------------------------------------------------------------------------------------------
+
+test("boot's richer framing does not survive tickCamera() — proof, not assumption, that the live ceiling is 4/6", () => {
+  camera.x = 0; camera.y = 0; camera.zoom = 1;
+  const [focusX, focusY] = bootFocusTargetFreshSave();
+  focusTile(focusX, focusY, VIEWPORT_W, VIEWPORT_H, bootBounds()); // boot()'s own call
+  cameraTarget.x = camera.x; cameraTarget.y = camera.y; cameraTarget.zoom = camera.zoom; // as boot() does right after
+
+  const beforeFrame1 = { x: camera.x, y: camera.y };
+  tickCamera(1 / 60); // exactly what the first requestAnimationFrame(loop) call runs
+
+  assert.ok(camera.x !== beforeFrame1.x || camera.y !== beforeFrame1.y,
+    'expected tickCamera() to move the camera on frame 1 — if this ever stops firing, the ' +
+    "bare-bounds ceiling this test documents may no longer apply and the field-visibility " +
+    'test above should be re-verified for a possible 6/6.');
+
+  // Pin the EXACT landing spot, independently derived (same halfNorth arithmetic the "no wasted
+  // slack" tests above already use), rather than a loose "somewhere inside a bounds box" check —
+  // a containment check alone is too weak here: the rich bounds this test is trying to rule out
+  // are a SUPERSET of the bare ones, so "camera.x sits inside the rich bounds" would ALSO be
+  // true even if tickCamera() had (wrongly) kept the richer position, and would never go red.
+  // Both focusX and focusY (~13.06, ~12.5) sit below the bare window's own lower edge, so the
+  // expected landing spot is exactly that edge: bare.minX/minY + halfNorth.
+  const bare = worldBounds(); // the same call tickCamera() makes internally, independent of boot()
+  const T = TILE_BASE * 1;
+  const dx = (VIEWPORT_W / 2) / T;
+  const northSpan = targetRowPx(VIEWPORT_H) / (T / 2);
+  const halfNorth = (dx + northSpan) / 2;
+  const expectedX = bare.minX + halfNorth;
+  const expectedY = bare.minY + halfNorth;
+  const EPS = 1e-6;
+  assert.ok(Math.abs(camera.x - expectedX) < EPS,
+    `expected the post-tickCamera() camera.x to sit exactly at the bare window's edge ${expectedX}, got ${camera.x} (richer target was ${focusX})`);
+  assert.ok(Math.abs(camera.y - expectedY) < EPS,
+    `expected the post-tickCamera() camera.y to sit exactly at the bare window's edge ${expectedY}, got ${camera.y} (richer target was ${focusY})`);
+  // And it is genuinely far from the rich target this test set up, not a coincidental overlap.
+  assert.ok(Math.abs(camera.x - focusX) > 0.5,
+    `expected the post-tickCamera() position to have moved well away from the rich boot target ${focusX}, got ${camera.x}`);
+
+  // And it stays there forever, not just for one frame — nothing updates cameraTarget once
+  // boot() finishes (input.js's pan handling is still a Phase B stub), so the bare clamp is the
+  // permanent steady state, not a transient settling animation.
+  for (let f = 0; f < 60; f++) tickCamera(1 / 60);
+  const steady = { x: camera.x, y: camera.y };
+  for (let f = 0; f < 60; f++) tickCamera(1 / 60);
+  assert.ok(Math.abs(camera.x - steady.x) < 1e-9 && Math.abs(camera.y - steady.y) < 1e-9,
+    'expected the camera to have reached a permanent steady state well before 120 frames');
 });
 
 // ---------------------------------------------------------------------------------------------

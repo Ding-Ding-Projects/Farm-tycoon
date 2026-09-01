@@ -49,7 +49,7 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 - [x] Two design fonts vendored locally (27 faces / 947 KiB via `tools/vendor-fonts.mjs`),
       used by both the game and the GitHub Pages site — zero CDN requests
 - [x] Real application icon generated in pure code (`tools/make-icon.mjs`), no downloaded art
-- [ ] HUD direction alternatives B/C/D (`design/HUD-B-*`, `HUD-C-*`, `HUD-D-*`) and the
+- [x] HUD direction alternatives B/C/D (`design/HUD-B-*`, `HUD-C-*`, `HUD-D-*`) and the
       interactive prototype remain reference-only by design — direction A shipped, the others
       were never meant to ship alongside it
 

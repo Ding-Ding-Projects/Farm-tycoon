@@ -210,6 +210,19 @@ const OPTIMAL = {
       return { held: rising, heldMs: 16 };
     };
   },
+
+  skim_curds: () => {
+    // One sweep per band, LIFTING the paddle between bands. Snapping the cursor back with the
+    // paddle still down reads as doubling back, which is correct behaviour by the verb and was
+    // a bug in the first driver written for it.
+    let x = 0;
+    let band = -1;
+    return (snap) => {
+      if (snap.band !== band) { band = snap.band; x = 0; return { x: 0, y: (snap.band + 0.5) * snap.bandHeight, down: false }; }
+      x = Math.min(1, x + 0.03);
+      return { x, y: (snap.band + 0.5) * snap.bandHeight, down: true };
+    };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

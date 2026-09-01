@@ -411,7 +411,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'cream',       inputs: { milk: 1 },              time: 600,  xp: 3, unlockLevel: 6 },
       { id: 'butter',      inputs: { cream: 1, milk: 1 },    time: 1500, xp: 5, unlockLevel: 6 },
-      { id: 'cheese',      inputs: { milk: 3 },              time: 2700, xp: 7, unlockLevel: 6 },
+      { id: 'cheese',      inputs: { milk: 3 },              time: 2700, xp: 7, unlockLevel: 6,
+        play: { stages: [{ verb: 'skim_curds' }] } },
       { id: 'goat_cheese', inputs: { goat_milk: 2 },         time: 3600, xp: 9, unlockLevel: 19 },
     ],
   },
@@ -1075,6 +1076,12 @@ export const VERBS = {
     purpose: 'Steamed without scalding, the milk stays sweet.',
     hint: 'Hold it in the band - but come off whenever it scalds, then build back.',
     stageClass: 'stage-gauge', durationMs: 14000,
+  },
+  skim_curds: {
+    name: 'Skim the Curds', verbWord: 'skim', family: 'path',
+    purpose: 'Gathered in one pass, the curds knit into a firm wheel.',
+    hint: 'One clean sweep across each band. Doubling back spreads the curds apart again.',
+    stageClass: 'stage-skim', durationMs: 13000,
   },
 };
 export const QUALITY = {

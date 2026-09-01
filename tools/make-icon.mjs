@@ -16,7 +16,7 @@
 // Run: node tools/make-icon.mjs
 
 import { deflateSync } from 'node:zlib';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -311,3 +311,51 @@ writeFileSync(path.join(outDir, 'icon.png'), masterPng);
 const magicOk = icoBuffer[0] === 0x00 && icoBuffer[1] === 0x00 && icoBuffer[2] === 0x01 && icoBuffer[3] === 0x00;
 console.log(`build/icon.ico written: ${icoBuffer.length} bytes, magic ${magicOk ? 'OK (00 00 01 00)' : 'WRONG'}, ${ICO_SIZES.length} images: ${ICO_SIZES.join(', ')}`);
 console.log(`build/icon.png written: ${masterPng.length} bytes, ${MASTER_SIZE}x${MASTER_SIZE}`);
+
+// ---------------------------------------------------------------------------
+// Android launcher icons
+//
+// Generated here rather than committed, for the same reason the .ico is: this project ships no
+// binary assets, and a mipmap set checked into Git is a binary that drifts from the code that
+// drew it. `npm run android:add` copies whatever is in build/android/ into the native project.
+//
+// The five buckets are Android's standard launcher densities. The foreground layer is drawn at
+// 108dp-equivalent with the art inset to the 72dp safe zone, because an adaptive icon is masked
+// to whatever shape the launcher wants (circle, squircle, rounded square) and anything outside
+// that safe zone can be cropped away by the mask.
+// ---------------------------------------------------------------------------
+const ANDROID_DENSITIES = {
+  mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192,
+};
+const ADAPTIVE_SCALE = 108 / 72; // full canvas / safe zone
+
+const androidDir = path.join(outDir, 'android');
+mkdirSync(androidDir, { recursive: true });
+
+const written = [];
+for (const [density, px] of Object.entries(ANDROID_DENSITIES)) {
+  // Square launcher icon (legacy + round), drawn at the plain density size.
+  const legacy = encodePNG(drawIcon(px));
+  writeFileSync(path.join(androidDir, `ic_launcher-${density}.png`), legacy);
+
+  // Adaptive foreground: a larger canvas so the mask has margin to cut into.
+  const fgPx = Math.round(px * ADAPTIVE_SCALE);
+  const fg = encodePNG(drawIcon(fgPx));
+  writeFileSync(path.join(androidDir, `ic_launcher_foreground-${density}.png`), fg);
+
+  written.push(`${density}:${px}/${fgPx}`);
+}
+
+// Prove each emitted file is a real PNG rather than trusting the encoder: the 8-byte signature
+// is 89 50 4E 47 0D 0A 1A 0A. A renamed or truncated file would sail past a filename-only check.
+const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+let verified = 0;
+for (const [density] of Object.entries(ANDROID_DENSITIES)) {
+  for (const name of [`ic_launcher-${density}.png`, `ic_launcher_foreground-${density}.png`]) {
+    const buf = readFileSync(path.join(androidDir, name));
+    const ok = PNG_SIG.every((b, i) => buf[i] === b);
+    if (!ok) throw new Error(`${name} is not a valid PNG - refusing to claim it was generated`);
+    verified += 1;
+  }
+}
+console.log(`build/android/ written: ${verified} PNGs verified by signature (${written.join(', ')})`);

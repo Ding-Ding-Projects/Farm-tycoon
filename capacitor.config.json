@@ -1,0 +1,14 @@
+{
+  "appId": "com.farmtycoon.game",
+  "appName": "Farm Tycoon",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -39,4 +39,8 @@ A content addition should touch **only** `data.js`, `sprites.js`, and (if level-
 
 - Orders/truck/boat generators must not request locked items — they draw from unlocked
   content only; verify a new high-level item doesn't appear in low-level orders.
-- Run the `playtest` skill; visually check the new sprite at all zoom levels via `run-game`.
+- Run `npm test` (validates `data.js` cross-references — id typos, duplicate ids, orphaned
+  unlock refs — before anything else does) then the `playtest` skill; visually check the new
+  sprite at all zoom levels via `run-game`.
+- If the change should ship, the `release-ops` skill covers building the actual Windows
+  installer and what CI does (and does not) verify before publishing it.

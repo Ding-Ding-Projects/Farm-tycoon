@@ -49,6 +49,8 @@ let lastFrameMs = 0;
 // long enough that real, non-zero progress lands on every call instead.
 let lastHeliTick = 0;
 let lastRegattaTick = 0;
+let lastVisitorTick = 0;
+const VISITOR_TICK_INTERVAL_MS = 60 * 1000; // extras.maybeSpawnVisitor rolls 2% per call: once a minute, not once a frame
 const REGATTA_TICK_INTERVAL_MS = 5 * 60 * 1000; // 5 min — safely above the ~90s worst case
 // (slowest rival profile, unluckiest jitter) neighbours.simulate() needs to round up to ≥1 point.
 
@@ -291,6 +293,15 @@ function tickAllSystems(now) {
   safeCall(zoo.tick, now);
   safeCall(extras.tickEvents, now);
   safeCall(foraging.tick, now);
+  // The order board used to refill only while its panel was open, so a player who left it shut
+  // for an hour came back to the same six orders. Idempotent: it only generates into a slot
+  // whose cooldown has passed.
+  safeCall(orders.refreshBoard, now);
+  // NPC visitors (extras.js) had no caller at all. Throttled: the chance is per call.
+  if (now - lastVisitorTick >= VISITOR_TICK_INTERVAL_MS) {
+    lastVisitorTick = now;
+    safeCall(extras.maybeSpawnVisitor, now);
+  }
 
   // lab/newspaper/coop resolve elapsed time via a one-shot readyAt check or a staleness/
   // boundary comparison (see each module's own tick — none of them floor/round a fractional
@@ -317,6 +328,55 @@ function tickAllSystems(now) {
 // than restating what it does. Harmless for the shipped boot path — nothing here changes
 // because these are now reachable from outside the module.
 export { tickAllSystems, buildWorld };
+
+/**
+ * Shift every stored wall-clock stamp back by `ms`, simulating elapsed time, then tick every
+ * system so the skipped time resolves. The playtest skill's backbone (window.__farmDebug.timeSkip
+ * delegates here); exported so tools/test-ui-contracts.mjs can prove it reaches every timer.
+ */
+export function debugTimeSkip(ms) {
+  const s = state.state;
+  if (!s) return;
+  const shift = (obj, key) => { if (obj && typeof obj[key] === 'number' && obj[key] > 0) obj[key] -= ms; };
+  for (const obj of s.farm.objects) { shift(obj, 'readyAt'); shift(obj, 'plantedAt'); }
+  for (const entry of s.production) shift(entry, 'readyAt');
+  // Every system keeps absolute stamps under its OWN names. The truck and the boat never had a
+  // `readyAt` - which is what this used to shift on them, i.e. nothing - so a playtest that
+  // leaned on timeSkip silently never exercised the truck, the boat, the board's cooldowns,
+  // trains, planes, the zoo, the merge board, co-op requests, shop listings or island voyages.
+  for (const slot of s.orders?.board || []) shift(slot, 'readyAt');
+  shift(s.orders?.truck, 'nextSpawnAt'); shift(s.orders?.truck, 'spawnedAt');
+  for (const key of ['departsAt', 'dockedAt', 'nextSpawnAt']) shift(s.orders?.boat, key);
+  for (const listing of s.shop?.listings || []) shift(listing, 'readyAt');
+  for (const node of s.foraging?.nodes || []) shift(node, 'readyAt');
+  shift(s.lab?.active, 'readyAt');
+  shift(s.fishing?.cast, 'readyAt');
+  for (const sys of [s.trains, s.airport]) {
+    shift(sys, 'returningAt');
+    shift(sys?.current, 'departsBy');
+    shift(sys?.current, 'arrivedAt');
+  }
+  for (const enc of Object.values(s.zoo?.enclosures || {})) { shift(enc, 'readyAt'); shift(enc, 'fedAt'); }
+  shift(s.zoo, 'lastIncomeAt');
+  shift(s.merge, 'energyUpdatedAt');
+  for (const req of s.coop?.requests || []) shift(req, 'readyAt');
+  shift(s.islands?.voyage, 'readyAt');
+  for (const trip of s.expeditions?.active || []) shift(trip, 'readyAt');
+  shift(s.newspaper, 'generatedAt');
+  shift(s.regatta, 'endsAt');
+  // helicopter/regatta resolve elapsed time from their OWN baseline field, not a fixed
+  // readyAt - shift that instead so tickAllSystems() below actually sees the skipped time
+  // (and reset this file's own loop throttles so they do not swallow the very tick that is
+  // supposed to make it visible).
+  shift(s.helicopter, 'fuelUpdatedAt');
+  shift(s.helicopter?.current, 'returningAt');
+  for (const r of s.regatta?.rivals || []) shift(r, 'lastTickAt');
+  lastHeliTick = 0;
+  lastRegattaTick = 0;
+  lastVisitorTick = 0;
+  tickAllSystems(Date.now());
+}
+
 
 function loop(nowMs) {
   if (!running) return;
@@ -456,34 +516,7 @@ function boot() {
   window.__farmDebug = {
     get state() { return state.state; },
     /** Shift every stored readyAt timestamp back by ms, simulating elapsed time. */
-    timeSkip(ms) {
-      const s = state.state;
-      if (!s) return;
-      for (const obj of s.farm.objects) {
-        if (obj.readyAt) obj.readyAt -= ms;
-      }
-      for (const entry of s.production) {
-        if (entry.readyAt) entry.readyAt -= ms;
-      }
-      if (s.orders?.truck?.readyAt) s.orders.truck.readyAt -= ms;
-      if (s.orders?.boat?.readyAt) s.orders.boat.readyAt -= ms;
-      for (const node of s.foraging?.nodes || []) {
-        if (node.readyAt) node.readyAt -= ms;
-      }
-      if (s.lab?.active?.readyAt) s.lab.active.readyAt -= ms;
-      // helicopter/regatta resolve elapsed time from their OWN baseline field, not a fixed
-      // readyAt — shift that instead so tickAllSystems() below actually sees the skipped time
-      // (and reset this file's own loop throttle so it does not swallow the very tick that is
-      // supposed to make it visible).
-      if (typeof s.helicopter?.fuelUpdatedAt === 'number') s.helicopter.fuelUpdatedAt -= ms;
-      if (s.helicopter?.current?.returningAt) s.helicopter.current.returningAt -= ms;
-      for (const r of s.regatta?.rivals || []) {
-        if (r.lastTickAt) r.lastTickAt -= ms;
-      }
-      lastHeliTick = 0;
-      lastRegattaTick = 0;
-      tickAllSystems(Date.now());
-    },
+    timeSkip(ms) { debugTimeSkip(ms); },
     /** Grant qty of an item id straight into the appropriate storage bucket. */
     give(itemId, qty = 1) {
       const s = state.state;

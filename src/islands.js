@@ -88,7 +88,7 @@ export function collect() {
 }
 
 /** Advance the voyage timer; called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   // Timers are absolute wall-clock readyAt values; nothing to advance here beyond letting
   // pendingCargo()/collect() compare against `now` themselves once readyAt has passed —
   // arbitrary elapsed (including days offline) resolves correctly with no extra bookkeeping.

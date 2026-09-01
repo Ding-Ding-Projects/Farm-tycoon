@@ -117,7 +117,7 @@ function findFreeTile() {
 }
 
 /** Place and respawn nodes, honouring maxActive, globalMaxActive and offlineRespawnCap. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   const spawned = [];
   const countByType = {};
   for (const n of state.foraging.nodes) countByType[n.type] = (countByType[n.type] || 0) + 1;

@@ -393,6 +393,48 @@ test('researched effects reach their consumers: irrigation shortens the grow tim
   assert.equal(storage.capacity('silo'), siloBase + LAB.tree.granary_1.effect.siloCapBonus, 'Granary I is real silo room');
 });
 
+test('a mini-event has a claim path: one tier, its data threshold unscaled, paid once', () => {
+  const s = freshState();
+  s.event = null;
+  const tuesday = new Date(2027, 0, 5, 12, 0, 0).getTime();
+  extras.tickEvents(tuesday);
+  const ev = extras.activeWeekendEvent();
+  assert.ok(ev && ev.kind === 'mini', 'setup: a mini-event runs on a Tuesday');
+  const tiers = extras.eventTiers();
+  assert.equal(tiers.length, 1);
+  assert.equal(tiers[0].tier, 'bronze');
+  assert.equal(tiers[0].threshold, ev.thresholds[0], 'unscaled');
+  s.event.points = tiers[0].threshold - 1;
+  assert.equal(extras.claimEventTier('bronze'), false, 'one short');
+  s.event.points = tiers[0].threshold;
+  // A level-99 save unlocks every level achievement (and their diamonds) on its first coin
+  // payout; settle that first so the baseline below measures the event reward alone.
+  extras.checkAchievements();
+  const coins = s.coins;
+  const diamonds = s.diamonds;
+  assert.equal(extras.claimEventTier('bronze'), true);
+  const r = tiers[0].reward;
+  if (r.coins) assert.equal(s.coins, coins + r.coins);
+  if (r.diamonds) assert.equal(s.diamonds, diamonds + r.diamonds);
+  assert.equal(extras.claimEventTier('bronze'), false, 'never twice');
+});
+
+test('a weekend gold reward that is a decoration, an item or vouchers lands where it belongs', () => {
+  const s = freshState();
+  s.event = null;
+  s.vouchers = 0;
+  const friday = new Date(2027, 0, 1, 0, 0, 1).getTime();
+  extras.tickEvents(friday);
+  const gold = extras.eventTiers().find((t) => t.tier === 'gold');
+  assert.ok(gold, 'a weekend event has a gold tier');
+  s.event.points = 1e9;
+  assert.equal(extras.claimEventTier('gold'), true);
+  const r = gold.reward;
+  if (r.decoration) assert.equal(s.decorate.owned[r.decoration], 1, 'a decoration is owned, not barn stock');
+  if (r.item) assert.ok((s.barn.items[r.item] || 0) >= 1 || s.coins > 0, 'an item is stored (or paid out when full)');
+  if (r.vouchers) assert.equal(s.vouchers, r.vouchers);
+});
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) {
   console.log('\nFailures:');

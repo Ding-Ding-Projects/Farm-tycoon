@@ -13,7 +13,11 @@ export const SAVE_KEY = 'farm-tycoon-save';
 // future key added to the shape means bumping this again and adding a migration in
 // MIGRATIONS — otherwise an existing save loads with the new key undefined and every consumer
 // starts branching on absence.
-export const SAVE_VERSION = 4;
+// v4 -> v5: settings.dayCycle (the day/night light over the farm, default on). Also from v5,
+// load() default-fills ANY top-level key a save lacks from newGameState(), so a key added to
+// the shape can never again reach a consumer as undefined - the migrations stay as the record
+// of what each version changed, and the fill is the safety net under them.
+export const SAVE_VERSION = 5;
 
 // localStorage is a browser/Electron-renderer global. The game itself never runs anywhere
 // else, but tools/test-core.mjs exercises this module under plain Node, which has no such
@@ -172,7 +176,7 @@ export function newGameState() {
     daily: { lastSpinAt: 0, streak: 0 },
     event: null,
     stats: {},
-    settings: { sound: true, autosaveInterval: 10, assist: false, autoFinish: false },
+    settings: { sound: true, autosaveInterval: 10, assist: false, autoFinish: false, dayCycle: true },
 
     // Expansion systems. Seeded empty rather than left absent, so Phase B never has to branch
     // on whether a key exists — only on whether it holds anything yet.
@@ -258,7 +262,35 @@ const MIGRATIONS = {
     if (obj.settings.autoFinish === undefined) obj.settings.autoFinish = false;
     return obj;
   },
+  // v4 -> v5: the day/night cycle setting. Default ON, which is the new look; a player who
+  // prefers the fixed golden hour turns it off in Settings.
+  4: (obj) => {
+    if (!obj.settings) obj.settings = { sound: true, autosaveInterval: 10, assist: false, autoFinish: false };
+    if (obj.settings.dayCycle === undefined) obj.settings.dayCycle = true;
+    return obj;
+  },
 };
+
+/**
+ * Seed every top-level key (and every settings key) a loaded save lacks from a fresh game.
+ * A v1/v2 save migrated forward still lacked workshop/expeditions/museum/lab/helicopter/
+ * islands/mine/foraging/newspaper/collections/decorate/photo/fishing/achievements/daily/
+ * event/shop/vouchers/pets, because the migrations only ever added the keys their own version
+ * introduced - and buildWorld() then threw every frame on s.foraging.nodes. Existing keys are
+ * never touched.
+ */
+function fillDefaults(obj) {
+  const fresh = newGameState();
+  for (const [key, value] of Object.entries(fresh)) {
+    if (!(key in obj) || obj[key] === undefined) obj[key] = value;
+  }
+  if (obj.settings && typeof obj.settings === 'object') {
+    for (const [key, value] of Object.entries(fresh.settings)) {
+      if (obj.settings[key] === undefined) obj.settings[key] = value;
+    }
+  }
+  return obj;
+}
 
 function migrate(obj) {
   let v = obj.version;
@@ -316,7 +348,7 @@ export function load() {
     return state;
   }
 
-  state = parsed;
+  state = fillDefaults(parsed);
   return state;
 }
 
@@ -351,7 +383,7 @@ export function importSave(json) {
   if (parsed.version < SAVE_VERSION) parsed = migrate(parsed);
   if (!isValidSave(parsed) || parsed.version !== SAVE_VERSION) return false;
 
-  state = parsed;
+  state = fillDefaults(parsed);
   save();
   return true;
 }

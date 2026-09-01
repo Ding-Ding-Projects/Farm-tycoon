@@ -38,10 +38,11 @@ import * as placement from './placement.js';
 import * as renderer from './render/renderer.js';
 import * as effects from './render/effects.js';
 import * as storage from './storage.js';
+import * as motion from './motion.js';
 import {
   CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
   ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
-  COOP, REGATTA, PHOTO, PETS, ACHIEVEMENTS, SHOP, COLLECTIONS,
+  COOP, REGATTA, PHOTO, PETS, ACHIEVEMENTS, SHOP, COLLECTIONS, DECORATIONS, EVENTS, STORAGE,
 } from './data.js';
 
 // ---------------------------------------------------------------------------
@@ -164,13 +165,16 @@ function screenPointOf(obj) {
 export function updateHud() {
   if (!state || !el.coinsValue) return;
   syncDockVisibility();
+  syncEventBanner(Date.now());
   const siloUsed = Object.values(state.silo.items).reduce((a, b) => a + b, 0);
   const barnUsed = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
   const level = state.level;
-  const cur = LEVELS.xpForLevel ? LEVELS.xpForLevel(level) : (LEVELS.thresholds?.[level] ?? 0);
-  const next = LEVELS.xpForLevel ? LEVELS.xpForLevel(level + 1) : (LEVELS.thresholds?.[level + 1] ?? (cur + 100));
-  const span = Math.max(1, next - cur);
-  const frac = Math.max(0, Math.min(1, (state.xp - cur) / span));
+  // state.xp is the progress WITHIN the level (economy.addXp subtracts a level's cost on every
+  // level-up) and LEVELS.xpForLevel(n) is the cost of level n -> n+1. The old maths read those
+  // costs as cumulative thresholds, so the ring showed (xp - cost)/(nextCost - cost): negative,
+  // clamped to zero, for the whole of every level.
+  const need = Math.max(1, LEVELS.xpForLevel ? LEVELS.xpForLevel(level) : 100);
+  const frac = level >= LEVELS.maxLevel ? 1 : Math.max(0, Math.min(1, state.xp / need));
 
   const siloCap = storage.capacity('silo'), barnCap = storage.capacity('barn');
   const key = `${state.coins}|${state.diamonds}|${siloUsed}|${siloCap}|${barnUsed}|${barnCap}|${level}|${frac.toFixed(3)}`;
@@ -183,6 +187,13 @@ export function updateHud() {
   el.barnValue.textContent = `${barnUsed}/${barnCap}`;
   el.levelNumber.textContent = String(level);
 
+  // The live ring is the conic-gradient background driven by --xp (styles.css); nothing set it,
+  // so every badge showed the stylesheet's 72% placeholder. The SVG ring below is display:none
+  // and kept only as the no-CSS fallback.
+  if (el.levelBadge.style) {
+    if (typeof el.levelBadge.style.setProperty === 'function') el.levelBadge.style.setProperty('--xp', frac.toFixed(3));
+    else el.levelBadge.style['--xp'] = frac.toFixed(3);
+  }
   const ring = el.levelBadge.querySelector('.progress-ring');
   if (ring) {
     const r = 28, c = 2 * Math.PI * r;
@@ -209,18 +220,47 @@ export function toast(message, kind = 'info') {
 // ---------------------------------------------------------------------------
 // Modal (yes/no confirms, level-up popup, etc.)
 // ---------------------------------------------------------------------------
-export function openModal(html, onClose) {
+let modalOpts = null;
+
+/**
+ * Open the modal. `opts`: { onClose, dismissible (default true), onDismiss, label }. A backdrop
+ * click or Escape DISMISSES: nothing for a non-dismissible modal, the caller's own route out when
+ * it gave one (the stage player leaves through its shell so the game loop is torn down, never
+ * orphaned), otherwise a plain close. The old (html, onClose) shape still works.
+ */
+export function openModal(html, opts = {}) {
+  if (typeof opts === 'function') opts = { onClose: opts };
+  modalOpts = { dismissible: opts.dismissible !== false, onClose: opts.onClose || null, onDismiss: opts.onDismiss || null };
   el.modal.hidden = false;
   el.modalCard.innerHTML = html;
-  el.modal.onclick = (e) => { if (e.target === el.modal) closeModal(onClose); };
+  if (typeof el.modalCard.setAttribute === 'function') {
+    el.modalCard.setAttribute('role', 'dialog');
+    el.modalCard.setAttribute('aria-modal', 'true');
+    if (opts.label) el.modalCard.setAttribute('aria-label', opts.label);
+    else if (typeof el.modalCard.removeAttribute === 'function') el.modalCard.removeAttribute('aria-label');
+  }
+  el.modal.onclick = (e) => { if (e.target === el.modal) dismissModal(); };
   const closeBtn = el.modalCard.querySelector('[data-close]');
-  if (closeBtn) closeBtn.addEventListener('click', () => closeModal(onClose));
+  if (closeBtn) closeBtn.addEventListener('click', () => closeModal());
   return el.modalCard; // returned so a caller can render a live surface into it
 }
+export function isModalOpen() { return !!el.modal && !el.modal.hidden; }
+/** What a backdrop click or Escape does. Returns whether anything happened. */
+export function dismissModal() {
+  if (!isModalOpen() || !modalOpts) return false;
+  if (!modalOpts.dismissible) return false;
+  if (modalOpts.onDismiss) { modalOpts.onDismiss(); return true; }
+  closeModal();
+  return true;
+}
 export function closeModal(onClose) {
+  if (!el.modal) return;
+  const opts = modalOpts;
+  modalOpts = null;
   el.modal.hidden = true;
   el.modalCard.innerHTML = '';
-  if (onClose) onClose();
+  const cb = onClose || (opts && opts.onClose);
+  if (cb) cb();
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +274,13 @@ export function openRadial(screenX, screenY, options, ctx = null) {
   radial.hidden = false;
   const n = options.length;
   const radius = n <= 1 ? 0 : 74;
+  // The strip under the ring names the option under the pointer (or keyboard focus); it used to
+  // name options[0] whatever you hovered.
+  const label = document.createElement('div');
+  label.className = 'radial-label';
+  label.style.left = `${screenX}px`;
+  label.style.top = `${screenY + radius + 40}px`;
+  label.textContent = options[0]?.sub || '';
   options.forEach((opt, i) => {
     const angle = n === 1 ? -Math.PI / 2 : (-Math.PI / 2) + (i / n) * Math.PI * 2;
     const bx = screenX + Math.cos(angle) * radius;
@@ -252,16 +299,12 @@ export function openRadial(screenX, screenY, options, ctx = null) {
         try { opt.onSelect && opt.onSelect(); } catch (err) { console.error(err); }
       });
     }
+    const show = () => { label.textContent = opt.sub || opt.label || ''; };
+    btn.addEventListener('mouseenter', show);
+    btn.addEventListener('focus', show);
     radial.appendChild(btn);
   });
-  if (options.length) {
-    const label = document.createElement('div');
-    label.className = 'radial-label';
-    label.style.left = `${screenX}px`;
-    label.style.top = `${screenY + radius + 40}px`;
-    label.textContent = options[0]?.sub || '';
-    radial.appendChild(label);
-  }
+  if (options.length) radial.appendChild(label);
 }
 export function closeRadial() {
   if (!el.radial) return;
@@ -281,6 +324,7 @@ const PANEL_TITLES = {
   town: 'Town', zoo: 'Zoo', newspaper: 'Newspaper', collections: 'Collections', photo: 'Photo Mode',
   building: 'Building', pen: 'Animal Pen', decorate: 'Decorate', achievements: 'Achievements',
   coop: 'Co-op & Regatta', settings: 'Settings', wheel: 'Daily Wheel', bakebook: 'Bake Book',
+  plant: 'Plant a crop', event: 'Event',
 };
 
 let openPanelId = null;
@@ -291,6 +335,7 @@ export function currentPanel() { return openPanelId; }
 
 export function openPanel(panelId, ctx = null) {
   if (!el.sheet) return;
+  if (panelId !== openPanelId || ctx !== openPanelCtx) panelsearch.forget(); // a new panel starts with a clean filter
   openPanelId = panelId;
   openPanelCtx = ctx;
   el.sheetTitle.textContent = PANEL_TITLES[panelId] || panelId;
@@ -308,6 +353,7 @@ export function closePanel() {
   openPanelId = null;
   openPanelCtx = null;
   mergeSelected = null; // transient UI-only selection — never survives leaving the panel
+  panelsearch.forget();
   audio.close();
 }
 
@@ -387,14 +433,16 @@ function renderInventoryGrid(container, items, emptyLabel) {
     if (sellPrice) {
       card.appendChild(button(`Sell for 🪙${sellPrice}`, () => {
         try {
-          const bucket = state.silo.items[id] !== undefined ? state.silo.items : state.barn.items;
-          if ((bucket[id] || 0) <= 0) return;
-          bucket[id] -= 1;
+          // The item's OWN store (crops in the silo, everything else in the barn) - picking the
+          // bucket by "which key exists" sent a barn item's decrement to a stale zero-valued silo
+          // key and left the silo at -1.
+          if (storage.take(id, 1) < 1) return;
           economy.addCoins(sellPrice);
           economy.trackStat && economy.trackStat('sold', 1);
           tutorial.emit('sold');
           audio.coin();
           toast(`Sold 1 ${itemName(id)} for 🪙${sellPrice}`, 'success');
+          save();
           refreshPanel();
         } catch (e) { audio.error(); toast('Could not sell that.', 'error'); }
       }));
@@ -406,7 +454,27 @@ function renderInventoryGrid(container, items, emptyLabel) {
 
 function renderBarnOrSilo(container, kind) {
   const bucket = kind === 'silo' ? state.silo : state.barn;
+  container.appendChild(hintEl(`${storage.used(kind)}/${storage.capacity(kind)} slots used.`));
   renderInventoryGrid(container, bucket.items, kind === 'silo' ? 'No crops in the silo yet — plant a field!' : 'No goods in the barn yet — cook something up!');
+  renderStorageUpgrade(container, kind);
+}
+
+/** The upgrade card: STORAGE in data.js had no consumer, so a 50-slot barn was the whole game. */
+function renderStorageUpgrade(container, kind) {
+  const cost = storage.upgradeCost(kind);
+  if (!cost) return;
+  const label = kind === 'silo' ? 'Silo' : 'Barn';
+  const card = document.createElement('div');
+  card.className = 'order-card storage-upgrade';
+  const matLine = Object.entries(cost.materials)
+    .map(([id, qty]) => `${itemIcon(id)} ${itemName(id)} ${stockCount(id)}/${qty}`).join(' · ');
+  card.innerHTML = `<strong>Upgrade the ${label.toLowerCase()}: +${STORAGE[kind].upgradeStep} slots (to ${cost.nextCapacity})</strong><div>🪙${cost.coins} · ${matLine}</div>`;
+  card.appendChild(button('Upgrade', () => {
+    const ok = storage.upgrade(kind);
+    if (ok) { audio.place(); toast(`${label} upgraded to ${storage.capacity(kind)} slots!`, 'success'); save(); refreshPanel(); }
+    else { audio.error(); toast('Not enough coins or materials yet.', 'error'); }
+  }, { disabled: !storage.canUpgrade(kind) }));
+  container.appendChild(card);
 }
 
 // ---------------------------------------------------------------------------
@@ -490,7 +558,8 @@ function renderShop(container) {
       if (listing.sold) {
         card.appendChild(button('Collect', () => {
           const ok = shop.collect(i);
-          if (ok) { audio.coin(); toast('Collected!', 'success'); refreshPanel(); }
+          if (ok) { audio.coin(); toast('Collected!', 'success'); save(); refreshPanel(); }
+          else { audio.error(); toast('Could not collect that.', 'error'); }
         }));
       } else {
         card.appendChild(hintEl(`Selling… ready in ${fmtDuration(listing.readyAt - Date.now())}`));
@@ -639,19 +708,14 @@ function renderBoat(container) {
 // ---------------------------------------------------------------------------
 // Fishing (fishing.js) — cast, then reel a real-time timing bar for accuracy.
 // ---------------------------------------------------------------------------
-let fishingStyleInjected = false;
-function ensureFishingStyle() {
-  if (fishingStyleInjected) return;
-  if (typeof document === 'undefined' || !document.head) return;
-  const style = document.createElement('style');
-  style.textContent = `
-    .fishing-track { position: relative; height: 18px; margin: 8px 0; cursor: pointer; background: rgba(0,0,0,0.12); border-radius: 9px; }
-    .fishing-marker { position: absolute; top: 0; width: 4px; height: 100%; background: #f0b52e; border-radius: 2px;
-      animation: fishing-ping-pong 1.4s ease-in-out infinite; }
-    @keyframes fishing-ping-pong { 0% { left: 0%; } 50% { left: 96%; } 100% { left: 0%; } }
-  `;
-  document.head.appendChild(style);
-  fishingStyleInjected = true;
+const FISHING_CYCLE_MS = 1400;
+const STEADY_ACCURACY = 0.75;   // reduced motion: no sweeping marker, one honest fixed reel
+
+/** Where the marker is (0..1 along the track) and the accuracy of a reel at that instant. */
+function reelAt(elapsedMs) {
+  const t = (elapsedMs % FISHING_CYCLE_MS) / FISHING_CYCLE_MS;
+  const pos = t < 0.5 ? t * 2 : (1 - t) * 2;
+  return { pos, accuracy: 1 - Math.abs(pos - 0.5) * 2 };
 }
 
 function renderFishing(container) {
@@ -675,21 +739,35 @@ function renderFishing(container) {
     return;
   }
 
-  ensureFishingStyle();
-  container.appendChild(hintEl('Something is biting! Click the bar when the marker is centred.'));
+  // ONE clock for what the eye sees and what the click scores: the marker is placed by the same
+  // function the click reads. The old CSS keyframes and JS clock started at different instants,
+  // and under prefers-reduced-motion the stylesheet parked the marker while the JS kept sweeping,
+  // so the bar could not be played at all. Reduced motion is now a steady mode: a still marker
+  // and a Reel button at a fixed, fair accuracy.
+  const steady = motion.isReduced();
+  container.appendChild(hintEl(steady
+    ? 'Something is biting! Reel it in.'
+    : 'Something is biting! Click the bar when the marker is centred.'));
   const track = document.createElement('div');
-  track.className = 'fishing-track';
+  track.className = `fishing-track${steady ? ' steady' : ''}`;
   const marker = document.createElement('div');
   marker.className = 'fishing-marker';
-  const animStart = Date.now();
   track.appendChild(marker);
-  track.addEventListener('click', () => {
-    const cycle = 1400;
-    const t = ((Date.now() - animStart) % cycle) / cycle;
-    const pos = t < 0.5 ? t * 2 : (1 - t) * 2; // mirrors the CSS ping-pong keyframes above
-    const accuracy = 1 - Math.abs(pos - 0.5) * 2;
+  const animStart = Date.now();
+  let raf = 0;
+  if (!steady && typeof requestAnimationFrame === 'function') {
+    const step = () => {
+      if (!track.parentNode) return;   // the panel closed or re-rendered underneath us
+      marker.style.left = `${reelAt(Date.now() - animStart).pos * 96}%`;
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+  const reelIn = () => {
+    if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
+    const accuracy = steady ? STEADY_ACCURACY : reelAt(Date.now() - animStart).accuracy;
     const result = fishing.reel(accuracy);
-    if (!result) { audio.error(); refreshPanel(); return; }
+    if (!result) { audio.error(); toast('Barn is full — make room before you reel in.', 'error'); refreshPanel(); return; }
     if (result.chest) {
       const loot = fishing.openChest();
       const parts = [];
@@ -706,9 +784,16 @@ function renderFishing(container) {
       audio.error();
       toast('It got away — the barn is full.', 'error');
     }
+    save();
     refreshPanel();
-  });
+  };
+  track.addEventListener('click', reelIn);
   container.appendChild(track);
+  if (steady) {
+    const reelRow = row('');
+    reelRow.appendChild(button('Reel in', reelIn));
+    container.appendChild(reelRow);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -763,6 +848,7 @@ function renderMine(container) {
     } else if (!depth.current) {
       card.appendChild(button('Switch to', () => {
         state.mine.currentDepth = depth.id;
+        save();
         refreshPanel();
       }));
     }
@@ -881,10 +967,10 @@ function renderMerge(container) {
         return;
       }
       if (merge.claimableReward(i)) {
-        merge.claim(i);
+        const claimed = merge.claim(i);
         mergeSelected = null;
-        audio.coin();
-        toast('Claimed!', 'success');
+        if (claimed) { audio.coin(); toast('Claimed!', 'success'); }
+        else { audio.error(); toast('Barn is full — make room for the reward first.', 'error'); }
         (mergeRefocus = true, refreshPanel());
         return;
       }
@@ -979,9 +1065,8 @@ function renderTown(container) {
     card.className = 'order-card';
     card.innerHTML = `<strong>${m.population} population reached!</strong><span>🪙${m.rewards.coins ?? 0} · 💎${m.rewards.diamonds ?? 0}</span>`;
     card.appendChild(button('Claim', () => {
-      town.claimMilestone(idx);
-      audio.reward();
-      toast('Milestone claimed!', 'success');
+      if (town.claimMilestone(idx)) { audio.reward(); toast('Milestone claimed!', 'success'); save(); }
+      else { audio.error(); toast('Not reached yet.', 'error'); }
       refreshPanel();
     }));
     container.appendChild(card);
@@ -1047,9 +1132,8 @@ function renderTrains(container) {
   if (t.wagons.length && t.wagons.every((w) => w.filled >= w.requested)) {
     const dispatchRow = row('');
     dispatchRow.appendChild(button('Dispatch train', () => {
-      trains.dispatchTrain();
-      audio.depart();
-      toast('Train dispatched!', 'success');
+      if (trains.dispatchTrain()) { audio.depart(); toast('Train dispatched!', 'success'); save(); }
+      else { audio.error(); toast('Load every wagon first.', 'error'); }
       refreshPanel();
     }));
     container.appendChild(dispatchRow);
@@ -1140,7 +1224,8 @@ function renderZoo(container) {
       if (ready) {
         card.appendChild(button('Collect', () => {
           const ok = zoo.collect(id);
-          if (ok) { audio.harvest(); toast(`Collected ${itemName(def.product)}!`, 'success'); refreshPanel(); }
+          if (ok) { audio.harvest(); toast(`Collected ${itemName(def.product)}!`, 'success'); save(); refreshPanel(); }
+          else { audio.error(); toast('Barn is full — the souvenir will wait.', 'error'); }
         }));
       } else if (feeding) {
         card.appendChild(hintEl(`Producing… ${fmtDuration(has.readyAt - now)}`));
@@ -1170,7 +1255,8 @@ function renderZoo(container) {
       card.innerHTML = `<strong>Zoo Order</strong><div>${reqs}</div><div>Reward: 🪙${order.rewardCoins}</div>`;
       card.appendChild(button('Fulfill', () => {
         const ok = zoo.fulfillOrder(order.id);
-        if (ok) { audio.orderComplete(); toast('Zoo order fulfilled!', 'success'); refreshPanel(); }
+        if (ok) { audio.orderComplete(); toast('Zoo order fulfilled!', 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast("You don't have everything for this order yet.", 'error'); }
       }, { disabled: !canFulfill }));
       container.appendChild(card);
     }
@@ -1200,7 +1286,8 @@ function renderHelicopter(container) {
       card.innerHTML = '<strong>The helicopter has returned!</strong>';
       card.appendChild(button('Collect delivery', () => {
         const result = helicopter.collectDelivery();
-        if (result) { audio.coin(); toast('Delivery collected!', 'success'); refreshPanel(); }
+        if (result) { audio.coin(); toast('Delivery collected!', 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast('Barn is full — make room first.', 'error'); }
       }));
       container.appendChild(card);
     } else {
@@ -1312,7 +1399,8 @@ function renderMuseum(container) {
     if (progress.found >= progress.total && !claimed) {
       card.appendChild(button('Claim', () => {
         const ok = museum.claimExhibit(id);
-        if (ok) { audio.reward(); toast(`${exhibit.name} exhibit complete!`, 'success'); refreshPanel(); }
+        if (ok) { audio.reward(); toast(`${exhibit.name} exhibit complete!`, 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast('The exhibit is not complete yet.', 'error'); }
       }));
     } else if (claimed) {
       card.appendChild(hintEl('Claimed ✅'));
@@ -1333,7 +1421,8 @@ function renderMuseum(container) {
       if (qty > 1) {
         card.appendChild(button(`Sell 1 for 🪙${def?.sellPrice ?? 0}`, () => {
           const sold = museum.sellDuplicate(id, 1);
-          if (sold) { audio.coin(); toast('Sold a duplicate.', 'success'); refreshPanel(); }
+          if (sold) { audio.coin(); toast('Sold a duplicate.', 'success'); save(); refreshPanel(); }
+          else { audio.error(); toast('The last one of an artifact is never sold.', 'error'); }
         }));
       }
       artGrid.appendChild(card);
@@ -1363,8 +1452,9 @@ function renderExpeditions(container) {
           if (result) {
             audio[result.failed ? 'error' : 'reward']();
             toast(result.failed ? 'The expedition came back empty-handed.' : 'Expedition returned with loot!', result.failed ? 'error' : 'success');
+            save();
             refreshPanel();
-          }
+          } else { audio.error(); toast('Not back yet.', 'error'); }
         }));
       } else {
         card.appendChild(hintEl(`Out on ${EXPEDITIONS.sites[trip.siteId]?.name || trip.siteId}… ${fmtDuration(trip.readyAt - now)}`));
@@ -1463,7 +1553,8 @@ function renderCollections(container) {
     if (claimableCount > 0) {
       card.appendChild(button(`Claim x${claimableCount}`, () => {
         const n = collections.claim(id);
-        if (n) { audio.reward(); toast(`Claimed ${n} milestone reward${n === 1 ? '' : 's'}!`, 'success'); refreshPanel(); }
+        if (n) { audio.reward(); toast(`Claimed ${n} milestone reward${n === 1 ? '' : 's'}!`, 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast('Nothing to claim yet.', 'error'); }
       }));
     }
     container.appendChild(card);
@@ -1478,7 +1569,11 @@ function renderCollections(container) {
   const grid = slotGrid();
   for (const buildingId of masteryEntries) {
     const info = collections.masteryOf(buildingId);
-    const def = BUILDINGS[buildingId];
+    // Mastery is keyed by the OBJECT id of the building that made things (collections.recordMake's
+    // callers pass the placed object's id), so the label comes from that object's type. The raw id
+    // was what printed here before: "obj_7_lz9x1" is not a building name.
+    const placed = state.farm.objects.find((o) => o.id === buildingId);
+    const def = BUILDINGS[placed?.type] || BUILDINGS[buildingId];
     const card = document.createElement('div');
     card.className = 'build-card';
     const stars = info.star > 0 ? '⭐'.repeat(info.star) : '—';
@@ -1513,7 +1608,8 @@ function renderCoop(container) {
     } else if (task.complete) {
       card.appendChild(button('Claim', () => {
         const ok = coop.claimTask(task.id);
-        if (ok) { audio.reward(); toast('Task reward claimed!', 'success'); refreshPanel(); }
+        if (ok) { audio.reward(); toast('Task reward claimed!', 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast('Not finished yet.', 'error'); }
       }));
     }
     container.appendChild(card);
@@ -1530,7 +1626,8 @@ function renderCoop(container) {
       if (ready) {
         card.appendChild(button('Collect', () => {
           const result = coop.collectRequest(req.id);
-          if (result) { audio.coin(); toast('Request filled!', 'success'); refreshPanel(); }
+          if (result) { audio.coin(); toast('Request filled!', 'success'); save(); refreshPanel(); }
+          else { audio.error(); toast('Barn is full — make room first.', 'error'); }
         }));
       } else {
         card.appendChild(hintEl(`Waiting… ${fmtDuration((req.readyAt || 0) - now)}`));
@@ -1541,7 +1638,8 @@ function renderCoop(container) {
       card.innerHTML = `<strong>Neighbour request</strong><div>${itemIcon(req.item)} ${itemName(req.item)} x${req.qty}</div>`;
       card.appendChild(button('Help', () => {
         const ok = coop.helpRequest(req.id);
-        if (ok) { audio.coin(); toast('Helped a neighbour!', 'success'); refreshPanel(); }
+        if (ok) { audio.coin(); toast('Helped a neighbour!', 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast('Not enough in storage.', 'error'); }
       }, { disabled: !have }));
     }
     container.appendChild(card);
@@ -1586,7 +1684,8 @@ function renderCoop(container) {
     const claimRow = row('');
     claimRow.appendChild(button('Claim last season reward', () => {
       const ok = regatta.claimPlacement();
-      if (ok) { audio.reward(); toast('Placement reward claimed!', 'success'); refreshPanel(); }
+      if (ok) { audio.reward(); toast('Placement reward claimed!', 'success'); save(); refreshPanel(); }
+      else { audio.error(); toast('Nothing to claim.', 'error'); }
     }));
     container.appendChild(claimRow);
   }
@@ -1606,7 +1705,8 @@ function renderCoop(container) {
       else if (prog?.complete && !prog.expired) {
         card.appendChild(button('Hand in', () => {
           const ok = regatta.completeTask(task.id);
-          if (ok) { audio.reward(); toast('Task handed in!', 'success'); refreshPanel(); }
+          if (ok) { audio.reward(); toast('Task handed in!', 'success'); save(); refreshPanel(); }
+          else { audio.error(); toast('Not finished yet.', 'error'); }
         }));
       } else if (prog?.expired) card.appendChild(hintEl('Expired'));
     }
@@ -1687,7 +1787,8 @@ function renderWheel(container) {
       const fedToday = owned.lastFedAt && new Date(owned.lastFedAt).toDateString() === new Date().toDateString();
       card.appendChild(button(fedToday ? 'Fed today' : 'Feed', () => {
         const ok = extras.feedPet(id);
-        if (ok) { audio.harvest(); toast(`+${def.feedXp} XP!`, 'success'); refreshPanel(); }
+        if (ok) { audio.harvest(); toast(`+${def.feedXp} XP!`, 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast('Already fed today.', 'error'); }
       }, { disabled: fedToday }));
     }
     grid.appendChild(card);
@@ -1802,10 +1903,18 @@ function explainTheGateOnce() {
  * verb is on the boot path — the game loads exactly as fast as it did before this feature.
  */
 async function openStagePlayer(entry) {
-  const host = openModal('<div class="minigame-loading">Setting up…</div>');
+  // Backdrop click / Escape go through the shell's own "leave" (set on `controls` once the stage
+  // has mounted) so the rAF loop, its audio and its document listeners are torn down - closing
+  // the modal around a running stage used to orphan all three and later commit a score into a
+  // craft nobody was looking at. Until the shell has mounted, they simply close.
+  const controls = {};
+  const host = openModal('<div class="minigame-loading">Setting up…</div>', {
+    label: 'Making something',
+    onDismiss: () => { if (controls.leave) controls.leave(); else closeModal(); },
+  });
   try {
     const { playStage } = await import('./minigames/shell.js');
-    const outcome = await playStage(host, entry, {});
+    const outcome = await playStage(host, entry, { controls });
     closeModal();
     if (outcome.committed && outcome.result) {
       if (outcome.result.done) {
@@ -1964,96 +2073,93 @@ function buildAt(kind, id, def, onPlaced) {
 }
 
 /**
- * The Building Workshop (L6): the crafting spine. Coins alone never place a production
- * building — see workshop.js. This panel is the ONLY place that chain is reachable:
- *   1. Build the Workshop itself (coin-only, like feed_mill/bakery).
- *   2. Craft components from raw MATERIALS, then kits from components (workshop.craft/
- *      collect — both just views onto the ordinary production queue).
- *   3. Place a building: coins are still charged (farm.place), and on top of that a
- *      kit-required building (BUILDINGS[x].kit) needs its kit held (workshop.hasKitFor) and
- *      consumes it (workshop.consumeKit) — never the other way around, and never on a
- *      failed placement.
- * Animal pens stay coin-only throughout (ANIMALS has no kit concept), so they get their own
- * small section rather than being mixed into the kit chain.
+ * The Building Workshop yard (L2): every building and pen is bought or placed from here.
+ *
+ *   1. Coin-only buildings (no `kit`: chicken coop L2, bakery L3, feed mill L5 ...) and animal
+ *      pens are ALWAYS offered. They used to be reachable only once the Workshop building itself
+ *      existed (L6, 900 coins), so the tutorial's "buy a chicken coop" step stalled for levels.
+ *   2. The Workshop building (L6) is the crafting spine: raw MATERIALS -> components -> kits
+ *      (workshop.craft/collect - views onto the ordinary production queue), and a kit-required
+ *      building (BUILDINGS[x].kit) needs its kit held (workshop.hasKitFor) and consumes it
+ *      (workshop.consumeKit) on top of the coin cost - never the other way around, and never on
+ *      a failed placement (placement.js re-checks the kit at the moment of placing).
+ *   3. Decorations: coin ones, voucher ones, holiday ones in season, and every owned reward.
  */
 function renderWorkshop(container) {
   const workshopObj = state.farm.objects.find((o) => o.kind === 'building' && o.type === 'build_workshop');
+  const built = new Set(state.farm.objects.map((o) => o.type));
+  const recipes = BUILDINGS.build_workshop.recipes || [];
 
-  if (!workshopObj) {
+  if (workshopObj) {
+    // --- Crafting: raw materials -> components -> kits ----------------------------------
+    const entries = state.production.filter((p) => p.objectId === workshopObj.id);
+    renderQueue(container, entries, (id) => recipes.find((r) => r.id === id),
+      (entry, index) => workshop.collect(index), () => screenPointOf(workshopObj));
+
+    container.appendChild(hintEl('Craft components from materials, then kits from components:'));
+    const craftGrid = slotGrid();
+    const queueFull = entries.length >= (BUILDINGS.build_workshop.queueSlots ?? Infinity);
+    for (const recipe of recipes) {
+      const locked = !economy.isUnlocked(recipe.id);
+      const craftable = !locked && workshop.canCraft(recipe.id);
+      const short = missingInputs(recipe);
+      const card = document.createElement('div');
+      card.className = `build-card${craftable ? '' : ' locked'}`;
+      card.innerHTML = `<span class="icon">${itemIcon(recipe.id)}</span><strong>${itemName(recipe.id)}</strong>
+        <span class="minigame-hint">${inputsLine(recipe)}</span>`;
+      card.appendChild(button('Craft', () => {
+        const ok = workshop.craft(recipe.id);
+        if (ok) {
+          audio.place();
+          toast(`Crafting ${itemName(recipe.id)}…`, 'success');
+          tutorial.emit(`crafting:${recipe.id}`);
+          save();
+          refreshPanel();
+        } else { audio.error(); toast("Can't craft that right now.", 'error'); }
+      }, { disabled: !craftable }));
+      if (locked) card.appendChild(hintEl(`Unlocks at level ${recipe.unlockLevel}.`));
+      else if (queueFull) card.appendChild(hintEl('Queue is full — collect something first.'));
+      else if (short.length) card.appendChild(hintEl(`Need ${short.join(', ')}.`));
+      craftGrid.appendChild(card);
+    }
+    container.appendChild(craftGrid);
+
+    // --- Kit-gated buildings ----------------------------------------------------------
+    const kitGrid = slotGrid();
+    for (const [id, def] of Object.entries(BUILDINGS)) {
+      if (!def.kit || built.has(id)) continue;
+      kitGrid.appendChild(buildingCard(id, def, built));
+    }
+    if (kitGrid.children.length) {
+      container.appendChild(hintEl('Place a building — each needs its kit crafted above, on top of the coin cost:'));
+      container.appendChild(kitGrid);
+    }
+  } else {
     const def = BUILDINGS.build_workshop;
-    container.appendChild(hintEl('Build the Workshop to start turning raw materials into components, components into kits, and kits into buildings.'));
+    const locked = !economy.isUnlocked('build_workshop');
+    container.appendChild(hintEl('Build the Workshop to turn raw materials into components, components into kits, and kits into the bigger factories.'));
     const grid = slotGrid();
     const card = document.createElement('div');
-    card.className = 'build-card';
+    card.className = `build-card${locked ? ' locked' : ''}`;
     card.innerHTML = `<span class="icon">🏗️</span><strong>${def.name}</strong><span>🪙${def.cost ?? 0}</span>`;
-    card.appendChild(button('Build', () => buildAt('building', 'build_workshop', def)));
+    card.appendChild(button('Build', () => buildAt('building', 'build_workshop', def), { disabled: locked }));
+    if (locked) card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
     grid.appendChild(card);
     container.appendChild(grid);
-    return;
   }
 
-  // --- 1. Crafting: raw materials → components → kits --------------------------------
-  const recipes = BUILDINGS.build_workshop.recipes || [];
-  const entries = state.production.filter((p) => p.objectId === workshopObj.id);
-  renderQueue(container, entries, (id) => recipes.find((r) => r.id === id),
-    (entry, index) => workshop.collect(index), () => screenPointOf(workshopObj));
-
-  container.appendChild(hintEl('Craft components from materials, then kits from components:'));
-  const craftGrid = slotGrid();
-  const queueFull = entries.length >= (BUILDINGS.build_workshop.queueSlots ?? Infinity);
-  for (const recipe of recipes) {
-    const locked = !economy.isUnlocked(recipe.id);
-    const craftable = !locked && workshop.canCraft(recipe.id);
-    const short = missingInputs(recipe);
-    const card = document.createElement('div');
-    card.className = `build-card${craftable ? '' : ' locked'}`;
-    card.innerHTML = `<span class="icon">${itemIcon(recipe.id)}</span><strong>${itemName(recipe.id)}</strong>
-      <span class="minigame-hint">${inputsLine(recipe)}</span>`;
-    card.appendChild(button('Craft', () => {
-      const ok = workshop.craft(recipe.id);
-      if (ok) {
-        audio.place();
-        toast(`Crafting ${itemName(recipe.id)}…`, 'success');
-        tutorial.emit(`crafting:${recipe.id}`);
-        refreshPanel();
-      } else { audio.error(); toast("Can't craft that right now.", 'error'); }
-    }, { disabled: !craftable }));
-    if (locked) card.appendChild(hintEl(`Unlocks at level ${recipe.unlockLevel}.`));
-    else if (queueFull) card.appendChild(hintEl('Queue is full — collect something first.'));
-    else if (short.length) card.appendChild(hintEl(`Need ${short.join(', ')}.`));
-    craftGrid.appendChild(card);
-  }
-  container.appendChild(craftGrid);
-
-  // --- 2. Build: place a crafted kit as its production building ----------------------
-  const built = new Set(state.farm.objects.map((o) => o.type));
-  container.appendChild(hintEl('Place a building — a kit-gated one needs its kit crafted above, on top of the coin cost:'));
-  const buildGrid = slotGrid();
+  // --- Coin-only buildings: always here, whether or not the Workshop exists ----------------
+  const starterGrid = slotGrid();
   for (const [id, def] of Object.entries(BUILDINGS)) {
-    if (id === 'build_workshop' || built.has(id)) continue;
-    const locked = !economy.isUnlocked(id);
-    const needsKit = !!def.kit;
-    const haveKit = workshop.hasKitFor(id);
-    const card = document.createElement('div');
-    card.className = `build-card${locked ? ' locked' : ''}`;
-    const kitLine = needsKit
-      ? `<span class="minigame-hint">${haveKit ? '✅' : '❌'} ${itemIcon(def.kit)} ${itemName(def.kit)}</span>` : '';
-    card.innerHTML = `<span class="icon">🏗️</span><strong>${def.name}</strong><span>🪙${def.cost ?? 0}</span>${kitLine}`;
-    card.appendChild(button('Build', () => {
-      if (needsKit && !workshop.hasKitFor(id)) {
-        audio.error();
-        toast(`You need a ${itemName(def.kit)} to build the ${def.name} — craft one above first.`, 'error');
-        return;
-      }
-      buildAt('building', id, def, () => { if (needsKit) workshop.consumeKit(id); });
-    }, { disabled: locked || (needsKit && !haveKit) }));
-    if (locked) card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
-    else if (needsKit && !haveKit) card.appendChild(hintEl(`Craft a ${itemName(def.kit)} first.`));
-    buildGrid.appendChild(card);
+    if (def.kit || id === 'build_workshop' || built.has(id)) continue;
+    starterGrid.appendChild(buildingCard(id, def, built));
   }
-  container.appendChild(buildGrid);
+  if (starterGrid.children.length) {
+    container.appendChild(hintEl('Build with coins — no kit needed:'));
+    container.appendChild(starterGrid);
+  }
 
-  // --- 3. Livestock: pens stay coin-only, no kit involved -----------------------------
+  // --- Livestock: pens stay coin-only, no kit involved -----------------------------------
   const penGrid = slotGrid();
   for (const [id, def] of Object.entries(ANIMALS)) {
     if (built.has(id)) continue;
@@ -2066,13 +2172,80 @@ function renderWorkshop(container) {
     penGrid.appendChild(card);
   }
   if (penGrid.children.length) {
-    container.appendChild(hintEl('Livestock:'));
+    container.appendChild(hintEl('Livestock — every pen comes with one feeding:'));
     container.appendChild(penGrid);
   }
 
-  if (!craftGrid.children.length && !buildGrid.children.length && !penGrid.children.length) {
-    container.appendChild(hintEl("You've built everything available so far!"));
+  // --- Decorations -------------------------------------------------------------------------
+  renderDecorationsGrid(container);
+
+  if (!starterGrid.children.length && !penGrid.children.length && workshopObj) {
+    container.appendChild(hintEl("You've built every coin building available so far!"));
   }
+}
+
+/** One building card: locked below its level; a kit-gated one also needs the kit in the barn. */
+function buildingCard(id, def, built) {
+  const locked = !economy.isUnlocked(id);
+  const needsKit = !!def.kit;
+  const haveKit = workshop.hasKitFor(id);
+  const card = document.createElement('div');
+  card.className = `build-card${locked || (needsKit && !haveKit) ? ' locked' : ''}`;
+  const kitLine = needsKit
+    ? `<span class="minigame-hint">${haveKit ? '✅' : '❌'} ${itemIcon(def.kit)} ${itemName(def.kit)}</span>` : '';
+  card.innerHTML = `<span class="icon">🏗️</span><strong>${def.name}</strong><span>🪙${def.cost ?? 0}</span>${kitLine}`;
+  card.appendChild(button('Build', () => {
+    if (needsKit && !workshop.hasKitFor(id)) {
+      audio.error();
+      toast(`You need a ${itemName(def.kit)} to build the ${def.name} — craft one first.`, 'error');
+      return;
+    }
+    buildAt('building', id, def, () => { if (needsKit) workshop.consumeKit(id); });
+  }, { disabled: locked || (needsKit && !haveKit) }));
+  if (locked) card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
+  else if (needsKit && !haveKit) card.appendChild(hintEl(`Craft a ${itemName(def.kit)} first.`));
+  return card;
+}
+
+const DECORATION_ICONS = [
+  [/fence|bunting|banner/, '🪵'], [/tree|orchard|blossom|topiary|hedge/, '🌳'], [/flower|lily|pond|koi/, '🌸'],
+  [/path|bridge|arch/, '🧱'], [/hay|pumpkin|wagon|scarecrow/, '🌾'], [/fountain|well/, '⛲'], [/windmill|weather|vane/, '🌬️'],
+  [/statue|trophy|plinth|gnome/, '🏆'], [/lamp|lantern|lights/, '🏮'], [/snow/, '⛄'], [/tent|carousel|balloon|festival|ribbon|pole|flag|buoy/, '🎪'],
+  [/clock|dial/, '🕰️'], [/picnic|chair/, '🧺'], [/glass|crystal/, '💎'],
+];
+function decorationIcon(id) {
+  for (const [re, icon] of DECORATION_ICONS) if (re.test(id)) return icon;
+  return '🎀';
+}
+
+/**
+ * Every decoration a player can place right now: coin ones, voucher ones, holiday ones while
+ * their season runs, and any owned reward (event, regatta, museum, Fair Pass - free to place).
+ * DECORATIONS had 54 entries and no panel offered a single one.
+ */
+function renderDecorationsGrid(container) {
+  const owned = state.decorate?.owned || {};
+  const holiday = extras.activeHoliday();
+  const grid = slotGrid();
+  for (const [id, def] of Object.entries(DECORATIONS)) {
+    const have = owned[id] || 0;
+    const coinBuyable = def.cost > 0 && (!def.holiday || holiday?.id === def.holiday);
+    const voucherBuyable = def.voucherCost > 0;
+    if (!have && !coinBuyable && !voucherBuyable) continue;   // exclusives appear once earned
+    const priceLine = have > 0
+      ? `Owned x${have} — free to place`
+      : voucherBuyable ? `🎟️${def.voucherCost} vouchers` : `🪙${def.cost}`;
+    const affordable = have > 0 || (voucherBuyable ? (state.vouchers || 0) >= def.voucherCost : state.coins >= def.cost);
+    const card = document.createElement('div');
+    card.className = `build-card decoration-card${affordable ? '' : ' locked'}`;
+    card.innerHTML = `<span class="icon">${decorationIcon(id)}</span><strong>${def.name}</strong><span>${priceLine}</span>
+      <span class="minigame-hint">${def.size[0]}×${def.size[1]}${def.holiday ? ' · seasonal' : ''}</span>`;
+    card.appendChild(button('Place', () => buildAt('decoration', id, def), { disabled: !affordable }));
+    grid.appendChild(card);
+  }
+  if (!grid.children.length) return;
+  container.appendChild(hintEl('Decorations — placed with the same ghost, and moved any time in Decorate mode:'));
+  container.appendChild(grid);
 }
 
 function renderSettings(container) {
@@ -2084,6 +2257,18 @@ function renderSettings(container) {
   });
   soundRow.appendChild(soundBtn);
   container.appendChild(soundRow);
+
+  // The light over the farm follows the clock (dawn, midday, dusk, a gentle night); off is the
+  // fixed golden hour the game always had.
+  const dayOn = state.settings.dayCycle !== false;
+  const dayRow = row('');
+  dayRow.appendChild(button(dayOn ? '🌗 Day & night: On' : '🌗 Day & night: Off', () => {
+    state.settings.dayCycle = !dayOn;
+    save();
+    refreshPanel();
+  }));
+  dayRow.appendChild(hintEl('The light follows your clock — dawn, midday, dusk and a gentle night. Off keeps the fixed golden hour.'));
+  container.appendChild(dayRow);
 
   const langRow = row('<p>Language: English</p>');
   container.appendChild(langRow);
@@ -2115,6 +2300,17 @@ function renderSettings(container) {
   autoRow.appendChild(hintEl('Adds a button inside every making game that completes it at Plain quality — no bonus, no tip. For when a game is not playable for you; nothing is ever lost.'));
   container.appendChild(autoRow);
 
+  if (!state.tutorial?.finished) {
+    const tutRow = row('');
+    tutRow.appendChild(button('Skip the tutorial', () => {
+      tutorial.skip();
+      save();
+      toast('Tutorial skipped — the farm is yours.', 'info');
+      refreshPanel();
+    }));
+    container.appendChild(tutRow);
+  }
+
   const exportBtn = button('Export save', () => {
     const data = state && JSON.stringify(state);
     toast(data ? 'Save copied to console.' : 'Nothing to export.', 'info');
@@ -2126,12 +2322,12 @@ function renderSettings(container) {
       <p>This deletes all progress and cannot be undone.</p>
       <div class="minigame-actions">
         <button class="btn" data-close>Cancel</button>
-        <button class="btn btn-danger" id="confirm-reset">Reset</button>
-      </div>`);
+        <button class="btn danger" id="confirm-reset">Reset</button>
+      </div>`, { label: 'Reset your farm?' });
     document.getElementById('confirm-reset')?.addEventListener('click', () => {
       import('./state.js').then((m) => { m.resetGame(); location.reload(); });
     });
-  }, { className: 'btn-danger' });
+  }, { className: 'danger' });
   const actions = row('');
   actions.appendChild(exportBtn);
   actions.appendChild(resetBtn);
@@ -2179,7 +2375,6 @@ function renderBakeBook(container) {
     sum.complete
       ? `Every one of the ${sum.total} playable recipes at Masterpiece. The book is finished.`
       : `${sum.mastered}/${sum.total} at Masterpiece \u00b7 ${sum.played} played, ${sum.unplayed} never tried \u00b7 ${tiers}`,
-    true,
   ));
 
   // Skill is per VERB while quality is recorded per RECIPE, so a player stuck at Plain on four
@@ -2221,7 +2416,9 @@ function renderBakeBook(container) {
 function renderDecorate(container) {
   const active = !!state.decorate?.active;
   const btn = button(active ? 'Exit Decorate Mode' : 'Enter Decorate Mode', () => {
-    if (active) decorate.exit(); else decorate.enter();
+    // Leaving the mode with an object picked up used to leave that pick-up session live: the
+    // next world tap teleported it. The ghost is abandoned; the object never moved.
+    if (active) { placement.cancel(); decorate.exit(); } else decorate.enter();
     save();
     closePanel();
     toast(state.decorate.active ? 'Decorate mode on — drag decorations to arrange your farm.' : 'Decorate mode off.', 'info');
@@ -2263,6 +2460,8 @@ function renderPanelContent(panelId, ctx = null) {
     case 'achievements': renderAchievements(container); break;
     case 'bakebook': renderBakeBook(container); break;
     case 'decorate': renderDecorate(container); break;
+    case 'plant': renderPlant(container, ctx); break;
+    case 'event': renderEvent(container); break;
     default: {
       const struct = STRUCTURES[ctx];
       renderComingSoon(container, struct?.name || PANEL_TITLES[panelId] || panelId);
@@ -2274,7 +2473,175 @@ function renderPanelContent(panelId, ctx = null) {
   // twenty-nine chances to diverge, and the thirtieth panel would ship without one because its
   // author did not know to add it. panelsearch decides for itself whether there is enough on
   // screen to be worth searching, so a two-card panel is not given a box that finds nothing.
-  panelsearch.attach(container);
+  panelsearch.attach(container, { key: panelId });
+}
+
+// ---------------------------------------------------------------------------
+// The plant sheet: every unlocked crop for one field (the radial shows eight at most).
+// ---------------------------------------------------------------------------
+function renderPlant(container, fieldId) {
+  const field = state.farm.objects.find((o) => o.id === fieldId && o.kind === 'field');
+  if (!field) { container.appendChild(hintEl('That field is gone.')); return; }
+  if (field.cropId) { container.appendChild(hintEl('Something is already growing here.')); return; }
+  container.appendChild(hintEl('Every crop you have unlocked. Planting takes its seeds from the silo; a harvest gives twice as many back.'));
+  const grid = slotGrid();
+  for (const [id, crop] of Object.entries(CROPS)) {
+    if (!economy.isUnlocked(id)) continue;
+    const seeds = stockCount(id);
+    const canPlant = seeds >= crop.seedCost;
+    const card = document.createElement('div');
+    card.className = `build-card crop-card${canPlant ? '' : ' locked'}`;
+    card.innerHTML = `<span class="icon">${crop.icon || '🌱'}</span><strong>${crop.name}</strong>
+      <span>${seeds} seed${seeds === 1 ? '' : 's'} · plants ${crop.seedCost}</span>
+      <span class="minigame-hint">${fmtDuration(crop.growTime * 1000)} · sells 🪙${crop.sellPrice}</span>`;
+    card.appendChild(button('Plant', () => {
+      const ok = production.plant(fieldId, id);
+      if (ok) { audio.plant(); toast(`Planted ${crop.name}.`, 'success'); tutorial.emit('planted'); save(); closePanel(); }
+      else { audio.error(); toast('Not enough seeds.', 'error'); }
+    }, { disabled: !canPlant }));
+    if (!canPlant) {
+      const price = production.seedPrice(id);
+      card.appendChild(button(`Buy ${crop.seedCost} seed${crop.seedCost === 1 ? '' : 's'} 🪙${price}`, () => {
+        const ok = production.buySeeds(id);
+        if (ok) { audio.coin(); toast(`Bought ${crop.name} seeds.`, 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast('Not enough coins, or the silo is full.', 'error'); }
+      }, { disabled: state.coins < price, className: 'quiet' }));
+    }
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+}
+
+// ---------------------------------------------------------------------------
+// Events: the banner (HUD) and the event panel it opens. extras.js scored points, scaled tiers
+// and paid rewards for an event nobody could see: #event-banner stayed hidden and claimEventTier
+// had no caller.
+// ---------------------------------------------------------------------------
+const TIER_LABELS = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 Gold' };
+function tierLabel(tier) { return TIER_LABELS[tier] || tier; }
+
+function rewardLine(reward) {
+  const parts = [];
+  if (reward.coins) parts.push(`🪙${reward.coins}`);
+  if (reward.diamonds) parts.push(`💎${reward.diamonds}`);
+  if (reward.vouchers) parts.push(`🎟️${reward.vouchers}`);
+  if (reward.item) parts.push(`${itemIcon(reward.item)} ${itemName(reward.item)} x${reward.qty || 1}`);
+  if (reward.decoration) parts.push(`${decorationIcon(reward.decoration)} ${DECORATIONS[reward.decoration]?.name || reward.decoration}`);
+  return parts.join(' · ') || '—';
+}
+
+let lastBannerSync = 0;
+let lastBannerEventId = null;
+function syncEventBanner(now) {
+  if (!el.eventBanner) return;
+  const ev = extras.activeWeekendEvent();
+  const evId = ev ? ev.id : null;
+  // Once a second for the countdown; immediately when an event starts or ends.
+  if (evId === lastBannerEventId && now - lastBannerSync < 1000) return;
+  lastBannerSync = now;
+  lastBannerEventId = evId;
+  if (!ev) { el.eventBanner.hidden = true; return; }
+  el.eventBanner.hidden = false;
+  const tiers = extras.eventTiers();
+  const top = tiers.length ? tiers[tiers.length - 1].threshold : 1;
+  const name = q('event-name'), timer = q('event-timer'), fill = q('event-progress-fill'), icon = q('event-icon');
+  if (name) name.textContent = ev.name;
+  if (timer) timer.textContent = fmtDuration(ev.endsAt - now);
+  if (fill && fill.style) fill.style.width = `${Math.round(Math.min(1, ev.points / top) * 100)}%`;
+  if (icon) icon.textContent = ev.kind === 'mini' ? '🎯' : '🎪';
+  el.eventBanner.setAttribute?.('aria-label', `${ev.name}: ${ev.points} points, ${fmtDuration(ev.endsAt - now)} left`);
+  for (const pin of el.eventBanner.querySelectorAll?.('.event-tier-pin') || []) {
+    const t = tiers.find((x) => x.tier === pin.dataset?.tier);
+    if (!t) { pin.hidden = true; continue; }
+    pin.hidden = false;
+    if (t.claimed) pin.classList.add('claimed'); else pin.classList.remove('claimed');
+    if (t.reached) pin.classList.add('reached'); else pin.classList.remove('reached');
+  }
+}
+
+function renderEvent(container) {
+  const ev = extras.activeWeekendEvent();
+  const fair = extras.activeFair();
+  if (!ev && !fair) {
+    container.appendChild(hintEl('Nothing is running right now. A weekend event starts every Friday; a mini-event runs Tuesday and Wednesday; the Farm Fair comes round monthly from level 15.'));
+    return;
+  }
+  if (ev) {
+    container.appendChild(hintEl(`${ev.name} — ${ev.desc}`));
+    container.appendChild(hintEl(`${ev.points} points · ends in ${fmtDuration(ev.endsAt - Date.now())}`));
+    for (const tier of extras.eventTiers()) {
+      const card = document.createElement('div');
+      card.className = 'order-card event-tier';
+      card.innerHTML = `<strong>${tierLabel(tier.tier)} — ${tier.threshold} points</strong>${progressBarHtml(ev.points / tier.threshold)}<div>${rewardLine(tier.reward)}</div>`;
+      if (tier.claimed) card.appendChild(hintEl('Claimed ✅'));
+      else if (tier.reached) {
+        card.appendChild(button('Claim', () => {
+          const ok = extras.claimEventTier(tier.tier);
+          if (ok) { audio.reward(); toast(`${tierLabel(tier.tier)} reward claimed!`, 'success'); save(); refreshPanel(); }
+          else { audio.error(); toast('Not reached yet.', 'error'); }
+        }));
+      } else card.appendChild(hintEl(`${tier.threshold - ev.points} to go`));
+      container.appendChild(card);
+    }
+  }
+  if (fair) {
+    container.appendChild(hintEl(`Farm Fair — finish ${EVENTS.fair.tasksToComplete} of ${fair.tasks.length} tasks · ends in ${fmtDuration(fair.endsAt - Date.now())}`));
+    for (const task of fair.tasks) {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      card.innerHTML = `<strong>${task.desc}</strong>${progressBarHtml(task.progress)}<span>${Math.round(task.progress * 100)}% · ${task.points} points</span>`;
+      container.appendChild(card);
+    }
+    if (!fair.ribbonClaimed) {
+      const ribbonRow = row('');
+      ribbonRow.appendChild(button('Claim ribbon', () => {
+        const result = extras.claimFairRibbon();
+        if (result) { audio.reward(); toast(`${result.ribbon} ribbon — ${result.totalPoints} points!`, 'success'); save(); refreshPanel(); }
+        else { audio.error(); toast(`Finish ${EVENTS.fair.tasksToComplete} tasks first.`, 'error'); }
+      }));
+      container.appendChild(ribbonRow);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Land: the offer that opens from a tap on the woodland (or its signpost). farm.buyExpansion()
+// had no caller at all.
+// ---------------------------------------------------------------------------
+function expansionLevelOf(expansionId) {
+  for (const [level, ids] of Object.entries(LEVELS.unlocks || {})) {
+    if (ids.includes(expansionId)) return Number(level);
+  }
+  return 1;
+}
+
+export function offerExpansion(exp) {
+  if (!exp) return null;
+  const level = expansionLevelOf(exp.id);
+  const unlocked = economy.isUnlocked(exp.id);
+  const mats = Object.entries(exp.materials || {});
+  const matChips = mats.map(([id, qty]) => {
+    const have = stockCount(id);
+    return `<span class="${have >= qty ? '' : 'short'}">${itemIcon(id)} ${itemName(id)} ${have}/${qty}</span>`;
+  }).join('');
+  const affordable = unlocked && state.coins >= exp.cost && mats.every(([id, qty]) => stockCount(id) >= qty);
+  const host = openModal(`
+    <h3>🪧 Land for sale</h3>
+    <p>${exp.rect.w} × ${exp.rect.h} tiles of woodland, cleared and fenced${unlocked ? '' : ` — unlocks at level ${level}`}.</p>
+    <p><strong>🪙${exp.cost}</strong>${mats.length ? ' plus' : ''}</p>
+    ${mats.length ? `<div class="land-offer-materials">${matChips}</div>` : ''}`, { label: 'Land for sale' });
+  // Real elements rather than markup, so the buttons exist wherever innerHTML is not parsed.
+  const actions = document.createElement('div');
+  actions.className = 'minigame-actions';
+  actions.appendChild(button('Not now', () => closeModal(), { className: 'quiet' }));
+  actions.appendChild(button(unlocked ? 'Buy this land' : `Unlocks at level ${level}`, () => {
+    const ok = farm.buyExpansion(exp.id);
+    closeModal();
+    if (ok) { audio.place(); toast('New land cleared — build away!', 'success'); save(); }
+    else { audio.error(); toast(unlocked ? 'Not enough coins or materials yet.' : `Unlocks at level ${level}.`, 'error'); }
+  }, { className: 'gold', disabled: !affordable }));
+  host.appendChild(actions);
+  return host;
 }
 
 // ---------------------------------------------------------------------------
@@ -2301,7 +2668,14 @@ export function init() {
   };
 
   el.sheet.querySelector('.sheet-handle')?.addEventListener('click', closePanel);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePanel(); closeRadial(); } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    // The top-most surface first: a modal over a sheet used to close the SHEET behind it.
+    if (isModalOpen()) { dismissModal(); return; }
+    closePanel();
+    closeRadial();
+  });
+  el.eventBanner?.addEventListener('click', () => { audio.click(); openPanel('event'); });
 
   el.dock?.addEventListener('click', (e) => {
     const btn = e.target.closest('.dock-btn');

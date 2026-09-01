@@ -334,7 +334,7 @@ test('a v3 save grandfathers its in-flight crafts rather than gating them retroa
 
   assert.equal(state.importSave(JSON.stringify(raw)), true, 'a v3 save must still load');
   const s2 = state.state;
-  assert.equal(s2.version, 4);
+  assert.equal(s2.version, state.SAVE_VERSION, 'a v3 save walks every later migration too');
   assert.equal(s2.minigames.pending, undefined, 'the building-keyed pending table is dropped');
   assert.ok(s2.minigames.best, 'and best is defaulted');
   assert.equal(s2.settings.assist, false, 'assist defaults off');
@@ -349,7 +349,7 @@ test('a v3 save grandfathers its in-flight crafts rather than gating them retroa
 
 test('a fresh save carries the new keys so no module has to branch on their absence', () => {
   const s = freshState();
-  assert.equal(s.version, 4);
+  assert.equal(s.version, state.SAVE_VERSION);
   assert.equal(s.craftSeq, 0);
   assert.deepEqual(s.minigames, { results: {}, played: {}, best: {} });
   assert.equal(s.settings.assist, false);

@@ -68,11 +68,31 @@ export function enter() {
   return true;
 }
 
-/** Leave it, committing placements. */
+/** Leave it, committing placements. (ui.js also cancels any live placement.beginMove() session
+ *  on the way out, so the next world tap cannot teleport the object that was being carried.) */
 export function exit() {
   state.decorate.active = false;
   state.decorate.selection = [];
   return true;
+}
+
+/**
+ * Grant an owned decoration - a reward from the regatta, a weekend event, the museum or the Fair
+ * Pass. Owned decorations are placed for free from the Workshop's decorations list; they are NOT
+ * barn stock (a decoration in the barn occupied a slot for ever and sold for nothing). Tolerates
+ * an id data.js has no sprite for yet: the grant is still recorded.
+ */
+export function grant(decoId, qty = 1) {
+  if (!decoId || !(qty > 0)) return 0;
+  if (!state.decorate) state.decorate = { active: false, selection: [], history: [], historyIndex: 0 };
+  if (!state.decorate.owned) state.decorate.owned = {};
+  state.decorate.owned[decoId] = (state.decorate.owned[decoId] || 0) + qty;
+  return state.decorate.owned[decoId];
+}
+
+/** How many of a decoration the player owns but has not placed. */
+export function ownedCount(decoId) {
+  return state.decorate?.owned?.[decoId] || 0;
 }
 
 /** Select an object, optionally adding to the current selection. */

@@ -170,4 +170,4 @@ export function pendingResults() {
 /** Advance trip timers; called from the game loop. Timers are absolute readyAt timestamps, so
  *  there is nothing to accumulate here - collect() reads readiness directly - but the hook is
  *  kept for symmetry with every other system's tick(now) contract. */
-export function tick(now) { /* readiness is computed on demand from readyAt in collect() */ }
+export function tick(now = Date.now()) { /* readiness is computed on demand from readyAt in collect() */ }

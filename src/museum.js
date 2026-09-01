@@ -10,6 +10,7 @@ import { state } from './state.js';
 import { MUSEUM, ARTIFACTS } from './data.js';
 import * as economy from './economy.js';
 import * as collections from './collections.js';
+import * as decorate from './decorate.js';
 
 /** Add found artifacts. Duplicates are kept and can be sold per MUSEUM.duplicatePolicy. */
 export function addArtifact(id, qty = 1) {
@@ -47,8 +48,10 @@ export function claimExhibit(exhibitId) {
   const rewards = exhibit.rewards || {};
   if (rewards.coins) economy.addCoins(rewards.coins);
   if (rewards.diamonds) state.diamonds += rewards.diamonds;
-  // rewards.decoration is a placement concern owned by decorate.js/farm.js; recorded here so
-  // those modules can grant it, never applied to the world from this module.
+  // A decoration reward is granted as an OWNED decoration (placed for free from the Workshop's
+  // decorations list); the comment that used to sit here said "recorded so decorate.js can grant
+  // it", and nothing ever did.
+  if (rewards.decoration) decorate.grant(rewards.decoration);
 
   state.museum.claimedRewards.push(exhibitId);
   if (!state.museum.exhibitsCompleted.includes(exhibitId)) {

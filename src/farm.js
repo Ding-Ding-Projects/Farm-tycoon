@@ -6,6 +6,7 @@
 import { state } from './state.js';
 import { FARM, BUILDINGS, DECORATIONS, ANIMALS, STRUCTURES } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 let nextObjectId = 1;
 function freshId() { return `obj_${nextObjectId++}_${Date.now().toString(36)}`; }
@@ -100,18 +101,55 @@ export function place(kind, type, x, y) {
   const [w, h] = footprintOf(kind, type);
   if (!canPlace(x, y, w, h)) return null;
 
-  const cost = costOf(kind, type);
-  if (cost > 0) {
-    try {
-      economy.addCoins(-cost);
-    } catch {
-      return null; // insufficient coins — nothing was ever mutated, so nothing to refund
+  if (kind === 'decoration') {
+    if (!payForDecoration(type)) return null;
+  } else {
+    const cost = costOf(kind, type);
+    if (cost > 0) {
+      try {
+        economy.addCoins(-cost);
+      } catch {
+        return null; // insufficient coins — nothing was ever mutated, so nothing to refund
+      }
     }
   }
 
   const obj = { id: freshId(), kind, type, x, y, ...initialExtra(kind, type) };
   state.farm.objects.push(obj);
+  // A new pen comes with one feeding in the barn (what fits), so "feed your animals" is possible
+  // before the feed mill (L5) exists - the tutorial asks for exactly that with the level-2 coop.
+  if (kind === 'pen') {
+    const animal = ANIMALS[type];
+    if (animal?.feed) storage.add(animal.feed, animal.capacity);
+  }
   return obj;
+}
+
+/**
+ * How a decoration is paid for, in priority order: an OWNED one (a reward from the regatta, an
+ * event, the museum or the Fair Pass) is free and consumes the owned count; a voucher-priced one
+ * spends boat vouchers; a coin-priced one spends coins. Anything with no price at all (the event,
+ * co-op, regatta and museum exclusives) can only ever be placed from the owned count. Returns
+ * false, having spent nothing, when it cannot be paid for.
+ */
+function payForDecoration(type) {
+  const def = DECORATIONS[type];
+  if (!def) return false;
+  const owned = state.decorate?.owned || {};
+  if ((owned[type] || 0) > 0) {
+    owned[type] -= 1;
+    return true;
+  }
+  if (def.voucherCost > 0) {
+    if ((state.vouchers || 0) < def.voucherCost) return false;
+    state.vouchers -= def.voucherCost;
+    return true;
+  }
+  if (def.cost > 0) {
+    try { economy.addCoins(-def.cost); } catch { return false; }
+    return true;
+  }
+  return false;
 }
 
 /** Move an existing object to a new position if free (edit mode). */

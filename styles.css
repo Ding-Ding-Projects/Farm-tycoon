@@ -315,8 +315,8 @@ a:hover { color: var(--color-primary); }
 .radial-menu button:hover { transform: scale(1.14); }
 .radial-menu button.locked { background: linear-gradient(#e8e0cc, #d4c8ac); filter: saturate(0.4); cursor: default; }
 .radial-menu button.confirm { background: linear-gradient(#8ed653, var(--color-primary-deep)); border-color: var(--color-outline); box-shadow: 0 4px 0 #3e7a19; }
-.radial-label {                                 /* NEW — the "Wheat · 1 coin · 2 min" strip */
-  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+.radial-label {                                 /* the "Wheat · 1 coin · 2 min" strip; ui.js sets left/top */
+  position: absolute; transform: translateX(-50%);
   padding: 5px 13px; border-radius: var(--radius-pill); background: rgba(28, 16, 6, 0.78);
   font-weight: 800; font-size: 12px; color: #ffeec4; white-space: nowrap;
 }
@@ -924,3 +924,24 @@ a:hover { color: var(--color-primary); }
   .hud-counters { gap: 2px; }
   .pill-counter { font-size: 11px; padding: 4px 5px 4px 3px; }
 }
+
+/* ---------- Classes ui.js was already using that had no rule ---------- */
+/* A row of controls under a heading: buttons and hints side by side, wrapping on a phone. */
+.panel-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: var(--sp-2) 0; }
+.panel-row > p { margin: 0; }
+/* toast() adds this 400ms before it removes the node, so the toast leaves the way it arrived. */
+.toast-out { animation: toast-out 0.4s ease-in forwards; }
+@keyframes toast-out { to { transform: translateY(-14px); opacity: 0; } }
+/* The stage player's placeholder while a verb module loads. */
+.minigame-loading { padding: 28px 16px; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 18px; color: #6d3f14; }
+
+/* ---------- Event panel tiers + the land offer ---------- */
+.event-tier-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.land-offer-materials { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0 var(--sp-3); }
+.land-offer-materials span { padding: 3px 9px; border-radius: var(--radius-pill); background: rgba(122, 74, 24, 0.12); font-weight: 700; font-size: 13px; }
+.land-offer-materials span.short { background: rgba(224, 85, 72, 0.14); color: #a83224; }
+
+/* ---------- Fishing (the marker is positioned by ui.js on one shared clock) ---------- */
+.fishing-track { position: relative; height: 18px; margin: 8px 0; cursor: pointer; background: rgba(0, 0, 0, 0.12); border-radius: 9px; }
+.fishing-marker { position: absolute; top: 0; left: 48%; width: 4px; height: 100%; background: #f0b52e; border-radius: 2px; }
+.fishing-track.steady .fishing-marker { width: 12px; left: calc(50% - 6px); }

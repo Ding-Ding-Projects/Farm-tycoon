@@ -133,6 +133,6 @@ export function findItem(itemId) {
 }
 
 /** Advance the refresh timer; called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   currentIssue(now);
 }

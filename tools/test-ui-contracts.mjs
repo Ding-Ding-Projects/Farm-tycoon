@@ -187,6 +187,10 @@ const foraging = await import('../src/foraging.js');
 const economy = await import('../src/economy.js');
 const input = await import('../src/input.js');
 const main = await import('../src/main.js');
+const placement = await import('../src/placement.js');
+const decorate = await import('../src/decorate.js');
+const tutorial = await import('../src/tutorial.js');
+const motion = await import('../src/motion.js');
 
 state.resetGame();
 ui.init();
@@ -1064,6 +1068,334 @@ test('every dock button has an accessible name, not just an emoji and a title', 
   assert.match(uiSource, /wheelBtn\.setAttribute\('aria-label'/,
     'the daily wheel button is built in ui.js and needs its label there');
 });
+
+// ---------------------------------------------------------------------------
+// R. Reachability: the systems data.js describes can actually be reached from the UI.
+// ---------------------------------------------------------------------------
+const modalCardEl = registry.get('modal-card');
+const modalEl = registry.get('modal');
+
+function cardWithStrong(text) {
+  return queryAll(sheetContentEl, '.build-card').find((c) => c.innerHTML.includes(`<strong>${text}</strong>`));
+}
+function buttonLabelled(root, label) {
+  return queryAll(root, 'button').find((b) => b.textContent === label || b.textContent.startsWith(label));
+}
+function dropGhostAt(x, y) {
+  placement.hover(x, y);
+  return placement.confirm();
+}
+
+test('the workshop yard offers the chicken coop and the bakery with no Workshop building at all (level 3)', () => {
+  const s = freshState(3);
+  s.coins = 5000;
+  ui.openPanel('workshop');
+  const coop = cardWithStrong('Chicken Coop');
+  const bakery = cardWithStrong('Bakery');
+  assert.ok(coop, 'the chicken coop card must be offered');
+  assert.ok(bakery, 'the bakery card must be offered');
+  assert.equal(buttonLabelled(coop, 'Build').disabled, false, 'the coop is buildable at level 3');
+  assert.equal(buttonLabelled(bakery, 'Build').disabled, false, 'the bakery is buildable at level 3');
+  const ws = cardWithStrong(data.BUILDINGS.build_workshop.name);
+  assert.ok(ws, 'the Workshop itself is shown so the player knows what is coming');
+  assert.equal(buttonLabelled(ws, 'Build').disabled, true, 'but it is not buildable before level 6');
+  assert.ok(!collectHtml(sheetContentEl).includes('Craft components'), 'no crafting section without the building');
+
+  // The whole gesture: Build opens the ghost, dropping it places the coop, charged once, WITH feed.
+  buttonLabelled(coop, 'Build').click();
+  assert.equal(placement.isActive(), true);
+  const res = dropGhostAt(16, 17);
+  assert.equal(res.ok, true, `placing the coop must succeed: ${res.reason}`);
+  assert.equal(s.coins, 5000 - data.ANIMALS.chicken.penCost - data.ANIMALS.chicken.animalCost * data.ANIMALS.chicken.capacity);
+  assert.equal(s.barn.items.chicken_feed, data.ANIMALS.chicken.capacity, 'a new pen comes with one feeding');
+});
+
+test('a tap on locked woodland resolves to its expansion and the offer buys it for its real cost', () => {
+  const s = freshState(4); // expansion_1 unlocks at level 4
+  const exp = data.FARM.expansions[0];
+  const tile = [exp.rect.x + 1, exp.rect.y + 1];
+  assert.equal(input.expansionAt(data.FARM.startZone.x + 1, data.FARM.startZone.y + 1), null, 'owned land is not for sale');
+  const found = input.expansionAt(tile[0], tile[1]);
+  assert.ok(found && found.id === exp.id, 'the tile must resolve to expansion_1');
+
+  s.coins = exp.cost - 1;
+  ui.offerExpansion(found);
+  assert.equal(modalEl.hidden, false, 'the offer is a modal');
+  const html = collectHtml(modalCardEl);
+  assert.ok(html.includes(String(exp.cost)), 'the real coin cost is shown');
+  for (const id of Object.keys(exp.materials)) assert.ok(html.includes(data.MATERIALS[id].name), `${id} is listed`);
+  assert.equal(buttonLabelled(modalCardEl, 'Buy this land').disabled, true, 'short of coins: cannot buy');
+  ui.closeModal();
+
+  s.coins = exp.cost + 10;
+  for (const [id, qty] of Object.entries(exp.materials)) s.barn.items[id] = qty;
+  ui.offerExpansion(found);
+  const buy = buttonLabelled(modalCardEl, 'Buy this land');
+  assert.equal(buy.disabled, false);
+  buy.click();
+  assert.ok(s.farm.unlockedZones.includes(exp.id), 'the zone is unlocked');
+  assert.equal(s.coins, 10, 'exactly the coin cost');
+  for (const id of Object.keys(exp.materials)) assert.equal(s.barn.items[id], 0, `exactly the ${id} cost`);
+  assert.equal(input.expansionAt(tile[0], tile[1]), null, 'bought land is no longer for sale');
+  assert.equal(modalEl.hidden, true);
+});
+
+test('the workshop yard sells decorations: coins, vouchers, and owned rewards for free', () => {
+  const s = freshState(90);
+  s.coins = 100000;
+  s.vouchers = 0;
+  decorate.grant('regatta_buoy');
+  ui.openPanel('workshop');
+  const oak = cardWithStrong(data.DECORATIONS.tree_oak.name);
+  assert.ok(oak, 'a coin decoration is offered');
+  assert.equal(buttonLabelled(oak, 'Place').disabled, false);
+  const statue = cardWithStrong(data.DECORATIONS.golden_statue.name);
+  assert.ok(statue, 'a voucher decoration is offered');
+  assert.equal(buttonLabelled(statue, 'Place').disabled, true, 'no vouchers, no statue');
+  const buoy = cardWithStrong(data.DECORATIONS.regatta_buoy.name);
+  assert.ok(buoy, 'an owned reward decoration is offered');
+  assert.ok(buoy.innerHTML.includes('Owned x1'), 'and marked as owned');
+  assert.equal(cardWithStrong(data.DECORATIONS.festival_tent.name), undefined, 'an unearned event exclusive is not');
+
+  buttonLabelled(oak, 'Place').click();
+  assert.equal(placement.isActive(), true, 'Place opens the ghost');
+  assert.equal(dropGhostAt(18, 18).ok, true);
+  assert.equal(s.coins, 100000 - data.DECORATIONS.tree_oak.cost, 'charged once, on placing');
+  assert.ok(s.farm.objects.some((o) => o.kind === 'decoration' && o.type === 'tree_oak'));
+
+  ui.openPanel('workshop');
+  buttonLabelled(cardWithStrong(data.DECORATIONS.regatta_buoy.name), 'Place').click();
+  assert.equal(dropGhostAt(19, 19).ok, true);
+  assert.equal(decorate.ownedCount('regatta_buoy'), 0, 'placing an owned decoration consumes it');
+  assert.equal(s.coins, 100000 - data.DECORATIONS.tree_oak.cost, 'and charges nothing');
+
+  s.vouchers = data.DECORATIONS.golden_statue.voucherCost;
+  ui.openPanel('workshop');
+  buttonLabelled(cardWithStrong(data.DECORATIONS.golden_statue.name), 'Place').click();
+  assert.equal(dropGhostAt(15, 18).ok, true);
+  assert.equal(s.vouchers, 0, 'a voucher decoration spends vouchers');
+});
+
+test('the plant sheet lists every unlocked crop at level 40, and sells seeds for one it has none of', () => {
+  const s = freshState(40);
+  s.coins = 1000;
+  const fieldId = s.farm.objects.find((o) => o.kind === 'field').id;
+  ui.openPanel('plant', fieldId);
+  const cards = queryAll(sheetContentEl, '.crop-card');
+  const unlocked = Object.entries(data.CROPS).filter(([, c]) => c.unlockLevel <= 40);
+  assert.equal(cards.length, unlocked.length, 'one card per unlocked crop');
+  assert.ok(unlocked.length > 8, 'more than the radial can show');
+  for (const [, crop] of unlocked) assert.ok(cards.some((c) => c.innerHTML.includes(`<strong>${crop.name}</strong>`)), crop.name);
+
+  const carrot = cardWithStrong('Carrot');
+  assert.equal(buttonLabelled(carrot, 'Plant').disabled, true, 'no carrot seeds yet');
+  const buy = buttonLabelled(carrot, 'Buy');
+  assert.ok(buy, 'a crop with no seeds offers to sell some');
+  buy.click();
+  assert.equal(s.silo.items.carrot, data.CROPS.carrot.seedCost);
+  assert.equal(s.coins, 1000 - production.seedPrice('carrot'));
+
+  buttonLabelled(cardWithStrong('Carrot'), 'Plant').click();
+  assert.equal(s.farm.objects.find((o) => o.id === fieldId).cropId, 'carrot', 'planted from the sheet');
+});
+
+test('Collect on a queue card collects THAT entry (its cid), not the first ready one', () => {
+  const s = freshState();
+  const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  s.barn.items.milk = 2;
+  assert.equal(production.enqueue(buildingId, 'cream'), true);
+  assert.equal(production.enqueue(buildingId, 'cream'), true);
+  const [first, second] = s.production.filter((p) => p.objectId === buildingId);
+  first.readyAt = Date.now() - 1000;
+  second.readyAt = Date.now() - 1000;
+  ui.openPanel('building', buildingId);
+  const collects = queryAll(sheetContentEl, 'button').filter((b) => b.textContent === 'Collect');
+  assert.equal(collects.length, 2, 'both entries are collectable');
+  collects[1].click();
+  const left = s.production.filter((p) => p.objectId === buildingId);
+  assert.equal(left.length, 1);
+  assert.equal(left[0].cid, first.cid, 'the SECOND card was pressed, so the first entry is the one still queued');
+});
+
+test('the event banner shows a live event, and the event panel claims a tier exactly once', () => {
+  const s = freshState(20);
+  const friday = new Date(2027, 0, 1, 0, 0, 1).getTime();
+  extras.tickEvents(friday);
+  const ev = extras.activeWeekendEvent();
+  assert.ok(ev, 'setup: a weekend event must be running');
+  const banner = registry.get('event-banner');
+  banner.hidden = true;
+  ui.updateHud();
+  assert.equal(banner.hidden, false, 'the banner is shown while an event runs');
+
+  s.event.points = 1e9;
+  ui.openPanel('event');
+  const html = collectHtml(sheetContentEl);
+  assert.ok(html.includes(ev.name), 'the panel names the event');
+  const claims = queryAll(sheetContentEl, 'button').filter((b) => b.textContent === 'Claim');
+  assert.equal(claims.length, extras.eventTiers().length, 'every reached tier can be claimed');
+  const coins = s.coins;
+  claims[0].click();
+  assert.ok(s.event.claimedTiers.includes('bronze'));
+  assert.ok(s.coins > coins || !extras.eventTiers()[0].reward.coins, 'the bronze reward is paid');
+  assert.equal(extras.claimEventTier('bronze'), false, 'never twice');
+  assert.equal(queryAll(sheetContentEl, 'button').filter((b) => b.textContent === 'Claim').length, claims.length - 1,
+    'the re-rendered panel no longer offers bronze');
+
+  s.event = null;
+  ui.updateHud();
+  assert.equal(banner.hidden, true, 'the banner goes away with the event');
+});
+
+test('an expiring event pays out every reached tier it still holds instead of losing them', () => {
+  const s = freshState(20);
+  const friday = new Date(2027, 0, 1, 0, 0, 1).getTime();
+  extras.tickEvents(friday);
+  const tiers = extras.eventTiers();
+  s.event.points = tiers[0].threshold; // bronze reached, silver not
+  const coins = s.coins;
+  extras.tickEvents(s.event.endsAt + 1);
+  assert.equal(s.event, null, 'the event is over');
+  const bronze = tiers[0].reward;
+  if (bronze.coins) assert.equal(s.coins, coins + bronze.coins, 'bronze was paid on the way out');
+});
+
+test('updateHud drives the level ring through --xp', () => {
+  const s = freshState(1);
+  s.xp = Math.round(data.LEVELS.xpForLevel(1) * 0.25);
+  ui.updateHud();
+  const badge = registry.get('level-badge');
+  const v = parseFloat(badge.style['--xp']);
+  assert.ok(Number.isFinite(v) && v > 0.2 && v < 0.3, `--xp must reflect a quarter of the level, got ${badge.style['--xp']}`);
+});
+
+test('mastery cards name the building, never the placed object id', () => {
+  const s = freshState();
+  const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  s.collections.mastery = { [buildingId]: { makes: 3, star: 0 } };
+  ui.openPanel('collections');
+  const html = collectHtml(sheetContentEl);
+  assert.ok(html.includes(`<strong>${data.BUILDINGS.dairy.name}</strong>`), 'the building name is shown');
+  assert.ok(!html.includes(`<strong>${buildingId}</strong>`), 'the raw id is not');
+});
+
+test('every tutorial target names something real, and world targets resolve to a screen circle', () => {
+  const markup = readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  freshState(1);
+  for (const step of data.TUTORIAL.steps) {
+    if (!step.target) continue;
+    if (step.target.startsWith('dock:')) {
+      assert.ok(markup.includes(`data-panel="${step.target.slice(5)}"`), `${step.id}: dock target ${step.target} exists`);
+    } else if (step.target.startsWith('world:structure:')) {
+      const key = step.target.slice('world:structure:'.length);
+      assert.ok(data.STRUCTURES[key], `${step.id}: ${key} is a STRUCTURES key`);
+      const c = tutorial.resolveTarget(step.target, step);
+      assert.ok(c && Number.isFinite(c.x) && Number.isFinite(c.y) && c.r > 0, `${step.id}: resolves to a circle`);
+    } else if (step.target.startsWith('world:')) {
+      assert.ok(['field', 'pen', 'building'].includes(step.target.slice(6)), `${step.id}: ${step.target}`);
+    } else {
+      assert.ok(step.target.startsWith('panel:'), `${step.id}: unknown target kind ${step.target}`);
+    }
+  }
+  const field = tutorial.resolveTarget('world:field', data.TUTORIAL.steps[1]);
+  assert.ok(field && field.r > 0, 'a fresh farm has fields to point at');
+  assert.equal(tutorial.resolveTarget('world:pen', null), null, 'and no pen yet: null, never a throw');
+  // The tutorial cannot double-pay its finish reward: a Skip after the last step is a no-op.
+  const s = state.state;
+  s.tutorial = { stepIndex: 0, finished: true };
+  const coins = s.coins;
+  tutorial.skip();
+  assert.equal(s.coins, coins, 'no second reward');
+});
+
+test('openModal: a dialog role, a non-dismissible flag that holds, and a dismiss route of the caller\'s own', () => {
+  ui.openModal('<p>hold</p>', { dismissible: false, label: 'Hold' });
+  assert.equal(modalCardEl.getAttribute('role'), 'dialog');
+  assert.equal(modalCardEl.getAttribute('aria-label'), 'Hold');
+  assert.equal(ui.dismissModal(), false, 'a non-dismissible modal ignores backdrop/Escape');
+  assert.equal(modalEl.hidden, false);
+  ui.closeModal();
+  assert.equal(modalEl.hidden, true);
+
+  let left = 0;
+  ui.openModal('<p>stage</p>', { onDismiss: () => { left++; ui.closeModal(); } });
+  assert.equal(ui.dismissModal(), true);
+  assert.equal(left, 1, 'the caller\'s own route out ran (the stage player leaves through its shell)');
+  assert.equal(modalEl.hidden, true);
+  assert.equal(ui.dismissModal(), false, 'nothing open, nothing dismissed');
+});
+
+test('fishing under reduced motion is a steady mode: still marker, a Reel button, a fair fixed reel', () => {
+  const s = freshState(data.FISHING.unlockLevel);
+  motion.__setReducedForTests(true);
+  try {
+    assert.equal(fishing.cast(), true);
+    s.fishing.cast.readyAt = Date.now() - 1;
+    ui.openPanel('fishing');
+    const track = queryAll(sheetContentEl, '.fishing-track')[0];
+    assert.ok(track, 'the reel bar renders');
+    assert.ok(track.className.includes('steady'), 'in steady mode');
+    const reel = buttonLabelled(sheetContentEl, 'Reel in');
+    assert.ok(reel, 'a Reel in button, since nothing is moving to time');
+    reel.click();
+    assert.equal(s.fishing.cast, null, 'the reel happened at the fixed accuracy');
+  } finally {
+    motion.__setReducedForTests(false);
+  }
+});
+
+test('a v1 save missing every expansion key loads complete, and buildWorld() runs on it', () => {
+  const s = freshState(5);
+  const raw = JSON.parse(state.exportSave());
+  raw.version = 1;
+  const stripped = ['merge', 'trains', 'airport', 'town', 'zoo', 'market', 'workshop', 'expeditions', 'museum', 'lab',
+    'helicopter', 'islands', 'mine', 'foraging', 'newspaper', 'collections', 'decorate', 'photo', 'vouchers', 'pets',
+    'fishing', 'achievements', 'daily', 'event', 'shop', 'minigames', 'craftSeq', 'neighbours', 'coop', 'regatta'];
+  for (const key of stripped) delete raw[key];
+  assert.equal(state.importSave(JSON.stringify(raw)), true, 'a v1 save must load');
+  const loaded = state.state;
+  assert.equal(loaded.version, state.SAVE_VERSION);
+  for (const key of stripped) assert.ok(key in loaded && loaded[key] !== undefined, `${key} is defaulted`);
+  assert.equal(loaded.settings.dayCycle, true, 'v5 setting defaulted');
+  assert.equal(loaded.level, 5, 'existing keys untouched');
+  const world = main.buildWorld();
+  assert.ok(Array.isArray(world.objects) && world.objects.length > 0, 'the world renders from a migrated save');
+});
+
+test('debugTimeSkip reaches every system\'s own stamp: board cooldowns, truck, boat, train, zoo, merge, islands', () => {
+  const s = freshState(60);
+  const now = Date.now();
+  const SKIP = 60 * 1000;
+  orders.tickTruck(now);
+  boat.tick(now);
+  trains.tick(now);
+  s.orders.board = [{ empty: true, readyAt: now + 30 * 1000 }];
+  s.barn.items.glass = 10; s.barn.items.nails = 10;
+  assert.ok(zoo.buyEnclosure('zoo_peacock'));
+  s.zoo.enclosures.zoo_peacock.readyAt = now + 1e9;
+  s.merge.energyUpdatedAt = now;
+  s.islands.voyage = { islandId: Object.keys(data.ISLANDS.destinations)[0], readyAt: now + 1e9 };
+  const before = {
+    truck: s.orders.truck.spawnedAt, boat: s.orders.boat.departsAt, train: s.trains.current.departsBy,
+    zoo: s.zoo.enclosures.zoo_peacock.readyAt, merge: s.merge.energyUpdatedAt, voyage: s.islands.voyage.readyAt,
+  };
+  main.debugTimeSkip(SKIP);
+  assert.equal(s.orders.truck.spawnedAt, before.truck - SKIP, 'truck');
+  assert.equal(s.orders.boat.departsAt, before.boat - SKIP, 'boat');
+  assert.equal(s.trains.current.departsBy, before.train - SKIP, 'train');
+  assert.equal(s.zoo.enclosures.zoo_peacock.readyAt, before.zoo - SKIP, 'zoo');
+  assert.equal(s.merge.energyUpdatedAt, before.merge - SKIP, 'merge');
+  assert.equal(s.islands.voyage.readyAt, before.voyage - SKIP, 'islands');
+  assert.ok(s.orders.board[0] && !s.orders.board[0].empty, 'a board cooldown that the skip crossed has been refilled with a real order');
+});
+
+test('input.js wires pointercancel to its own non-committing handler, never to the tap/drop path', () => {
+  const src = readFileSync(path.join(__dirname, '..', 'src', 'input.js'), 'utf8');
+  assert.match(src, /addEventListener\('pointercancel', onPointerCancel\)/);
+  assert.ok(!/addEventListener\('pointercancel', onPointerUp\)/.test(src));
+  assert.match(src, /document\.addEventListener\('pointerdown', firstGestureUnlockAudio/, 'audio unlocks on any pointer-down');
+});
+
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 // toast()'s own setTimeouts (see ui.js) would otherwise hold the event loop open for ~2.6s

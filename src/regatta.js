@@ -17,6 +17,7 @@ import { REGATTA } from './data.js';
 import * as economy from './economy.js';
 import * as neighbours from './neighbours.js';
 import * as storage from './storage.js';
+import * as decorate from './decorate.js';
 
 function pickBoard(seasonId) {
   const rng = neighbours._rng(neighbours._hash(`${state.neighbours.seed}:regattaboard:${seasonId}`));
@@ -225,21 +226,11 @@ export function claimPlacement() {
     // What fits lands in the barn; the rest is paid out rather than lost to a full store.
     for (const [id, qty] of Object.entries(r.materials)) storage.addOrPay(id, qty);
   }
-  if (r.decoration) grantDecoration(r.decoration);
+  if (r.decoration) decorate.grant(r.decoration);
   s.placementClaimed = true;
   return true;
 }
 
-/**
- * A decoration reward is an owned decoration the player can place for free from the Workshop's
- * decorations list - not a barn item. It used to be dropped into the barn, where it occupied a
- * slot for ever, sold for nothing and could never be placed.
- */
-function grantDecoration(decoId) {
-  if (!state.decorate) state.decorate = { active: false, selection: [], history: [], historyIndex: 0 };
-  if (!state.decorate.owned) state.decorate.owned = {};
-  state.decorate.owned[decoId] = (state.decorate.owned[decoId] || 0) + 1;
-}
 
 /** Advance rival scores from elapsed time; called from the game loop. */
 export function tick(now = Date.now()) {

@@ -137,7 +137,7 @@ test('a save from an unknown future version is rejected', () => {
   assert.equal(state.state.coins, 42);
 });
 
-test('a v1 save missing every key from every migration walks 1->2->3->4 and comes out complete, preserving every other key exactly', () => {
+test('a v1 save missing every key from every migration walks 1->2->3->4->5 and comes out complete, preserving every other key exactly', () => {
   const s = freshState();
   // Give the save some real, distinguishing content so "preserved byte-for-byte" is actually
   // being tested, not just a fresh-game object that happens to survive by coincidence.
@@ -164,7 +164,7 @@ test('a v1 save missing every key from every migration walks 1->2->3->4 and come
   const ok = state.importSave(JSON.stringify(v1));
   assert.equal(ok, true, 'a migrated v1 save must still pass isValidSave and import cleanly');
   assert.equal(state.state.version, state.SAVE_VERSION, 'migration must land exactly on the current version');
-  assert.equal(state.state.version, 4, 'sanity: the current version really is 4');
+  assert.equal(state.state.version, 5, 'sanity: the current version really is 5 (v4 -> v5 added settings.dayCycle)');
 
   // The v1->v2 keys are present and match the documented/newGameState shape.
   assert.ok(state.state.merge, 'merge must be defaulted by the migration');
@@ -227,7 +227,7 @@ test('a v2 save without town/zoo/market migrates forward with them defaulted, pr
   const ok = state.importSave(JSON.stringify(v2));
   assert.equal(ok, true, 'a migrated v2 save must still pass isValidSave and import cleanly');
   assert.equal(state.state.version, state.SAVE_VERSION, 'migration must land exactly on the current version');
-  assert.equal(state.state.version, 4, 'sanity: the current version really is 4');
+  assert.equal(state.state.version, 5, 'sanity: the current version really is 5 (v4 -> v5 added settings.dayCycle)');
 
   assert.deepEqual(state.state.town, {
     buildings: [], population: 0, capacity: TOWN.basePopulationCap, claimedMilestones: [],
@@ -717,6 +717,67 @@ test('isWorkshopCraft names every Building Workshop output and nothing else', ()
   for (const id of outputs) assert.equal(economy.isWorkshopCraft(id), true, id);
   assert.ok(outputs.some((id) => id.startsWith('kit_')), 'kits are among the outputs');
   for (const id of ['wheat', 'bread', 'egg', 'plank', 'nope']) assert.equal(economy.isWorkshopCraft(id), false, id);
+});
+
+// ---------------------------------------------------------------------------
+// Seeds, decorations and the pen's first feeding (WS3 reachability)
+// ---------------------------------------------------------------------------
+
+test('a level-up hands over two plantings of every crop it unlocks', () => {
+  const s = freshState();
+  assert.equal(s.silo.items.corn || 0, 0);
+  economy.addXp(LEVELS.xpForLevel(1));
+  assert.equal(s.level, 2);
+  assert.equal(s.silo.items.corn, CROPS.corn.seedCost * 2, 'corn unlocks at level 2 and arrives with starter seeds');
+});
+
+test('buySeeds sells one planting at the crop\'s sell value per seed, all or nothing', () => {
+  const s = freshState();
+  s.level = 3;
+  s.coins = 100;
+  const price = production.seedPrice('carrot');
+  assert.equal(price, CROPS.carrot.sellPrice * CROPS.carrot.seedCost);
+  assert.equal(production.buySeeds('carrot'), true);
+  assert.equal(s.silo.items.carrot, CROPS.carrot.seedCost);
+  assert.equal(s.coins, 100 - price);
+  s.coins = price - 1;
+  assert.equal(production.buySeeds('carrot'), false, 'short of coins');
+  assert.equal(s.silo.items.carrot, CROPS.carrot.seedCost, 'nothing added');
+  s.coins = 1000;
+  s.silo.items.corn = s.silo.capacity; // full
+  assert.equal(production.buySeeds('carrot'), false, 'no room in the silo');
+  assert.equal(s.coins, 1000, 'nothing charged');
+  assert.equal(production.buySeeds('rice'), false, 'a locked crop cannot be bought');
+});
+
+test('a decoration is paid for by owned count, then vouchers, then coins - and exclusives only from owned', () => {
+  const s = freshState();
+  s.coins = 1000;
+  s.vouchers = 0;
+  const z = FARM.startZone;
+  assert.ok(farm.place('decoration', 'gnome', z.x + 6, z.y + 6), 'a coin decoration places');
+  assert.equal(s.coins, 1000 - 500, 'gnome costs 500');
+  assert.equal(farm.place('decoration', 'topiary', z.x + 7, z.y + 7), null, 'no vouchers, no topiary');
+  s.vouchers = 15;
+  assert.ok(farm.place('decoration', 'topiary', z.x + 7, z.y + 7));
+  assert.equal(s.vouchers, 0, 'the voucher price is spent');
+  assert.equal(s.coins, 500, 'and no coins');
+  assert.equal(farm.place('decoration', 'bunting_fence', z.x + 8, z.y + 8), null, 'an event exclusive cannot be bought');
+  s.decorate.owned = { bunting_fence: 1 };
+  assert.ok(farm.place('decoration', 'bunting_fence', z.x + 8, z.y + 8), 'but an owned one places');
+  assert.equal(s.decorate.owned.bunting_fence, 0, 'consuming the owned count');
+  assert.equal(s.coins, 500, 'for free');
+});
+
+test('a pen comes with one feeding of its feed (what fits); a bee hive needs none', () => {
+  const s = freshState();
+  s.coins = 100000;
+  const z = FARM.startZone;
+  assert.ok(farm.place('pen', 'chicken', z.x + 6, z.y + 6));
+  assert.equal(s.barn.items.chicken_feed, ANIMALS.chicken.capacity);
+  const before = Object.keys(s.barn.items).length;
+  assert.ok(farm.place('pen', 'bee', z.x + 8, z.y + 8));
+  assert.equal(Object.keys(s.barn.items).length, before, 'bees have no feed item');
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

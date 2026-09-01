@@ -163,7 +163,7 @@ export function researchedEffect() {
 }
 
 /** Complete finished research; called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   const active = state.lab.active;
   if (!active) return;
   if (now < active.readyAt) return;

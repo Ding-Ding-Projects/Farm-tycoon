@@ -107,7 +107,7 @@ function isTrainFull(t) { return t.wagons.every((w) => w.filled >= w.requested);
 function isPlaneFull(p) { return p.crates.every((c) => c.filled >= c.requested); }
 
 /** Advance train + plane lifecycles (arrive/depart/return); called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   ensureState();
   const level = state.level;
 

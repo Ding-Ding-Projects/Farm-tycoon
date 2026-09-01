@@ -158,7 +158,7 @@ function generateOrder() {
 }
 
 /** Advance timers + regenerate zoo orders; called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   const z = ensureState();
   if (state.level < ZOO.unlockLevel) return;
   while (z.orders.length < ZOO.orderSlots) {

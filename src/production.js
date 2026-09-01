@@ -368,3 +368,48 @@ export function tick(now = Date.now()) {
   )];
   return { now, readyFields, readyPens, readyBuildings };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Seeds. A harvest returns twice what was planted, so once a crop is going it feeds itself - but
+// NOTHING supplied the first seeds of a newly unlocked crop: corn unlocks at level 2 and the
+// newspaper, the only other crop source, at level 7. Two answers: a level-up hands over two
+// plantings' worth of every crop it unlocks, and the plant sheet sells a planting's worth for a
+// player who sold or ate the last of a crop.
+// ---------------------------------------------------------------------------------------------
+
+/** Coins for one planting's worth of seeds (seedCost seeds): the crop's own sell value per seed,
+ *  so buying-and-planting breaks even at harvest and the second planting is where it pays. */
+export function seedPrice(cropId) {
+  const crop = CROPS[cropId];
+  if (!crop) return 0;
+  return Math.max(1, Math.round(crop.sellPrice * crop.seedCost));
+}
+
+/** Buy one planting's worth of seeds into the silo. All or nothing: refused when the coins or the
+ *  silo room are short, having spent nothing. */
+export function buySeeds(cropId) {
+  const crop = CROPS[cropId];
+  if (!crop || !economy.isUnlocked(cropId)) return false;
+  const price = seedPrice(cropId);
+  if (state.coins < price) return false;
+  if (storage.roomFor(cropId) < crop.seedCost) return false;
+  economy.addCoins(-price);
+  storage.add(cropId, crop.seedCost);
+  return true;
+}
+
+/** Two plantings' worth of a crop that has just been unlocked (what fits in the silo). */
+export function grantStarterSeeds(cropIds) {
+  const granted = {};
+  for (const id of cropIds || []) {
+    const crop = CROPS[id];
+    if (!crop) continue;
+    const given = storage.add(id, crop.seedCost * 2);
+    if (given > 0) granted[id] = given;
+  }
+  return granted;
+}
+
+economy.onXpChanged((info) => {
+  if (info && info.leveledUp) grantStarterSeeds(info.unlocks);
+});

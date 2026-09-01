@@ -355,6 +355,16 @@ test('the Crop Almanac and the Recipe Book fill from a real harvest and a real c
   assert.equal(collections.found('crop_almanac').length, 1, 'a second wheat harvest would not add a page');
 });
 
+test('decorate.grant records an owned decoration that farm.place can spend, never a barn item', () => {
+  const s = freshState(1);
+  assert.equal(decorate.ownedCount('festival_tent'), 0);
+  assert.equal(decorate.grant('festival_tent'), 1);
+  assert.equal(decorate.grant('festival_tent', 2), 3);
+  assert.equal(decorate.ownedCount('festival_tent'), 3);
+  assert.equal(s.barn.items.festival_tent, undefined);
+  assert.equal(decorate.grant('', 1), 0, 'a missing id grants nothing');
+});
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) {
   console.log('\nFailures:');

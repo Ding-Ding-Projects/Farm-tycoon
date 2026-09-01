@@ -2603,7 +2603,7 @@ export const STRUCTURES = {
   train_station: { name: 'Train Station',     size: [4, 2], pos: { x: 22, y: 22 }, unlockLevel: 30, panel: 'trains' },
   airport:       { name: 'Airport',           size: [4, 3], pos: { x: 22, y: 5  }, unlockLevel: 38, panel: 'airport' },
   helipad:       { name: 'Helicopter Pad',    size: [2, 2], pos: { x: 8,  y: 10 }, unlockLevel: 22, panel: 'helicopter' },
-  workshop_yard: { name: 'Building Workshop', size: [3, 2], pos: { x: 13, y: 10 }, unlockLevel: 6,  panel: 'workshop' },
+  workshop_yard: { name: 'Building Workshop', size: [3, 2], pos: { x: 13, y: 10 }, unlockLevel: 2,  panel: 'workshop' }, // the yard opens with the first pen (L2); the Workshop BUILDING and its kit chain stay at L6
   museum_hall:   { name: 'Museum',            size: [3, 2], pos: { x: 27, y: 11 }, unlockLevel: 60, panel: 'museum' },
   laboratory:    { name: 'Laboratory',        size: [2, 2], pos: { x: 27, y: 5  }, unlockLevel: 54, panel: 'lab' },
   expedition_camp:{ name: 'Expedition Camp',  size: [3, 2], pos: { x: 27, y: 8  }, unlockLevel: 57, panel: 'expeditions' },
@@ -2722,19 +2722,24 @@ export const PHOTO = {
 
 export const TUTORIAL = {
   finishReward: { coins: 200, diamonds: 2, xp: 20 },
+  // Targets name REAL things: 'world:field' / 'world:pen' / 'world:building' anchor to a placed
+  // object, 'world:structure:<STRUCTURES key>' to a fixed structure, 'panel:<selector>' to a DOM
+  // node inside the open sheet. The texts describe the interaction the game actually has (tap a
+  // plot, pick from the ring) - the old ones promised a drag-to-plant and a swipe-to-harvest that
+  // never existed, and pointed at dock buttons that were removed when systems moved into the world.
   steps: [
-    { id: 'welcome',      target: null,                text: 'Welcome to your farm! Let’s get things growing. 🌱', event: 'dismissed' },
-    { id: 'plant_wheat',  target: 'world:field',       text: 'Tap a field and drag the wheat over your plots to plant it.', event: 'planted' },
-    { id: 'grow_wait',    target: 'world:field',       text: 'Wheat takes a moment to grow — watch the timer ring!', event: 'crop_ready' },
-    { id: 'harvest',      target: 'world:field',       text: 'It’s ready! Tap the field and swipe to harvest.', event: 'harvested' },
-    { id: 'silo_peek',    target: 'dock:inventory',    text: 'Your crops are stored in the silo. Take a look!', event: 'panel_opened:inventory' },
-    { id: 'sell_wheat',   target: 'panel:.shop-slot',  text: 'Sell 2 wheat to earn your first coins.', event: 'sold' },
-    { id: 'buy_coop',     target: 'dock:build',        text: 'Open the build menu and buy a Chicken Coop. 🐔', event: 'placed:chicken' },
-    { id: 'feed_hens',    target: 'world:pen',         text: 'Feed your chickens — they’ll lay eggs for you.', event: 'fed' },
-    { id: 'buy_bakery',   target: 'dock:build',        text: 'Now buy a Bakery from the build menu.', event: 'placed:bakery' },
-    { id: 'bake_bread',   target: 'world:building',    text: 'Tap the Bakery and queue up some bread. 🍞', event: 'enqueued:bread' },
-    { id: 'first_order',  target: 'dock:orders',       text: 'The order board pays extra for goods. Fulfill your first order!', event: 'order_fulfilled' },
-    { id: 'done',         target: null,                text: 'You’re a real farmer now — the farm is yours! 🎉', event: 'dismissed' },
+    { id: 'welcome',      target: null,                            text: 'Welcome to your farm! Let’s get things growing. 🌱', event: 'dismissed' },
+    { id: 'plant_wheat',  target: 'world:field',                   text: 'Tap an empty field and pick Wheat from the ring to plant it.', event: 'planted' },
+    { id: 'grow_wait',    target: 'world:field',                   text: 'Wheat takes a moment to grow — watch the ring around the plot fill up.', event: 'crop_ready' },
+    { id: 'harvest',      target: 'world:field',                   text: 'It’s ready! Tap the field, then tap the basket to harvest.', event: 'harvested' },
+    { id: 'silo_peek',    target: 'world:structure:silo',          text: 'Your crops are stored in the silo. Tap it to take a look!', event: 'panel_opened:inventory' },
+    { id: 'sell_wheat',   target: 'panel:.build-card',             text: 'Sell 2 wheat to earn your first coins.', event: 'sold' },
+    { id: 'buy_coop',     target: 'world:structure:workshop_yard', text: 'Tap the Building Workshop yard and build a Chicken Coop. 🐔', event: 'placed:chicken' },
+    { id: 'feed_hens',    target: 'world:pen',                     text: 'Tap the coop and feed your chickens — the coop came with a bag of feed.', event: 'fed' },
+    { id: 'buy_bakery',   target: 'world:structure:workshop_yard', text: 'Back at the yard, build a Bakery.', event: 'placed:bakery' },
+    { id: 'bake_bread',   target: 'world:building',                text: 'Tap the Bakery and queue up some bread. 🍞', event: 'enqueued:bread' },
+    { id: 'first_order',  target: 'world:structure:order_board',   text: 'The order board pays extra for goods. Fulfill your first order!', event: 'order_fulfilled' },
+    { id: 'done',         target: null,                            text: 'You’re a real farmer now — the farm is yours! 🎉', event: 'dismissed' },
   ],
 };
 

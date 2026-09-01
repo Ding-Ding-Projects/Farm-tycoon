@@ -41,3 +41,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `ec07cc7d78e0` | Steamed Tofu Stuffed with Shrimp · 百花釀豆腐 | `shrimp-stuffed-tofu` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0033-shrimp-stuffed-tofu.png |
 | 0.1.0 | `a0612ce4e9bf` | Steamed Eggplant Stuffed with Shrimp · 百花釀茄子 | `shrimp-stuffed-eggplant` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0034-shrimp-stuffed-eggplant.png |
 | 0.1.0 | `ba0d5914969a` | Steamed Bitter Melon Stuffed with Fish · 鯪魚釀苦瓜 | `fish-stuffed-bitter-melon` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0035-fish-stuffed-bitter-melon.png |
+| 0.1.0 | `089224d9faa8` | Steamed Bean Curd Skin Roll · 鮮竹卷 | `steamed-bean-curd-roll` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0036-steamed-bean-curd-roll.png |

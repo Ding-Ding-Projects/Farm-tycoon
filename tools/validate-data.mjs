@@ -343,6 +343,23 @@ for (const [id, m] of Object.entries(d.MATERIALS)) {
   if (!(m.sellPrice > 0)) errors.push(`material ${id}: bad sellPrice`);
 }
 
+// Item icons. itemIcon() in src/ui.js resolves CROPS, then GOODS, then ANIMALS, then
+// MATERIALS, falling back to '❔' the moment none of the four carries an `icon` field for
+// that id - which is exactly what shipped, silently, until a screenshot pass caught every
+// panel in the game rendering question marks. A rule alone ("every icon present is
+// non-empty") passes trivially on a table with zero icons at all, so the tables itemIcon()
+// can be asked about are named by hand here; a table dropped from this list would make the
+// same defect ship again with a green test suite.
+{
+  const ICON_TABLES = [['CROPS', d.CROPS], ['ANIMALS', d.ANIMALS], ['GOODS', d.GOODS], ['MATERIALS', d.MATERIALS]];
+  for (const [name, table] of ICON_TABLES) {
+    if (!table || !Object.keys(table).length) { errors.push(`icon audit: table '${name}' is empty or missing - itemIcon() has nothing to resolve`); continue; }
+    for (const [id, entry] of Object.entries(table))
+      if (!entry.icon || typeof entry.icon !== 'string' || !entry.icon.trim())
+        errors.push(`${name}.${id} has no icon - itemIcon() would render the '❔' fallback for it`);
+  }
+}
+
 // Expansions draw from the EXPANSION set only, sit inside the grid, and never overlap each
 // other or the start zone. Overlap is silent corruption otherwise: two unlock zones would
 // claim the same tiles and whichever rendered last would win.

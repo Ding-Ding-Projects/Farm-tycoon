@@ -621,86 +621,99 @@ test('a broad sweep of every required panel, against a rich real save, never ren
 });
 
 // ---------------------------------------------------------------------------
-// G. Per-factory minigames (minigames.js) — a second headline mechanic (buildings are CRAFTED,
-// not bought, is the first) that was completely unreachable: ui.js never imported minigames.js,
-// so none of the 26 production buildings' own minigame could ever be opened. Every check below
-// is driven through the REAL ui.js render path and the REAL minigames.js API — never a
-// restated shape — exactly as bug #1-#4 above required.
+// G. Per-factory minigames (minigames.js) — the per-BUILDING factory bonus (one entry per
+// production building in the MINIGAMES table, unchanged) versus the per-CRAFT quality game a
+// playable RECIPE carries (the `playable-items` lane's own, separately-owned system).
+//
+// This originally held three UI-reachability tests written against minigames.start()/
+// isAvailable()/finish()/cancel() and a "Play <name>" button this lane built into ui.js. Both
+// are gone: the `playable-items` lane (already merged into origin/main — see 933eff4, 582ba3d,
+// 2a5dbfe and friends) replaced the entire per-building "optional minigame you start and finish"
+// mechanism with a per-CRAFT quality-tier system of its own, with its own UI (renderQueue's
+// "Make it"/"Resume" button, openStagePlayer, minigames/shell.js) and its own gate — a playable
+// recipe genuinely cannot be collected until played, by design (see production.isCollectable
+// and minigames.js's own header comment, which explicitly removed the old "never a gate" line).
+// minigames.js no longer exports start/isAvailable/finish/cancel/tick at all; keeping those
+// three tests would mean either resurrecting deleted functions in a file this lane does not own,
+// or reimplementing the other lane's own UI a second time. Neither is this lane's job.
+//
+// What minigames.js DID keep unchanged is forBuilding() and pendingBonus() — the per-building
+// MINIGAMES table and its state.minigames.results bucket. minigames.js's own finalize() still
+// banks a factory bonus there (awarded when a playable craft reaches Masterpiece), and its own
+// comment on pendingBonus() says it is "the consuming path, used at collect" — but nothing
+// anywhere actually called it. That is a real, still-open gap, and it is what the tests below
+// guard instead: that production.collectBuilding() (and workshop.collect()) actually spend a
+// banked factory bonus through production.applyMinigameBonus() at the real collection point,
+// and that collection succeeds with or without one ever being banked — the factory bonus stays
+// optional even though the separate per-craft quality game is now a real gate for its own recipe.
 // ---------------------------------------------------------------------------
 test('ui.js imports minigames.js', () => {
   assert.ok(/from '\.\/minigames\.js'/.test(uiSource), "expected \"import ... from './minigames.js'\" in ui.js");
 });
 
-test("a production building's minigame is reachable, playable end to end, and production never depends on playing it", () => {
+test('collectBuilding spends a real banked factory bonus (minigames.pendingBonus) at the real collection point', () => {
   const s = freshState();
   const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
-  const recipe = data.BUILDINGS.dairy.recipes[0]; // cream: { milk: 1 }
-  for (const [inputId, qty] of Object.entries(recipe.inputs)) {
-    (data.CROPS[inputId] ? s.silo.items : s.barn.items)[inputId] = qty;
-  }
-  assert.equal(production.enqueue(buildingId, recipe.id), true, 'setup: queuing cream must succeed');
-
-  openAndGetHtml('building', buildingId);
-  const playBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Play '));
-  assert.ok(playBtn, 'expected a reachable "Play <name>" button on a building with something queued');
-  assert.equal(playBtn.textContent, `Play ${data.MINIGAMES.churn_timing.name}`,
-    "expected dairy's real minigame name (churn_timing) on the button, not a generic label");
-  assert.equal(playBtn.disabled, false, 'a building with a not-yet-ready queue entry must have an available minigame');
-
-  playBtn.click();
-  assert.ok(s.minigames.pending[buildingId], 'clicking Play must start a real minigames.start() run');
-  assert.equal(s.minigames.pending[buildingId].gameId, 'churn_timing', 'the started run must be dairy\'s own real minigame, not a placeholder');
-  const seed = s.minigames.pending[buildingId].seed;
-
-  let guard = 0;
-  while (s.minigames.pending[buildingId] && guard < 20) {
-    const live = queryAll(sheetContentEl, '.live');
-    assert.equal(live.length, 1, `expected exactly one live target cell mid-round (event ${guard}), got ${live.length}`);
-    assert.equal(s.minigames.pending[buildingId].seed, seed,
-      're-rendering mid-run (refreshPanel) must never reroll the seed — same seed, same round');
-    live[0].click();
-    guard++;
-  }
-  assert.ok(guard > 0 && guard < 20, `expected the fixed 8-event round to finish in a bounded number of taps, took ${guard}`);
-  assert.equal(s.minigames.pending[buildingId], undefined, 'finishing the round must clear the pending run');
-  assert.ok(s.minigames.results[buildingId], 'finishing the round must bank a real result for collection to spend later');
-
-  // Production itself never depended on any of the above: the queued batch collects normally
-  // whether or not its minigame was ever opened.
+  s.barn.items.milk = 1;
+  assert.equal(production.enqueue(buildingId, 'cream'), true, 'setup: queuing a plain (non-playable) recipe must succeed');
   const entry = s.production.find((p) => p.objectId === buildingId);
   entry.readyAt = Date.now() - 1000;
+
+  // Bank a factory bonus exactly the way minigames.js's own finalize() does at Masterpiece —
+  // dairy's real churn_timing entry, not an invented effect name.
+  const game = data.MINIGAMES.churn_timing;
+  s.minigames.results[buildingId] = { effect: game.effect, amount: game.cap, appliedAt: Date.now() };
+
+  const xpBefore = s.xp;
   const result = production.collectBuilding(buildingId);
-  assert.ok(result && result.qty >= 1, 'the batch must collect normally — the minigame is a bonus, never a gate');
-  assert.equal(s.minigames.results[buildingId], undefined, 'collecting the batch must consume (spend) the banked minigame result exactly once');
+  assert.ok(result && result.qty >= 1, 'setup: the batch must actually collect');
+  assert.equal(s.xp - xpBefore, 3 + Math.round(3 * game.cap),
+    'a speedMult factory bonus must add its own bonus XP on top of the recipe\'s base 3 XP');
+  assert.equal(s.minigames.results[buildingId], undefined,
+    'collecting must consume (spend) the banked factory bonus exactly once — pendingBonus() deletes on read');
 });
 
-test('a building with nothing queued shows its minigame as unavailable, never as playable', () => {
+test('collectBuilding and workshop.collect() both complete normally with nothing banked — the factory bonus is optional, never a gate', () => {
   const s = freshState();
   const buildingId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
-  openAndGetHtml('building', buildingId);
-  const playBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Play '));
-  assert.ok(playBtn, 'the minigame section must still render (with a real name/purpose) even with nothing queued');
-  assert.equal(playBtn.disabled, true, 'nothing queued means minigames.isAvailable() is false — Play must be disabled, never clickable');
-  playBtn.click();
-  assert.equal(s.minigames.pending[buildingId], undefined, 'a disabled Play button must never actually start a run');
+  s.barn.items.milk = 1;
+  assert.equal(production.enqueue(buildingId, 'cream'), true);
+  const entry = s.production.find((p) => p.objectId === buildingId);
+  entry.readyAt = Date.now() - 1000;
+  assert.equal(s.minigames.results[buildingId], undefined, 'setup: nothing banked for this building');
+  const result = production.collectBuilding(buildingId);
+  assert.ok(result && result.qty === 1, 'collection must succeed with no factory bonus ever banked, plain base XP only');
+
+  const workshopId = placeStructureAndBuilding(s, 'workshop_yard', 'build_workshop');
+  const wsRecipe = data.BUILDINGS.build_workshop.recipes[0];
+  for (const [inputId, qty] of Object.entries(wsRecipe.inputs)) s.barn.items[inputId] = qty;
+  assert.equal(workshop.craft(wsRecipe.id), true);
+  const wsEntry = s.production.find((p) => p.objectId === workshopId);
+  wsEntry.readyAt = Date.now() - 1000;
+  const wsResult = workshop.collect(0);
+  assert.ok(wsResult && wsResult.qty === 1, 'workshop.collect() must also succeed with nothing banked');
 });
 
-test('the Building Workshop has its own reachable minigame (workshop_fit) on the workshop panel', () => {
+test("workshop.collect() also spends a real banked factory bonus for the Workshop's own minigame (workshop_fit)", () => {
   const s = freshState();
   const workshopId = placeStructureAndBuilding(s, 'workshop_yard', 'build_workshop');
   const recipe = data.BUILDINGS.build_workshop.recipes[0];
   for (const [inputId, qty] of Object.entries(recipe.inputs)) s.barn.items[inputId] = qty;
-  assert.equal(workshop.craft(recipe.id), true, 'setup: crafting the cheapest workshop recipe must succeed');
+  assert.equal(workshop.craft(recipe.id), true);
+  const entry = s.production.find((p) => p.objectId === workshopId);
+  entry.readyAt = Date.now() - 1000;
 
-  openAndGetHtml('workshop');
-  const playBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Play '));
-  assert.ok(playBtn, 'expected a reachable "Play <name>" minigame button on the Workshop panel');
-  assert.equal(playBtn.textContent, `Play ${data.MINIGAMES.workshop_fit.name}`);
-  assert.equal(playBtn.disabled, false, 'the workshop has a not-yet-ready craft in progress — its minigame must be available');
-  playBtn.click();
-  assert.ok(s.minigames.pending[workshopId], 'clicking Play on the workshop panel must start a real run keyed by the real workshop building id');
+  const game = data.MINIGAMES.workshop_fit;
+  s.minigames.results[workshopId] = { effect: game.effect, amount: game.cap, appliedAt: Date.now() };
+  const xpBefore = s.xp;
+  const result = workshop.collect(0);
+  assert.ok(result && result.qty >= 1, 'setup: the crafted item must actually collect');
+  // workshop_fit's effect (materialRefund) is not *Mult-suffixed, so this exercises the OTHER
+  // branch of applyMinigameBonus — a probabilistic bonus unit rather than bonus XP. Assert only
+  // what is deterministic here: XP never changes for a non-Mult effect, and the bonus was spent.
+  assert.equal(s.xp - xpBefore, recipe.xp, 'a non-Mult factory bonus must never add bonus XP');
+  assert.equal(s.minigames.results[workshopId], undefined, 'collecting must consume the banked bonus exactly once');
 });
-
 // ---------------------------------------------------------------------------
 // H. Foraging (foraging.js) — free, always-available world nodes that never rendered
 // (main.js's buildWorld() never fed them into the frame's object list) and never had a click
@@ -740,9 +753,11 @@ test('input.js resolves a tap on a forage node\'s own tile to foraging.collectNo
   assert.ok(barnAfter >= barnBefore, 'tapping a ready node must never remove items from the barn');
   assert.ok(node.readyAt > Date.now(), 'collecting must set a real future respawn readyAt, matching foraging.collectNode\'s own contract');
 
-  const growing = { id: 'forage_test_growing', type: 'wildflower_patch', x: 6, y: 6, readyAt: Date.now() + 999_000 };
+  const futureReadyAt = Date.now() + 999_000; // captured once — re-evaluating Date.now() at the
+  // assertion below would make this flaky the moment a real millisecond ticks between the two calls
+  const growing = { id: 'forage_test_growing', type: 'wildflower_patch', x: 6, y: 6, readyAt: futureReadyAt };
   input.forageTap(growing);
-  assert.equal(growing.readyAt, Date.now() + 999_000, 'tapping a not-yet-ready node must be a true no-op, not silently collect early');
+  assert.equal(growing.readyAt, futureReadyAt, 'tapping a not-yet-ready node must be a true no-op, not silently collect early');
 
   const inputSource = readFileSync(path.join(__dirname, '..', 'src', 'input.js'), 'utf8');
   assert.ok(/from '\.\/foraging\.js'/.test(inputSource), "expected \"import ... from './foraging.js'\" in input.js");

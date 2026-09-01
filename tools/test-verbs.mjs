@@ -235,6 +235,14 @@ const OPTIMAL = {
       return { charge, fired: false };
     };
   },
+
+  // Inverted balance: swing right out to each side. Holding centred - the pour_tin instinct -
+  // scores zero here, which is what makes the two different games.
+  toss_bowl: () => { let p = 0; return () => { p += 0.06; return { ax: Math.sin(p) * 0.95, ay: 0 }; }; },
+
+  // Read the cue, do not count. sizzle reaches exactly 1.0 at the moment the side is done, and
+  // the interval differs every flip, so a fixed metronome scores about half of this.
+  sear_flip: () => (snap) => (snap.sizzle >= 1 ? { taps: [{ tMs: 0 }] } : { taps: [] }),
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

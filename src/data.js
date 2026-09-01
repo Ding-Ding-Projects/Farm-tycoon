@@ -439,7 +439,8 @@ export const BUILDINGS = {
       { id: 'bacon_eggs',   inputs: { bacon: 1, egg: 2 },               time: 1200, xp: 5, unlockLevel: 12 },
       { id: 'pancakes',     inputs: { wheat: 2, egg: 1, syrup: 1 },     time: 1800, xp: 7, unlockLevel: 12 },
       { id: 'baked_potato', inputs: { potato: 2, butter: 1 },           time: 2400, xp: 7, unlockLevel: 13 },
-      { id: 'burger',       inputs: { bread: 2, bacon: 2, tomato: 1 },  time: 4500, xp: 13, unlockLevel: 12 },
+      { id: 'burger',       inputs: { bread: 2, bacon: 2, tomato: 1 },  time: 4500, xp: 13, unlockLevel: 12,
+        play: { stages: [{ verb: 'sear_flip' }] } },
       { id: 'lamb_skewer',    inputs: { lamb_chop: 2, bell_pepper: 1 },               time: 2700,  xp: 26, unlockLevel: 66 },
     ],
   },
@@ -566,7 +567,8 @@ export const BUILDINGS = {
     name: 'Salad Bar', unlockLevel: 68, cost: 68000, size: [2, 2], kit: 'kit_salad_bar', minigame: 'plate_toss', queueSlots: 3,
     recipes: [
       { id: 'garden_salad',   inputs: { bell_pepper: 2, tomato: 2 },                  time: 3600,  xp: 44, unlockLevel: 68 },
-      { id: 'feta_salad',     inputs: { goat_cheese: 1, olive: 2, bell_pepper: 1 },   time: 5400,  xp: 58, unlockLevel: 68 },
+      { id: 'feta_salad',     inputs: { goat_cheese: 1, olive: 2, bell_pepper: 1 },   time: 5400,  xp: 58, unlockLevel: 68,
+        play: { stages: [{ verb: 'toss_bowl' }] } },
       { id: 'fruit_salad',    inputs: { watermelon: 2, strawberry: 2 },               time: 4500,  xp: 52, unlockLevel: 77 },
     ],
   },
@@ -1089,6 +1091,18 @@ export const VERBS = {
     purpose: 'A batch landed on the mark refines clean.',
     hint: 'Hold to build a pull, let go to add it. Land the TOTAL on the mark - going over spoils it.',
     stageClass: 'stage-pinch', durationMs: 15000,
+  },
+  toss_bowl: {
+    name: 'Toss the Bowl', verbWord: 'toss', family: 'balance',
+    purpose: 'Tossed through, every leaf is dressed.',
+    hint: 'Swing it right out to each side and back. Holding it still dresses nothing.',
+    stageClass: 'stage-toss', durationMs: 13000,
+  },
+  sear_flip: {
+    name: 'Sear and Flip', verbWord: 'sear', family: 'rhythm',
+    purpose: 'Turned at the right moment, it sears rather than steams.',
+    hint: 'No beat to count - watch the sizzle and flip when it is seared. Every side differs.',
+    stageClass: 'stage-sear', durationMs: 15000,
   },
 };
 export const QUALITY = {

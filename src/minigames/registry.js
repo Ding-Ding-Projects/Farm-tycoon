@@ -36,6 +36,8 @@ export const VERB_LOADERS = {
   draw_steam: () => import('./verbs/draw_steam.js'),
   skim_curds: () => import('./verbs/skim_curds.js'),
   pull_shot: () => import('./verbs/pull_shot.js'),
+  toss_bowl: () => import('./verbs/toss_bowl.js'),
+  sear_flip: () => import('./verbs/sear_flip.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

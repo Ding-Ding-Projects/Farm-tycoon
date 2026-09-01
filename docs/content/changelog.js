@@ -30,19 +30,21 @@ export const article = {
       heading: 'Where it stands today',
       html: `
 <div class="stat-row">
-  <div class="stat"><div class="stat-num">100</div><div class="stat-label">commits</div></div>
+  <div class="stat"><div class="stat-num">116</div><div class="stat-label">commits</div></div>
   <div class="stat"><div class="stat-num">37</div><div class="stat-label">source modules</div></div>
-  <div class="stat"><div class="stat-num">167</div><div class="stat-label">passing assertions</div></div>
-  <div class="stat"><div class="stat-num">47</div><div class="stat-label">captures of the real build</div></div>
-  <div class="stat"><div class="stat-num">17</div><div class="stat-label">published releases</div></div>
+  <div class="stat"><div class="stat-num">171</div><div class="stat-label">passing assertions</div></div>
+  <div class="stat"><div class="stat-num">57</div><div class="stat-label">captures of the real build</div></div>
+  <div class="stat"><div class="stat-num">28</div><div class="stat-label">published releases</div></div>
 </div>
 
-<p><em>Measured at commit <code>a368e45</code>. Every claim about the code below
-is pinned to <code>89e0c72</code>, whose source and tool trees are byte-identical
-to it — so nothing derived from the code moved between the two. Where a number
-here disagrees with a document elsewhere in the repository, the disagreement is
-itself recorded under <a href="#/changelog/corrections">corrections</a> rather
-than quietly reconciled.</em></p>
+<p><em>Re-measured at commit <code>7edfa26</code> against a clean checkout: the
+commit count, the assertion count, the capture count, the release count and the
+line table below all come from that commit, not from an earlier snapshot. The
+narrative sections keep the commit each event actually happened at, so a figure
+quoted about a past commit stays as it was rather than being back-dated. Where a
+number here disagrees with a document elsewhere in the repository, the
+disagreement is recorded under <a href="#/changelog/corrections">corrections</a>
+rather than quietly reconciled.</em></p>
 
 <p>Farm Tycoon went from an empty repository to a packaged, published Windows
 application inside a single working day. Every commit is dated 31 August 2026 or
@@ -86,7 +88,7 @@ underneath it can already do.</p>
     <tr>
       <td>Test suites</td>
       <td>Nine suites plus the content validator, all green</td>
-      <td>167 passed, 0 failed, exit code 0, against a clean checkout of the verified commit</td>
+      <td>171 passed, 0 failed, exit code 0, against a clean checkout of the verified commit</td>
     </tr>
     <tr>
       <td>Rendering</td>
@@ -105,7 +107,7 @@ underneath it can already do.</p>
     </tr>
     <tr>
       <td>Screenshots</td>
-      <td>47 captures of the real packaged executable, including its defects at the time</td>
+      <td>57 captures of the real packaged executable, including its defects at the time</td>
       <td>Driven over the developer-tools protocol against the built application, with a manifest recording every surface that could not be reached and why</td>
     </tr>
   </tbody>
@@ -113,10 +115,10 @@ underneath it can already do.</p>
 
 <h3>Who wrote it, and how much</h3>
 
-<p>The committed line counter reports 19,393 lines across the counted project
-areas (17,486 non-blank), attributed per <em>surviving</em> line rather than by
+<p>The committed line counter reports 20,121 lines across the counted project
+areas (18,123 non-blank), attributed per <em>surviving</em> line rather than by
 summing additions — churn is not authorship, and a line written then deleted
-belongs to nobody. Of those, 24 lines are human-authored and 19,369 are
+belongs to nobody. Of those, 30 lines are human-authored and 20,091 are
 agent-authored. The counter checks its own arithmetic and refuses to print a
 total that disagrees with its own attribution split.</p>
 
@@ -125,24 +127,24 @@ total that disagrees with its own attribution split.</p>
     <tr><th>Area</th><th>Files</th><th>Lines</th><th>Non-blank</th></tr>
   </thead>
   <tbody>
-    <tr><td>Game source</td><td>37</td><td>10,130</td><td>9,254</td></tr>
-    <tr><td>Tests and tools</td><td>15</td><td>6,740</td><td>6,099</td></tr>
-    <tr><td>Documentation</td><td>12</td><td>1,722</td><td>1,421</td></tr>
+    <tr><td>Game source</td><td>37</td><td>10,190</td><td>9,310</td></tr>
+    <tr><td>Tests and tools</td><td>15</td><td>7,194</td><td>6,527</td></tr>
+    <tr><td>Documentation</td><td>12</td><td>1,936</td><td>1,574</td></tr>
     <tr><td>Styles and markup</td><td>2</td><td>551</td><td>503</td></tr>
     <tr><td>Desktop wrapper</td><td>2</td><td>34</td><td>30</td></tr>
     <tr><td>Root configuration</td><td>3</td><td>216</td><td>179</td></tr>
-    <tr><td><strong>Project total</strong></td><td><strong>71</strong></td><td><strong>19,393</strong></td><td><strong>17,486</strong></td></tr>
+    <tr><td><strong>Project total</strong></td><td><strong>71</strong></td><td><strong>20,121</strong></td><td><strong>18,123</strong></td></tr>
   </tbody>
 </table>
 
 <p>Vendored fonts, the generated icon, the dependency lockfile and the checked-in
 design reference are counted separately and excluded, each with its reason
-printed beside it. The counter also reports its own blind spot: 82 tracked files
+printed beside it. The counter also reports its own blind spot: 104 tracked files
 match no area rule and land in neither column. That is listed under
 <a href="#/changelog/open">the open items</a> rather than rounded away.</p>
 
-<p>Of the 100 commits, 17 are automated release-ledger commits and one is the
-repository's initial commit by a person. The remaining 82 were written by an
+<p>Of the 116 commits, 22 are automated release-ledger commits and one is the
+repository's initial commit by a person. The remaining 93 were written by an
 agent.</p>
 `,
     },
@@ -623,12 +625,12 @@ finding is a much narrower point about two specific buildings, which is
     <tr>
       <td>"147 passing assertions"</td>
       <td>The repository readme, the roadmap, the handoff</td>
-      <td><strong>167 at the verified commit.</strong> Four commits added assertions after those documents were written: a dispatch-completeness guard, nine camera regression tests, more camera work, and a workshop interface suite. The count went 147, 148, 156, 167.</td>
+      <td><strong>171 at <code>7edfa26</code>.</strong> Assertions were added after those documents were written: a dispatch-completeness guard, camera regression tests, more camera work, and the Workshop panel suite. The count has read 147, 148, 156, 167 and now 171 across nine suites.</td>
     </tr>
     <tr>
       <td>"There are no screenshots or recordings"</td>
       <td>The repository readme, the roadmap</td>
-      <td><strong>47 captures exist</strong> and are committed, with a manifest recording the method and every surface that could not be reached.</td>
+      <td><strong>57 captures exist</strong> and are committed, with a manifest recording the method and every surface that could not be reached. The first pass recorded 47; the second added the Workshop crafting flow once its panel was wired.</td>
     </tr>
     <tr>
       <td>The Windows installer uses NSIS</td>

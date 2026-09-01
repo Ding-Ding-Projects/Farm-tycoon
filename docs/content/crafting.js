@@ -63,6 +63,11 @@ export const article = {
     it in the world; the dock keeps only what has no place out there.
   </p>
 </div>
+<figure class="shot">
+  <img src="./screenshots/25-panel-workshop_yard.webp" alt="A sliding panel titled Workshop with one card offering to build the Workshop itself for coins."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>Before the Workshop exists.</strong> Tapping the Workshop Yard while the Workshop itself is unbuilt offers exactly one card: build the Workshop, for coins. The materials, components and kits only appear once that building is standing.</figcaption>
+</figure>
 `,
     },
 
@@ -246,6 +251,28 @@ export const article = {
   tagged as sinks are the animal feeds &mdash; which are eaten, not sold. If you find yourself
   selling Glazing Units for coins, the game has stopped working as designed.
 </p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/25b-workshop-craft-available.webp" alt="A Workshop panel showing a grid of craftable components and kits with question-mark icons, most disabled with a note listing which materials are missing, one (Roof Shingle) enabled."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The chain, once the Workshop is up.</strong> Every component and kit is listed, and each unaffordable card states which materials it is short of rather than showing a blanket lock. One Roof Shingle is affordable here.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/25c-workshop-craft-in-progress.webp" alt="A Workshop panel showing a Roof Shingle card with a progress bar partway full and the label Crafting."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Crafting.</strong> Craft consumed the slab and the nails and pushed a real queue entry with a running timer.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/25d-workshop-craft-ready.webp" alt="A Workshop panel showing a Roof Shingle card with a full progress bar, the label Ready to collect, and a Collect button."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Ready to collect.</strong> The Workshop queue uses the same progress bar and Collect button as an ordinary production building.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/25e-workshop-component-collected.webp" alt="A Workshop panel with an empty crafting queue and a green toast reading Collected Roof Shingle."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Into the barn.</strong> Collect banks the finished Roof Shingle, awards its experience and clears the queue.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -317,6 +344,11 @@ export const article = {
   Third, only the last three kits touch advanced materials, and their kit-recipe levels (75, 80
   and 86) all sit above the level 57 expedition gate, exactly as the advanced-tier guard demands.
 </p>
+<figure class="shot">
+  <img src="./screenshots/25f-workshop-kit-ready.webp" alt="A Workshop panel showing a Dairy Kit card with a full progress bar, the label Ready to collect, and a Collect button."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>A kit, one tier up.</strong> The Dairy Kit crafted from two Timber Frames, two Wall Panels and three Roof Shingles, waiting to be collected. Same queue, higher up the chain.</figcaption>
+</figure>
 `,
     },
 
@@ -709,6 +741,23 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
   slots of its own, and comes with Churn Timing &mdash; its own minigame, capped at a 20% speed
   bonus, which you are free to ignore forever.
 </p>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/25g-workshop-build-gate.webp" alt="A Workshop panel Build section: the Dairy card shows a checked kit and an enabled Build button, while other building cards show an unchecked kit requirement and are disabled."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The gate.</strong> With one Dairy Kit banked, the Dairy card shows a satisfied requirement and an enabled Build button, while its neighbours stay disabled until their own kits exist.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/25h-workshop-building-placed.webp" alt="A Workshop panel Build section with a green toast reading Built Dairy, and no Dairy card left in the list."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Built.</strong> Build places the Dairy and consumes the kit. The card leaves the list because the Dairy is now a placed object rather than an available one.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/25i-workshop-dairy-in-world.webp" alt="A dairy building sitting on the farm, freshly placed."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>The payoff.</strong> The Dairy standing on the farm at the end of the materials, components and kit chain, drawn like every other building.</figcaption>
+  </figure>
+</div>
 `,
     },
 
@@ -758,12 +807,6 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
     hand-populated mastery table would not affect production time today.
   </li>
   <li>
-    <strong>The kit gate is not enforced by the build interface.</strong> <code>src/farm.js</code>
-    contains no reference to kits, and the build panel calls <code>farm.place</code> directly
-    without consulting <code>workshop.hasKitFor</code>. The gate is implemented and tested at the
-    module boundary; the path a player actually takes does not go through it yet.
-  </li>
-  <li>
     <strong>The validator's event branch is dead.</strong> Its material-source check iterates
     <code>EVENTS.types</code>, and <code>EVENTS</code> has no <code>types</code> key &mdash; its
     keys are <code>weekend</code>, <code>miniWeekday</code>, <code>fair</code> and
@@ -771,6 +814,24 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
     materials anyway.
   </li>
 </ul>
+
+<div class="callout callout-ok">
+  <p>
+    <strong>The kit gate is enforced, and this page previously said it was not.</strong> The
+    earlier wording claimed the build panel called <code>farm.place</code> without consulting
+    <code>workshop.hasKitFor</code>. That was wrong when it was written, not merely overtaken:
+    the panel was wired in <code>2b33dec</code>, which landed before this article's first commit.
+    What was true, and misread as proof, is that <code>src/farm.js</code> itself contains no
+    reference to kits &mdash; the gate deliberately sits <em>above</em> <code>farm.place</code>
+    rather than inside it, because that same function also places animal pens and the Workshop
+    itself, and those are coin-only by design. <code>renderWorkshop()</code> in
+    <code>src/ui.js</code> disables the Build button while the kit is missing, re-checks
+    <code>workshop.hasKitFor</code> inside the click handler so a re-enabled button still
+    refuses, and calls <code>workshop.consumeKit</code> only from the post-placement callback,
+    so a placement that fails for any other reason never eats the kit. All three behaviours are
+    pinned by <code>tools/test-ui-workshop.mjs</code>.
+  </p>
+</div>
 
 <h3>An open balance question</h3>
 <p>

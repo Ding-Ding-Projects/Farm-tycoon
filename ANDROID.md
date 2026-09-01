@@ -18,6 +18,7 @@ has been built, what has deliberately **not** been done, and the exact steps and
 | `viewport-fit=cover`, so `env(safe-area-inset-*)` reports real values | done |
 | Per-finger sides for the `dual` family, so two hands work | done, and verified |
 | `touch-action` layering so the WebView cannot cancel a verb mid-gesture | done, and verified |
+| Save on `pagehide` and `visibilitychange`, not just `beforeunload` | done, and verified |
 | Native `android/` project generated | **not done** (needs the Android SDK) |
 | Release keystore created | **not done** (must be created by the repository owner) |
 | APK built | **not done** |
@@ -111,7 +112,23 @@ apps" enabled.
 - [ ] Each of the twelve input families is playable by touch, in particular
       `dual` (two independent values at once) and `drag` (carry and drop), which
       were designed against a mouse and a keyboard
-- [ ] The save survives a force-quit and a relaunch
+- [ ] The save survives a force-quit and a relaunch. **Measured on the desktop build, and it
+      produced a real finding worth carrying to the device.** `localStorage` is committed to disk
+      lazily: killing the process seconds after a save loses that save completely and the game
+      reloads the PREVIOUS one, while the identical kill after a settling window keeps everything.
+      Nothing is corrupted and no save is reset, so the failure mode is losing the last stretch of
+      play rather than the farm, but on a phone the OS reclaims apps routinely and that stretch is
+      exactly what a player would notice.
+
+      Mitigated by saving on `pagehide` and on `visibilitychange` to hidden, which fire when the
+      app leaves the foreground and give the browser its chance to commit. `beforeunload` alone was
+      not enough, and is documented as frequently never firing on Android at all. Both halves are
+      demonstrated by `tools/verify-persistence.mjs`, which runs across two separate app launches
+      sharing one profile rather than across a page reload, since a reload keeps the renderer and
+      its storage cache alive and proves nothing about a kill.
+
+      Still open on device, because Android's WebView commit timing is its own: confirm that a
+      real force-quit and a real swipe-away both keep the last save.
 - [ ] Layout holds at the device's real width, including the minigame modal
 - [ ] The launcher icon renders correctly at the home-screen size
 

@@ -256,7 +256,26 @@ function boot() {
 
   if (bootStatus) bootStatus.textContent = '';
 
-  window.addEventListener('beforeunload', () => state.save());
+  // Save on every route out of the app, not just beforeunload.
+  //
+  // beforeunload is the desktop event and it is genuinely unreliable on mobile: Android
+  // frequently backgrounds or kills an app without ever firing it, which on the Android target
+  // means the last stretch of play is simply gone. visibilitychange (to hidden) and pagehide are
+  // the events the platform actually guarantees, and they fire at the moment the app leaves the
+  // foreground, which is precisely when the OS may decide to reclaim it.
+  //
+  // This matters more than it looks, and it was measured rather than assumed. localStorage is
+  // committed to disk lazily: force-quitting the app seconds after a save loses that save
+  // entirely and the game reloads the PREVIOUS one, while the same force-quit after a settling
+  // window keeps everything. Saving on the way out is what gives the browser the chance to
+  // commit before the process dies. See tools/verify-persistence.mjs, which demonstrates both
+  // outcomes.
+  const saveOnExit = () => { try { state.save(); } catch { /* never let a save break teardown */ } };
+  window.addEventListener('beforeunload', saveOnExit);
+  window.addEventListener('pagehide', saveOnExit);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveOnExit();
+  });
 
   running = true;
   lastAutosave = now;

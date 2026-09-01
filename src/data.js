@@ -486,7 +486,8 @@ export const BUILDINGS = {
     name: 'Jam Maker', unlockLevel: 22, cost: 3600, size: [2, 2], kit: 'kit_jam_maker', minigame: 'heat_band', queueSlots: 3,
     recipes: [
       { id: 'strawberry_jam', inputs: { strawberry: 3, sugar: 1 }, time: 4500, xp: 11, unlockLevel: 22 },
-      { id: 'honey_jam',      inputs: { honey: 1, sugar: 2 },      time: 5400, xp: 13, unlockLevel: 23 },
+      { id: 'honey_jam',      inputs: { honey: 1, sugar: 2 },      time: 5400, xp: 13, unlockLevel: 23,
+        play: { stages: [{ verb: 'jar_fill' }] } },
       { id: 'grape_jam',      inputs: { grapes: 3, sugar: 1 },     time: 7200, xp: 16, unlockLevel: 33 },
     ],
   },
@@ -1124,6 +1125,12 @@ export const VERBS = {
     purpose: 'Wound patiently, the mash gives up all its oil.',
     hint: 'The screw only turns one way. Wind it up as the mash compacts - too hard too early cracks it.',
     stageClass: 'stage-swirl', durationMs: 14000,
+  },
+  jar_fill: {
+    name: 'Fill the Jars', verbWord: 'fill', family: 'rate',
+    purpose: 'Filled to the line, a jar seals properly.',
+    hint: 'Hot jam runs slow - what pours now is what you asked for half a second ago. Ease off early.',
+    stageClass: 'stage-jar', durationMs: 15000,
   },
 };
 export const QUALITY = {

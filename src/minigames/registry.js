@@ -41,6 +41,7 @@ export const VERB_LOADERS = {
   crimp_edge: () => import('./verbs/crimp_edge.js'),
   catch_kernels: () => import('./verbs/catch_kernels.js'),
   wind_press: () => import('./verbs/wind_press.js'),
+  jar_fill: () => import('./verbs/jar_fill.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

@@ -261,6 +261,13 @@ const OPTIMAL = {
   // Ratchet: ride just under the safe line, which RISES as the mash compacts. Winding straight
   // to full cracks the press and scores zero.
   wind_press: () => (snap) => ({ rate: Math.max(snap.turned, snap.safe - 0.01) }),
+
+  // Dead time: stop pouring once the level PLUS what is already in the pipe will reach the line.
+  // Pouring until the jar looks full overshoots every single jar and scores zero.
+  jar_fill: () => (snap) => {
+    const willArrive = snap.inPipe * 0.42 * 0.52;
+    return { rate: snap.level + willArrive < snap.line - 0.02 ? 1 : 0 };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

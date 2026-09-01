@@ -377,7 +377,7 @@ roughly thirty other rule families in total — followed by eight gameplay-logic
 `test-township.mjs`, `test-research.mjs`, `test-deadtime.mjs`, `test-social.mjs`) that
 exercise the actual running modules: planting and harvesting, offline catch-up, save/load
 round-trips, the merge board, workshop crafting, trains/town/zoo, research, and the
-simulated-neighbours social layer, the playable-item gate and all 46 verbs. 664 assertions
+simulated-neighbours social layer, the playable-item gate and all 46 verbs. 668 assertions
 across 13 suites, all passing, as of this checkout.
 
 Three further suites run against a REAL built artifact rather than the source tree and are not

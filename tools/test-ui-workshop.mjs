@@ -56,6 +56,16 @@ function fakeElement(tag) {
         node.className = node.className.split(/\s+/).filter((c) => c && !cls.includes(c)).join(' ');
       },
     },
+    // Attributes. Absent until now, which silently made every accessibility attribute
+    // untestable: renderMerge setting aria-label on a cell threw "setAttribute is not a function"
+    // rather than being checked, so nothing about names, roles or pressed state could be
+    // exercised here at all.
+    attributes: {},
+    setAttribute(name, value) { node.attributes[name] = String(value); },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(node.attributes, name) ? node.attributes[name] : null; },
+    hasAttribute(name) { return Object.prototype.hasOwnProperty.call(node.attributes, name); },
+    removeAttribute(name) { delete node.attributes[name]; },
+    focus() {},
     appendChild(child) { node.children.push(child); child.parentNode = node; return child; },
     addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
     removeEventListener(type, fn) {

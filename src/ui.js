@@ -732,6 +732,14 @@ function renderMine(container) {
 // Merge Meadow (merge.js) — a 7x9 tap-to-merge board (select, then merge/move/claim).
 // ---------------------------------------------------------------------------
 let mergeSelected = null;
+// Which cell the keyboard is on. Separate from the SELECTION: on a merge board you move around
+// looking before you pick anything up, exactly as a pointer does, and collapsing the two would
+// mean every arrow key press picked something up.
+let mergeFocus = 0;
+// Set just before a board action rebuilds the panel, so focus can be put back on the cell that
+// was acted on. Never set on open: a panel that grabs focus the moment it appears is a panel that
+// fights the user.
+let mergeRefocus = false;
 
 function renderMerge(container) {
   merge.initBoard();
@@ -744,6 +752,13 @@ function renderMerge(container) {
   grid.style.display = 'grid';
   grid.style.gridTemplateColumns = `repeat(${MERGE.board.cols}, 1fr)`;
   grid.style.gap = '3px';
+  grid.setAttribute('role', 'grid');
+  grid.setAttribute('aria-label', `Merge board, ${MERGE.board.rows} rows by ${MERGE.board.cols} columns`);
+  grid.setAttribute('aria-rowcount', String(MERGE.board.rows));
+  grid.setAttribute('aria-colcount', String(MERGE.board.cols));
+
+  const cols = MERGE.board.cols;
+  const cellButtons = [];
 
   const m = state.merge;
   m.cells.forEach((cell, i) => {
@@ -755,40 +770,68 @@ function renderMerge(container) {
     cellBtn.style.fontSize = '16px';
     if (i === mergeSelected) cellBtn.style.outline = '3px solid #f0b52e';
 
+    const row = Math.floor(i / cols) + 1;
+    const col = (i % cols) + 1;
+    cellBtn.setAttribute('role', 'gridcell');
+    cellBtn.setAttribute('aria-rowindex', String(row));
+    cellBtn.setAttribute('aria-colindex', String(col));
+    // Roving tabindex: the board is 63 buttons, and making every one a tab stop would mean
+    // twenty-odd presses just to get PAST the merge panel. One stop in, then arrow keys.
+    cellBtn.tabIndex = i === mergeFocus ? 0 : -1;
+    // The selection was an outline and nothing else, so a screen reader could not tell which cell
+    // was picked up - on a board whose entire mechanic is "pick this up, put it on that one".
+    cellBtn.setAttribute('aria-pressed', i === mergeSelected ? 'true' : 'false');
+
+    // Every cell says where it is and what is on it. Before this, the 57 empty cells of a fresh
+    // board had no accessible name at all: a screen reader read out "button" fifty-seven times,
+    // with no way to tell them apart or know where on the board you were.
+    let what;
     if (!cell) {
       cellBtn.textContent = '';
+      what = 'empty';
     } else if (cell.generator) {
       const gen = MERGE.generators[cell.generator];
       cellBtn.textContent = '📦';
+      what = `${gen?.name || cell.generator}, a generator`;
       cellBtn.title = gen?.name || cell.generator;
     } else {
       const chain = MERGE.chains[cell.chain];
       const tierName = chain?.tiers?.[cell.tier] || `Tier ${cell.tier + 1}`;
+      const of = chain?.tiers?.length ? ` of ${chain.tiers.length}` : '';
       cellBtn.textContent = String(cell.tier + 1);
+      what = `${chain?.name || cell.chain}, ${tierName}, tier ${cell.tier + 1}${of}`;
       cellBtn.title = `${chain?.name || cell.chain} — ${tierName}`;
     }
+    cellBtn.setAttribute('aria-label',
+      `Row ${row}, column ${col}, ${what}${i === mergeSelected ? ', picked up' : ''}`);
 
     cellBtn.addEventListener('click', () => {
+      // Record the acted-on cell HERE rather than leaning on the focus event. Focusing an element
+      // that is already focused fires nothing, so a focus-maintained variable is only correct when
+      // focus actually moved - and after a rebuild it often has not. Measured: focus came back on
+      // a cell three rows from the one that was clicked. The cell that was acted on is known right
+      // here, with no ordering to reason about.
+      mergeFocus = i;
       if (!cell) {
         if (mergeSelected !== null) {
           const ok = merge.moveItem(mergeSelected, i);
           mergeSelected = null;
-          if (ok) refreshPanel();
+          if (ok) (mergeRefocus = true, refreshPanel());
         }
         return;
       }
       if (cell.generator) {
         const placed = merge.spawnFrom(i);
-        if (placed) { audio.place(); refreshPanel(); }
+        if (placed) { audio.place(); (mergeRefocus = true, refreshPanel()); }
         else { audio.error(); toast('Not enough energy, or the board is full.', 'error'); }
         return;
       }
-      if (mergeSelected === null) { mergeSelected = i; refreshPanel(); return; }
-      if (mergeSelected === i) { mergeSelected = null; refreshPanel(); return; }
+      if (mergeSelected === null) { mergeSelected = i; (mergeRefocus = true, refreshPanel()); return; }
+      if (mergeSelected === i) { mergeSelected = null; (mergeRefocus = true, refreshPanel()); return; }
       if (merge.canMerge(mergeSelected, i)) {
         const result = merge.merge(mergeSelected, i);
         mergeSelected = null;
-        if (result) { audio.merge(); toast('Merged!', 'success'); refreshPanel(); }
+        if (result) { audio.merge(); toast('Merged!', 'success'); (mergeRefocus = true, refreshPanel()); }
         return;
       }
       if (merge.claimableReward(i)) {
@@ -796,15 +839,53 @@ function renderMerge(container) {
         mergeSelected = null;
         audio.coin();
         toast('Claimed!', 'success');
-        refreshPanel();
+        (mergeRefocus = true, refreshPanel());
         return;
       }
       mergeSelected = i; // switch the selection to this cell instead
-      refreshPanel();
+      (mergeRefocus = true, refreshPanel());
     });
+    cellBtn.addEventListener('focus', () => { mergeFocus = i; });
+    cellButtons.push(cellBtn);
     grid.appendChild(cellBtn);
   });
+
+  // Arrow keys walk the board, Home and End jump to the ends of a row. Without this the only way
+  // across a 7x9 board is Tab, one cell at a time, in reading order - which is not navigation, it
+  // is endurance, and it makes the two-dimensional layout meaningless to anyone not using a mouse.
+  grid.addEventListener('keydown', (ev) => {
+    const rows = MERGE.board.rows;
+    const from = mergeFocus;
+    let to = from;
+    if (ev.key === 'ArrowRight') to = from + 1;
+    else if (ev.key === 'ArrowLeft') to = from - 1;
+    else if (ev.key === 'ArrowDown') to = from + cols;
+    else if (ev.key === 'ArrowUp') to = from - cols;
+    else if (ev.key === 'Home') to = Math.floor(from / cols) * cols;
+    else if (ev.key === 'End') to = Math.floor(from / cols) * cols + cols - 1;
+    else return;
+    if (to < 0 || to >= rows * cols) return;
+    // Horizontal moves must also stay on their own ROW. Checking only the board bounds let
+    // ArrowRight off the last column land on the first column of the next row - measured, and the
+    // opposite of what the comment above it claimed. On a board where position is the whole game,
+    // an edge has to feel like an edge.
+    const horizontal = ev.key === 'ArrowRight' || ev.key === 'ArrowLeft';
+    if (horizontal && Math.floor(to / cols) !== Math.floor(from / cols)) return;
+    ev.preventDefault();
+    mergeFocus = to;
+    cellButtons[to]?.focus();
+  });
+
   container.appendChild(grid);
+
+  // The panel rebuilds itself on every move, which destroys the focused button along with the rest
+  // of the DOM and drops focus back to the document. Putting it back is what makes keyboard play
+  // continuous instead of dumping the user at the top of the panel after every single merge.
+  // Only ever after an action taken ON the board, so opening the panel does not grab focus.
+  if (mergeRefocus) {
+    mergeRefocus = false;
+    cellButtons[Math.min(mergeFocus, cellButtons.length - 1)]?.focus();
+  }
 }
 
 // ---------------------------------------------------------------------------

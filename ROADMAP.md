@@ -126,6 +126,19 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 
 ## Open items
 
+- [x] **Merge Meadow is playable without a mouse or a screen.** A sweep of all 28 panels for
+      controls with no accessible name found one offender and it was severe: 57 of the merge
+      board's 63 cells had no name at all, so a screen reader read "button" fifty-seven times with
+      no way to tell them apart or know where on the board you were - on a system whose entire
+      mechanic is which cell a thing is in. The selection was an outline and nothing else, and all
+      63 cells were tab stops.
+
+      Every cell now names its position and contents, the picked-up cell carries `aria-pressed`,
+      the board is one tab stop with arrow-key navigation, and focus returns to the cell that was
+      acted on so keyboard play is continuous across the panel rebuild. The other 27 panels were
+      clean.
+
+
 - [x] **The gate now explains itself, once.** Nothing told a player that roughly one recipe in
       three can ONLY be collected by making it by hand - the card carries a 🎮 and the queue says
       "Ready to make", which is enough to work out if you already know the rule and not enough to

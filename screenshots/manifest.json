@@ -1,8 +1,9 @@
 {
-  "generatedAt": "2026-09-01T00:56:09.691Z",
-  "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
+  "generatedAt": "2026-09-01T02:01:17.871Z",
+  "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
   "method": "Chrome DevTools Protocol against the real built Electron artifact (dist/win-unpacked/Farm Tycoon.exe), launched headlessly on an off-screen Windows desktop via the cheap Lowlevel MCP route, with --remote-debugging-port on a task-only loopback port. No mockups, no dev-server captures.",
-  "knownConstraint": "renderer.js's tickCamera() calls clampCamera(viewportW, viewportH) every animation frame with no bounds argument, defaulting to worldBounds([], []) — the padded FARM.startZone rectangle only ({minX:9,minY:9,maxX:23,maxY:23}), never STRUCTURES positions or unlocked expansions. Commit 556fe8f (pulled mid-session and rebuilt from, see \"commit\" above) fixed a SEPARATE, real defect in the same function — it had treated the north and south visible margins as equal, when tileToScreen actually places the camera target near the TOP of the screen (OY_RATIO=0.2375), so the old symmetric formula overstated how far north the camera could pan and understated the south/east margin. That fix measurably improved reachability for structures close to the default box (e.g. workshop_yard, barn, silo — all near y=10, previously unreachable north of the fields). It did NOT widen worldBounds() itself, so a structure whose own tile sits genuinely outside the box (mine_entrance, town_gate, zoo_gate, laboratory, museum_hall, airport, expedition_camp, merge_plot, helipad — 9 of the 22) still cannot be brought into the visible frame by any camera assignment; every panel still opens correctly regardless (the tap resolves synchronously against the live camera, before the next clamp runs), but a locked-structure world-background capture for one of those 9 may show unrelated nearby terrain instead of the structure itself. Confirmed by direct comparison of the same capture before and after the fix landed, both retained in this session's history.",
+  "knownConstraint": "RESOLVED, as of commits c1b74e4 and bb4524e (both landed after the prior 47-shot capture pass at 556fe8f, and present in the commit this run captured from — see \"commit\" above). Three real, separate camera-clamp defects existed in sequence: (1) clampCamera() treated the north and south visible margins as equal, when tileToScreen actually places the camera target near the TOP of the screen (OY_RATIO=0.2375), fixed by 556fe8f; (2) main.js's boot() called clampCamera() with no bounds argument at all, so it fell back to worldBounds([], []) — the padded FARM.startZone rectangle only ({minX:9,minY:9,maxX:23,maxY:23}), never STRUCTURES positions or unlocked expansions — meaning only 1 of 22 structures could ever be centred on boot, fixed by c1b74e4, which made main.js union every STRUCTURES footprint (locked or not) plus every unlocked expansion into the real bounds; (3) renderer.js's tickCamera() — which clamps EVERY ANIMATION FRAME, before drawFrame — still called clampCamera(viewportW, viewportH) with no bounds argument, silently discarding boot()'s wider bounds on frame 1 and reverting to the tiny start-zone default every frame after, fixed by bb4524e via a registered setBoundsProvider() callback that both boot() and tickCamera() now read from the same live source. With all three fixed, every one of the 22 STRUCTURES entries — locked or unlocked — sits inside worldBounds() and is reachable by camera assignment; this run's locked/unlocked structure world-background captures show the real structure sprite behind its toast/panel, not leftover terrain. (Panel-opening itself was never affected by any of this: the tap always resolved synchronously against the live camera, before the next clamp ran — only the world-background scenery around a tap was ever wrong.)",
+  "secondaryDefectFoundThisPass": "Not one of the four fixes this pass recaptured, and not fixed here — flagged because it is visible in a large fraction of this run's own captures and a caption claiming a real item icon would otherwise be misleading. src/ui.js's itemIcon(id) (line ~28) falls back to the literal string '❔' whenever CROPS/GOODS/ANIMALS/MATERIALS[id].icon is undefined. Grepping the entirety of src/data.js for the literal text \"icon:\" returns zero matches: no crop, good, animal, building or raw material in this build defines an icon field, so itemIcon() ALWAYS falls through to '❔' for every call, everywhere. Every DOM panel that lists items by name (barn, silo, orders, the Feed Mill/Workshop queues, the Workshop's craft and build grids) shows a \"❔\" glyph beside every item name as a direct result. The world-canvas radial menus (planting/harvesting/feeding — see 04-plant-radial-menu.png) are unaffected because they resolve their icon a different way, not through itemIcon().",
   "notReachable": [
     {
       "surface": "Co-op & Regatta dock panel",
@@ -13,11 +14,6 @@
       "surface": "A per-factory minigame surface",
       "tag": "minigame",
       "reason": "src/minigames.js (148 lines) is fully implemented and exercised by tools/test-crafting.mjs directly, but grepping every src/*.js file for \"minigames.js\" as an import specifier returns nothing outside the test tools — no panel renderer in src/ui.js ever calls into it or opens a minigame UI. There is currently no way to reach a minigame from the running app."
-    },
-    {
-      "surface": "Workshop materials -> components -> kit crafting flow",
-      "tag": "workshop-crafting-flow",
-      "reason": "src/workshop.js (123 lines) implements the real kit-crafting economy CLAUDE.md describes as the game's defining mechanic, and is exercised directly by tools/test-crafting.mjs, but it is never imported by src/ui.js or src/input.js — grepped both for \"workshop.js\", \"kit\" and \"component\" and found nothing. The live Workshop panel (captured above) instead lets buildings be bought outright with coins via farm.place(), bypassing workshop.js entirely. Capturing the real kit flow would mean calling workshop.js directly and presenting that as what the UI shows, which the UI does not currently show — not done, per this run's honesty rules."
     },
     {
       "surface": "Mine panel real content (depths/digs)",
@@ -51,8 +47,8 @@
       "surface": "World at first boot (level 1, fresh save)",
       "state": "Cold boot on a brand-new save: level 1, six pre-placed empty fields, the level/coins/diamonds/silo/barn HUD, and the guided tutorial overlay (Farmhand Ellie) auto-started and visible.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 376507,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 379941,
       "alt": "Farm Tycoon at first launch: an isometric meadow with six empty field plots, the top HUD showing level 1, and a tutorial speech bubble overlay."
     },
     {
@@ -60,8 +56,8 @@
       "surface": "Locked/derelict world structure: workshop_yard (unlocks at level 6)",
       "state": "Player is still level 1. Tapped the workshop_yard structure, which renders derelict in the world and is still clickable — the real input.js click path fires the red \"…unlocks at level 6.\" toast instead of opening its panel. Every one of the 22 STRUCTURES entries behaves identically; this is one representative sample of the unlock curve.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 356750,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 327171,
       "alt": "The world view with a weathered, derelict-looking workshop yard and a red toast notification reading that it unlocks at level 6."
     },
     {
@@ -69,8 +65,8 @@
       "surface": "Locked/derelict world structure: town_gate (unlocks at level 20)",
       "state": "Player is still level 1. Tapped the town_gate structure, which renders derelict in the world and is still clickable — the real input.js click path fires the red \"…unlocks at level 20.\" toast instead of opening its panel. Every one of the 22 STRUCTURES entries behaves identically; this is one representative sample of the unlock curve.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 355224,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 386252,
       "alt": "The world view with a weathered, derelict-looking town gate and a red toast notification reading that it unlocks at level 20."
     },
     {
@@ -78,8 +74,8 @@
       "surface": "Locked/derelict world structure: mine_entrance (unlocks at level 24)",
       "state": "Player is still level 1. Tapped the mine_entrance structure, which renders derelict in the world and is still clickable — the real input.js click path fires the red \"…unlocks at level 24.\" toast instead of opening its panel. Every one of the 22 STRUCTURES entries behaves identically; this is one representative sample of the unlock curve.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 379785,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 370205,
       "alt": "The world view with a weathered, derelict-looking mine entrance and a red toast notification reading that it unlocks at level 24."
     },
     {
@@ -87,8 +83,8 @@
       "surface": "Locked/derelict world structure: zoo_gate (unlocks at level 34)",
       "state": "Player is still level 1. Tapped the zoo_gate structure, which renders derelict in the world and is still clickable — the real input.js click path fires the red \"…unlocks at level 34.\" toast instead of opening its panel. Every one of the 22 STRUCTURES entries behaves identically; this is one representative sample of the unlock curve.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 370501,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 385275,
       "alt": "The world view with a weathered, derelict-looking zoo gate and a red toast notification reading that it unlocks at level 34."
     },
     {
@@ -96,8 +92,8 @@
       "surface": "Locked/derelict world structure: airport (unlocks at level 38)",
       "state": "Player is still level 1. Tapped the airport structure, which renders derelict in the world and is still clickable — the real input.js click path fires the red \"…unlocks at level 38.\" toast instead of opening its panel. Every one of the 22 STRUCTURES entries behaves identically; this is one representative sample of the unlock curve.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 330124,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 300302,
       "alt": "The world view with a weathered, derelict-looking airport and a red toast notification reading that it unlocks at level 38."
     },
     {
@@ -105,8 +101,8 @@
       "surface": "Locked/derelict world structure: laboratory (unlocks at level 54)",
       "state": "Player is still level 1. Tapped the laboratory structure, which renders derelict in the world and is still clickable — the real input.js click path fires the red \"…unlocks at level 54.\" toast instead of opening its panel. Every one of the 22 STRUCTURES entries behaves identically; this is one representative sample of the unlock curve.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 328176,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 378676,
       "alt": "The world view with a weathered, derelict-looking laboratory and a red toast notification reading that it unlocks at level 54."
     },
     {
@@ -114,8 +110,8 @@
       "surface": "Locked/derelict world structure: museum_hall (unlocks at level 60)",
       "state": "Player is still level 1. Tapped the museum_hall structure, which renders derelict in the world and is still clickable — the real input.js click path fires the red \"…unlocks at level 60.\" toast instead of opening its panel. Every one of the 22 STRUCTURES entries behaves identically; this is one representative sample of the unlock curve.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 329483,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 323886,
       "alt": "The world view with a weathered, derelict-looking museum hall and a red toast notification reading that it unlocks at level 60."
     },
     {
@@ -123,7 +119,7 @@
       "surface": "World view: all four crop growth stages",
       "state": "Four of the six starting fields planted with wheat via the real production.plant() call, then backdated (same technique as window.__farmDebug.timeSkip()) to land in each of drawCropStage's four visual bands: field_1 freshly planted (seed dots), field_2 at 25% (sprout leaves), field_3 at 75% (growing stem), field_4 past 100% (full ready head). field_5/field_6 remain empty soil plots for contrast.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
       "bytes": 391898,
       "alt": "A farm showing wheat at four different growth stages side by side — bare seeded soil, small sprouts, a growing stem, and a fully grown ready-to-harvest head — next to two empty tilled plots."
     },
@@ -132,7 +128,7 @@
       "surface": "Radial menu: planting on an empty field",
       "state": "Tapped the empty field_5 plot. The radial context menu opened showing every unlocked crop (only Wheat is unlocked at level 1) as a tappable option.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
       "bytes": 398888,
       "alt": "A circular radial menu floating over an empty field plot, offering a wheat crop icon to plant."
     },
@@ -141,7 +137,7 @@
       "surface": "Radial menu: harvesting a ready field",
       "state": "Tapped field_4, which is ready to harvest (from the growth-stages step above). The radial menu opened with the single Harvest option.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
       "bytes": 400322,
       "alt": "A circular radial menu over a fully grown wheat field, offering a single harvest basket icon."
     },
@@ -150,7 +146,7 @@
       "surface": "Toast notification: successful harvest",
       "state": "Clicked the Harvest option from the radial menu. The real production.harvest() ran, field_4 is cleared back to empty soil, and a green success toast reads \"Harvested Wheat!\".",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
       "bytes": 384473,
       "alt": "A green success toast reading \"Harvested Wheat!\" over the farm, with the previously-ready field now empty again."
     },
@@ -159,8 +155,8 @@
       "surface": "Dock panel: Decorate (off)",
       "state": "Opened via the dock's paintbrush button. Shows the \"Enter Decorate Mode\" toggle from ui.js's renderDecorate(), in its default off state.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 337704,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 337687,
       "alt": "A sliding bottom sheet panel titled Decorate with a single \"Enter Decorate Mode\" button."
     },
     {
@@ -168,8 +164,8 @@
       "surface": "Dock panel: Decorate (on) + toast",
       "state": "Clicked \"Enter Decorate Mode\". state.decorate.active flips to true and an info toast confirms it, but decorate mode has no other effect anywhere in renderer.js/input.js/farm.js in this build — grepped all three for \"decorate\" and found nothing beyond this boolean and its toast/button-label. There is no drag-to-arrange UI yet.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 376536,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 376679,
       "alt": "The Decorate panel closed with an info toast reading that decorate mode is on and the player can drag decorations to arrange the farm, though no such dragging exists yet."
     },
     {
@@ -177,8 +173,8 @@
       "surface": "Dock panel: Achievements",
       "state": "Opened via the dock's star button. Shows the achievement-count summary text from renderAchievements() — 0 unlocked so far on this fresh save.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 328909,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 328900,
       "alt": "A sliding bottom sheet panel titled Achievements reading \"0 achievements unlocked so far.\""
     },
     {
@@ -186,7 +182,7 @@
       "surface": "Dock panel: Settings",
       "state": "Opened via the dock's gear button. Shows the Sound on/off toggle, the language line (English only — no other locales exist in this build), Export save, and the Reset game danger button.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
       "bytes": 276072,
       "alt": "A sliding bottom sheet panel titled Settings with a Sound toggle, a language line, and Export save / Reset game buttons."
     },
@@ -195,8 +191,8 @@
       "surface": "Confirmation dialog: Reset game",
       "state": "Clicked \"Reset game\" in Settings. openModal() shows the real confirmation dialog: \"Reset your farm? This deletes all progress and cannot be undone.\" with Cancel and Reset buttons. Cancel was clicked afterward (not captured) so the run's save was never actually reset.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 188041,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 187912,
       "alt": "A modal dialog asking to confirm resetting the farm, warning that it deletes all progress and cannot be undone, with Cancel and Reset buttons."
     },
     {
@@ -204,8 +200,8 @@
       "surface": "World view: a chicken pen built via the real Workshop panel",
       "state": "A chicken pen placed with farm.place('pen', 'chicken', ...) — the same call the Workshop panel's Build button makes — rendered by sprites.drawPen().",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 393535,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 393516,
       "alt": "A fenced chicken pen sitting on the farm."
     },
     {
@@ -213,8 +209,8 @@
       "surface": "Radial menu: feeding an unfed pen",
       "state": "Tapped the freshly built, unfed chicken pen. The radial menu opened with the single Feed option (penRadial() in input.js).",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 397971,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 397953,
       "alt": "A radial menu over a chicken pen offering a single feed icon."
     },
     {
@@ -222,26 +218,44 @@
       "surface": "Radial menu: collecting a ready pen",
       "state": "Fed the pen (previous step), backdated its readyAt the same way window.__farmDebug.timeSkip() would, then tapped again. The radial menu now offers the Collect option.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 397703,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 397709,
       "alt": "A radial menu over a chicken pen offering a single collect icon."
     },
     {
       "file": "11-building-queue-panel.png",
-      "surface": "Building queue panel (Feed Mill) — real defect captured as-is",
-      "state": "Opened the placed Feed Mill's queue panel. Cards read \"0\" through \"9\" with a \"?\" icon instead of Chicken Feed / Cow Feed / etc — renderBuildingQueue() in ui.js reads def.recipes (an array) with Object.entries() as if it were a keyed object, so recipeId becomes the array index and recipe.output (recipes use \"id\", not \"output\") is always undefined. Clicking Queue on any of these always fails production.enqueue()'s def.recipes.find(r => r.id === recipeId) lookup.",
+      "surface": "Building queue panel (Feed Mill): Chicken Feed queued, in progress",
+      "state": "Opened the placed Feed Mill's queue panel and clicked Queue on the Chicken Feed card — real production.enqueue() consuming 2 wheat + 1 corn from the silo. The queue now shows the real recipe NAME (fixed by commit 2b33dec — recipe.id is used for the lookup instead of the array index) with a live progress bar reading \"Crafting…\". The \"❔\" beside the name is a separate, still-open gap this run found while capturing, not fixed by 2b33dec and out of this run's scope: itemIcon() in ui.js falls back to '❔' whenever CROPS/GOODS/ANIMALS/MATERIALS[id].icon is missing, and grepping the whole of data.js for the literal text \"icon:\" returns zero matches — no crop, good, animal or material in this build defines one, so every itemIcon() call in every DOM panel (barn, silo, orders, this queue, the Workshop's own craft/build grids below) shows \"❔\" instead of a real icon. The world-canvas radial menus are unaffected — they draw crop icons a different way (see 04-plant-radial-menu.png).",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 166815,
-      "alt": "A building queue panel showing ten cards numbered 0 through 9 with question-mark icons instead of real recipe names, due to a data-shape bug."
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 170494,
+      "alt": "A building queue panel showing a Chicken Feed card with a question-mark icon and a partially filled progress bar with the label Crafting."
+    },
+    {
+      "file": "11b-building-queue-ready.png",
+      "surface": "Building queue panel (Feed Mill): Chicken Feed ready to collect",
+      "state": "Same real queue entry, backdated to ready. renderQueue() now shows a full progress bar, \"Ready to collect!\", and a real Collect button — production.js has no per-building collect UI at all before 2b33dec; this is the first capture of it existing.",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 167302,
+      "alt": "A building queue panel showing a Chicken Feed card with a full progress bar, the label Ready to collect, and a Collect button."
+    },
+    {
+      "file": "11c-building-queue-collected.png",
+      "surface": "Building queue panel (Feed Mill): Chicken Feed collected",
+      "state": "Clicked Collect. production.collectBuilding() moved the finished Chicken Feed into the barn, the queue entry is gone, and a green \"Collected Chicken Feed!\" toast confirms it — the same real production.collectBuilding() call the Workshop's own kit/component collect buttons make (see the Workshop crafting-flow captures below).",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 172748,
+      "alt": "A building queue panel with an empty queue and a green toast reading Collected Chicken Feed, over the farm."
     },
     {
       "file": "12-panel-barn.png",
       "surface": "Structure panel: Barn",
       "state": "Real content: renderBarnOrSilo() shows the empty-inventory message (nothing has been cooked into the barn yet on this save).",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 268306,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 169454,
       "alt": "A sliding panel titled Barn with the empty-state text \"No goods in the barn yet — cook something up!\""
     },
     {
@@ -249,8 +263,8 @@
       "surface": "Structure panel: Silo",
       "state": "Real content: renderBarnOrSilo() lists the wheat harvested earlier as a sellable item card.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 174398,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 170545,
       "alt": "A sliding panel titled Silo showing a wheat item card with quantity and a sell button."
     },
     {
@@ -258,8 +272,8 @@
       "surface": "Structure panel: Order Board",
       "state": "renderOrders() is real and wired, but nothing in this build ever calls orders.refreshBoard() to populate state.orders.board, so it shows the same generic fallback as an unwired system.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 340050,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 334403,
       "alt": "A sliding panel titled Orders reading that the order board is being built — check back soon."
     },
     {
@@ -267,8 +281,8 @@
       "surface": "Structure panel: Truck Bay",
       "state": "panel id \"truck\" has no case in renderPanelContent()'s switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 348845,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 341299,
       "alt": "A sliding panel titled Truck reading that the Truck Bay is being built — check back soon."
     },
     {
@@ -276,8 +290,8 @@
       "surface": "Structure panel: Roadside Shop",
       "state": "renderShop() is real, but nothing populates state.shop.listings yet, so it shows the fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 340543,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 317421,
       "alt": "A sliding panel titled Shop reading that the roadside shop is being built — check back soon."
     },
     {
@@ -285,8 +299,8 @@
       "surface": "Structure panel: Boat Dock",
       "state": "boat.js is implemented but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 340580,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 331616,
       "alt": "A sliding panel titled Boat reading that the Boat Dock is being built — check back soon."
     },
     {
@@ -294,8 +308,8 @@
       "surface": "Structure panel: Fishing Lake",
       "state": "fishing.js is implemented but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 334437,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 286560,
       "alt": "A sliding panel titled Fishing reading that the Fishing Lake is being built — check back soon."
     },
     {
@@ -303,8 +317,8 @@
       "surface": "Structure panel: Mine Entrance",
       "state": "mine.js is implemented (153 lines, exercised directly by tools/test-*.mjs) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 348436,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 337616,
       "alt": "A sliding panel titled Mine reading that the Mine Entrance is being built — check back soon."
     },
     {
@@ -312,8 +326,8 @@
       "surface": "Structure panel: Merge Meadow",
       "state": "merge.js is implemented (219 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 343760,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 340675,
       "alt": "A sliding panel titled Merge reading that the Merge Meadow is being built — check back soon."
     },
     {
@@ -321,8 +335,8 @@
       "surface": "Structure panel: Market Stall",
       "state": "shop.js has a marketOffers()/buyOffer() pair but ui.js has no \"market\" case — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 350657,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 335555,
       "alt": "A sliding panel titled Market reading that the Market Stall is being built — check back soon."
     },
     {
@@ -330,8 +344,8 @@
       "surface": "Structure panel: Train Station",
       "state": "trains.js is implemented (242 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 337374,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 306453,
       "alt": "A sliding panel titled Trains reading that the Train Station is being built — check back soon."
     },
     {
@@ -339,8 +353,8 @@
       "surface": "Structure panel: Airport",
       "state": "No \"airport\" case in ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 333446,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 295357,
       "alt": "A sliding panel titled Airport reading that the Airport is being built — check back soon."
     },
     {
@@ -348,26 +362,17 @@
       "surface": "Structure panel: Helicopter Pad",
       "state": "helicopter.js is implemented (156 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 342768,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 344673,
       "alt": "A sliding panel titled Helicopter reading that the Helicopter Pad is being built — check back soon."
-    },
-    {
-      "file": "25-panel-workshop_yard.png",
-      "surface": "Structure panel: Building Workshop",
-      "state": "Real content, but not the materials→components→kit flow workshop.js implements: renderWorkshop() lists every BUILDINGS/ANIMALS entry as a direct coin-cost Build card. workshop.js (123 lines, a real kit-crafting module) is never imported by ui.js or input.js — grepped both files for \"workshop.js\" and \"kit\"/\"component\" and found nothing.",
-      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 163669,
-      "alt": "A sliding panel titled Workshop with a grid of building and animal pen cards, each showing an icon, name, coin cost, and a Build button."
     },
     {
       "file": "26-panel-museum_hall.png",
       "surface": "Structure panel: Museum",
       "state": "museum.js is implemented (74 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 333522,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 319873,
       "alt": "A sliding panel titled Museum reading that the Museum is being built — check back soon."
     },
     {
@@ -375,8 +380,8 @@
       "surface": "Structure panel: Laboratory",
       "state": "lab.js is implemented (184 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 334305,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 348423,
       "alt": "A sliding panel titled Laboratory reading that the Laboratory is being built — check back soon."
     },
     {
@@ -384,8 +389,8 @@
       "surface": "Structure panel: Expedition Camp",
       "state": "expeditions.js is implemented (171 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 335930,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 351569,
       "alt": "A sliding panel titled Expeditions reading that the Expedition Camp is being built — check back soon."
     },
     {
@@ -393,8 +398,8 @@
       "surface": "Structure panel: Road to Town",
       "state": "town.js is implemented (124 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 340710,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 349391,
       "alt": "A sliding panel titled Town reading that the Road to Town is being built — check back soon."
     },
     {
@@ -402,8 +407,8 @@
       "surface": "Structure panel: Road to the Zoo",
       "state": "zoo.js is implemented (181 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 339603,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 342419,
       "alt": "A sliding panel titled Zoo reading that the Road to the Zoo is being built — check back soon."
     },
     {
@@ -411,8 +416,8 @@
       "surface": "Structure panel: Mailbox",
       "state": "newspaper.js is implemented (127 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 334456,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 290600,
       "alt": "A sliding panel titled Newspaper reading that the Mailbox is being built — check back soon."
     },
     {
@@ -420,8 +425,8 @@
       "surface": "Structure panel: Collections Shelf",
       "state": "collections.js is implemented (146 lines) but not wired into ui.js's panel switch — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 341205,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 340191,
       "alt": "A sliding panel titled Collections reading that the Collections Shelf is being built — check back soon."
     },
     {
@@ -429,17 +434,98 @@
       "surface": "Structure panel: Camera Tripod",
       "state": "decorate.js has photo-mode fields but ui.js's \"photo\" case is absent — generic fallback.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 340792,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 332353,
       "alt": "A sliding panel titled Photo Mode reading that the Camera Tripod is being built — check back soon."
+    },
+    {
+      "file": "25-panel-workshop_yard.png",
+      "surface": "Structure panel: Building Workshop (not yet built)",
+      "state": "Tapped the workshop_yard structure before the Workshop itself has been placed. renderWorkshop() shows a single coin-cost \"Build the Workshop\" card and nothing else — the materials/components/kits chain only exists once this building is up.",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 268428,
+      "alt": "A sliding panel titled Workshop with one card offering to build the Workshop itself for coins."
+    },
+    {
+      "file": "25b-workshop-craft-available.png",
+      "surface": "Workshop panel: crafting chain unlocked (materials granted)",
+      "state": "The Workshop is now built. renderWorkshop() shows the real crafting chain: 1 slab + 1 nails were granted directly into the barn (an inventory bump, same convention as chicken_feed above), enough to craft one Roof Shingle. Every other component/kit card on this recipe list shows exactly which inputs are still short — this IS the materials economy CLAUDE.md describes, rendered honestly rather than a blanket \"locked\" state. Every card shows a \"❔\" instead of a real icon — see 11-building-queue-panel's manifest entry for why (data.js defines no icon field on any item; a separate, pre-existing gap this capture pass found but was not asked to fix).",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 167186,
+      "alt": "A Workshop panel showing a grid of craftable components and kits with question-mark icons, most disabled with a note listing which materials are missing, one (Roof Shingle) enabled."
+    },
+    {
+      "file": "25c-workshop-craft-in-progress.png",
+      "surface": "Workshop panel: Roof Shingle crafting",
+      "state": "Clicked Craft on the Roof Shingle card. Real workshop.craft('shingle') -> production.enqueue() consumed the granted slab + nails and pushed a real queue entry; renderQueue() shows it with a live progress bar and the label \"Crafting…\".",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 172565,
+      "alt": "A Workshop panel showing a Roof Shingle card with a progress bar partway full and the label Crafting."
+    },
+    {
+      "file": "25d-workshop-craft-ready.png",
+      "surface": "Workshop panel: Roof Shingle ready to collect",
+      "state": "The same real queue entry, backdated to ready. Full progress bar, \"Ready to collect!\", and a real Collect button — the Workshop's own crafting queue uses the exact same renderQueue()/Collect UI as an ordinary production building's queue panel (see the Feed Mill captures above), just backed by workshop.collect() instead of production.collectBuilding().",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 168832,
+      "alt": "A Workshop panel showing a Roof Shingle card with a full progress bar, the label Ready to collect, and a Collect button."
+    },
+    {
+      "file": "25e-workshop-component-collected.png",
+      "surface": "Workshop panel: Roof Shingle collected into the barn",
+      "state": "Clicked Collect. Real workshop.collect() moved 1 Roof Shingle into the barn and awarded its XP; a green \"Collected Roof Shingle!\" toast confirms it and the queue is empty again.",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 170499,
+      "alt": "A Workshop panel with an empty crafting queue and a green toast reading Collected Roof Shingle."
+    },
+    {
+      "file": "25f-workshop-kit-ready.png",
+      "surface": "Workshop panel: Dairy Kit ready to collect",
+      "state": "Crafted the Dairy Kit for real (workshop.craft('kit_dairy')) from 2 Timber Frame + 2 Wall Panel + 3 Roof Shingle, backdated to ready. This is the KIT tier of the chain, not the component tier captured above — same real queue/Collect UI, one level higher.",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 168342,
+      "alt": "A Workshop panel showing a Dairy Kit card with a full progress bar, the label Ready to collect, and a Collect button."
+    },
+    {
+      "file": "25g-workshop-build-gate.png",
+      "surface": "Workshop panel: Build section, kit gate",
+      "state": "Collected 1 Dairy Kit for real. The Dairy building card now shows a checked ✅ Dairy Kit line and an enabled Build button, while neighbouring kit-gated buildings (Sugar Mill, Popcorn Pot, …) still show ❌ and stay disabled — the exact gate commit 2b33dec added: BUILDINGS[x].kit held (workshop.hasKitFor) before Build is ever clickable.",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 161071,
+      "alt": "A Workshop panel Build section: the Dairy card shows a checked kit and an enabled Build button, while other building cards show an unchecked kit requirement and are disabled."
+    },
+    {
+      "file": "25h-workshop-building-placed.png",
+      "surface": "Workshop panel: Dairy built",
+      "state": "Clicked Build on the Dairy card. Real farm.place('building', 'dairy', ...) placed it and workshop.consumeKit('dairy') consumed the 1 Dairy Kit — a green \"Built Dairy!\" toast confirms it, and the Dairy card is gone from the Build grid (it's now a placed object, not an available one).",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 166764,
+      "alt": "A Workshop panel Build section with a green toast reading Built Dairy, and no Dairy card left in the list."
+    },
+    {
+      "file": "25i-workshop-dairy-in-world.png",
+      "surface": "World view: the real placed Dairy building",
+      "state": "The Dairy placed through the crafting flow above, rendered in the world by sprites.js like any other production building — the payoff of the whole materials -> components -> kit -> building chain.",
+      "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 395469,
+      "alt": "A dairy building sitting on the farm, freshly placed."
     },
     {
       "file": "34-world-zoom-out.png",
       "surface": "World view zoomed far out (0.5x, the ZOOM_MIN floor)",
       "state": "Camera zoom set to 0.5 (renderer.js ZOOM_MIN), centered on the start zone, showing the widest slice of meadow, fields and nearby structures the camera can frame at once.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 402468,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 404701,
       "alt": "A wide, zoomed-out view of the farm showing the meadow, several fields and nearby buildings together."
     },
     {
@@ -447,8 +533,8 @@
       "surface": "World view zoomed far in (2.5x, the ZOOM_MAX ceiling)",
       "state": "Camera zoom set to 2.5 (renderer.js ZOOM_MAX), close on the planted field cluster — crop art and ground detail at their largest on-screen size.",
       "viewport": "896x560 (capture viewport; real app default window is 1280x800)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 390360,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 392718,
       "alt": "A close-up, zoomed-in view of a few farm fields and ground texture."
     },
     {
@@ -456,8 +542,8 @@
       "surface": "Narrow-width layout at the documented minimum (1024x640)",
       "state": "Viewport forced to 1024x640, the exact floor declared by electron/main.cjs (minWidth/minHeight) and styles.css's own compact-HUD media query. Shows the HUD, dock, and the Workshop panel at the smallest supported size.",
       "viewport": "1024x640 (documented minimum window size)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 258952,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 257783,
       "alt": "The game at its minimum supported window size, 1024 by 640 pixels, with a compact HUD and the Workshop panel open."
     },
     {
@@ -465,8 +551,8 @@
       "surface": "Wide layout at the app's real configured default (1280x800)",
       "state": "Viewport set to 1280x800 — electron/main.cjs's BrowserWindow width/height, the size the app actually opens at on a real desktop. Shows the HUD, dock, and the Workshop panel at full default size, for contrast with the narrow-width capture above.",
       "viewport": "1280x800 (the app's real default window size)",
-      "commit": "556fe8f6e65338eec4487041d289d0f488f30cba",
-      "bytes": 490597,
+      "commit": "7dc0f145cab587f3dd1e36ecd6d1aa749fddd29d",
+      "bytes": 495195,
       "alt": "The game at its default window size, 1280 by 800 pixels, with the full HUD, dock, and the Workshop panel open."
     }
   ]

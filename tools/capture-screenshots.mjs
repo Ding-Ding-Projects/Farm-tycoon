@@ -30,10 +30,21 @@
 //     src/ui.js's renderPanelContent() switch has no case for any of them, so their panel
 //     always falls through to the generic "X is being built — check back soon!" placeholder.
 //     Captured as-is, honestly labelled — never worked around by calling the backend directly
-//     and passing that off as what the UI shows.
+//     and passing that off as what the UI shows. workshop.js and its own panel case ARE now
+//     wired (commit 2b33dec) — the crafting-flow and building-queue captures below drive that
+//     real UI end to end, never workshop.js directly.
 //   - A hand-written REQUIRED_SURFACES list at the bottom is checked against what actually got
 //     captured; anything required but neither captured nor in notReachable[] fails the run
 //     loudly rather than silently producing an incomplete manifest.
+//
+// Recaptured 2026-08-31 against commit bb4524e (four real fixes landed since the prior 47-shot
+// pass at 556fe8f): 1c117c5 gave fields their own KIND_DISPATCH entry (they no longer render as
+// magenta debug circles); 556fe8f and c1b74e4/bb4524e fixed the camera clamp's north/south
+// asymmetry and gave tickCamera() the real per-frame world bounds (every structure, not just the
+// start zone); 2b33dec wired the Building Workshop panel to workshop.js and gave every
+// production building's queue panel a real Collect action. Every previously-stale capture
+// touching those four areas — the field/growth-stage world shots, every locked/unlocked
+// structure world shot, the Workshop panel, and the building-queue panel — was retaken.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -669,6 +680,15 @@ async function main() {
       // instead of failing on "No feed available." (confirmed happened without this).
       s.barn.items = s.barn.items || {};
       s.barn.items.chicken_feed = (s.barn.items.chicken_feed || 0) + 10;
+      // Raw construction MATERIALS for the Building Workshop crafting-flow capture below —
+      // granted directly for the same reason as chicken_feed above: this is the "inventory
+      // bump" convention this script already uses throughout, mirroring
+      // window.__farmDebug.give(), never a fabricated UI state. Only enough for one Roof
+      // Shingle component (slab:1, nails:1, see BUILDINGS.build_workshop.recipes in data.js);
+      // the later kit-tier grant happens inline in that section, after the real craft/collect
+      // call for the component tier has already run.
+      s.barn.items.slab = (s.barn.items.slab || 0) + 1;
+      s.barn.items.nails = (s.barn.items.nails || 0) + 1;
       return JSON.stringify({ pen, mill });
     })()
   `);
@@ -730,31 +750,85 @@ async function main() {
 
   // -------------------------------------------------------------------
   // 7. Building queue panel — clicking a PLACED production building (not a STRUCTURES entry)
-  //    opens ui.js's renderBuildingQueue(). Captured as-is: def.recipes is an ARRAY of
-  //    {id, inputs, time, ...} objects (matches production.js's own def.recipes.find(r =>
-  //    r.id === recipeId)), but renderBuildingQueue() does Object.entries(recipes) as if it
-  //    were a plain object — recipeId ends up as the numeric array index ('0','1',...) and
-  //    recipe.output is undefined, so the panel shows numbered "0","1","2"… cards with a "?"
-  //    icon instead of real recipe names. Confirmed by reading the panel's live innerHTML
-  //    during this script's exploration pass, not inferred from source alone.
+  //    opens ui.js's renderBuildingQueue(). This used to show numbered "0"-"9" cards with a
+  //    "?" icon (def.recipes is an ARRAY, and the panel read it with Object.entries() as if it
+  //    were a keyed object) and had no way to collect finished output at all. Commit 2b33dec
+  //    ("Wire the Building Workshop panel to workshop.js: kits gate placement, not coins")
+  //    fixed both: cards now read recipe.id/name for real, and renderQueue() shows a live
+  //    progress bar plus a Collect button once an entry's readyAt has passed. Exercised for
+  //    real end to end here: real production.enqueue() via the Queue button, a real backdated
+  //    readyAt (same technique as window.__farmDebug.timeSkip()), then a real
+  //    production.collectBuilding() via the Collect button — never called directly.
   // -------------------------------------------------------------------
   if (built.mill) {
     // Tap the placed building's own tile — farm.objectAt() + the 'building' branch of
     // input.js's handleTap() — rather than calling ui.openPanel() directly, for the same
     // real-interaction-path reason as everywhere else in this script.
+    await clearToasts(cdp); // drop the "Fed!" toast left over from the pen-feeding step above
     await tapTile(cdp, built.mill.x, built.mill.y, 2.2);
     await new Promise((res) => setTimeout(res, 150));
+    // Queue button on the Chicken Feed card (recipes[0] — the first .build-card in the empty-
+    // queue panel) — real production.enqueue(millId, 'chicken_feed') via the click handler,
+    // consuming the wheat/corn granted above. Panel auto-refreshes via refreshPanel().
+    await clickSelector(cdp, '#sheet-content .build-card button');
+    await new Promise((r) => setTimeout(r, 200));
     await shot(cdp, {
       name: '11-building-queue-panel',
-      surface: 'Building queue panel (Feed Mill) — real defect captured as-is',
-      stateDescription: 'Opened the placed Feed Mill\'s queue panel. Cards read "0" through "9" ' +
-        'with a "?" icon instead of Chicken Feed / Cow Feed / etc — renderBuildingQueue() in ' +
-        'ui.js reads def.recipes (an array) with Object.entries() as if it were a keyed object, ' +
-        'so recipeId becomes the array index and recipe.output (recipes use "id", not "output") ' +
-        'is always undefined. Clicking Queue on any of these always fails production.enqueue()\'s ' +
-        'def.recipes.find(r => r.id === recipeId) lookup.',
-      alt: 'A building queue panel showing ten cards numbered 0 through 9 with question-mark ' +
-        'icons instead of real recipe names, due to a data-shape bug.',
+      surface: 'Building queue panel (Feed Mill): Chicken Feed queued, in progress',
+      stateDescription: 'Opened the placed Feed Mill\'s queue panel and clicked Queue on the ' +
+        'Chicken Feed card — real production.enqueue() consuming 2 wheat + 1 corn from the ' +
+        'silo. The queue now shows the real recipe NAME (fixed by commit 2b33dec — recipe.id ' +
+        'is used for the lookup instead of the array index) with a live progress bar reading ' +
+        '"Crafting…". The "❔" beside the name is a separate, still-open gap this run found ' +
+        'while capturing, not fixed by 2b33dec and out of this run\'s scope: itemIcon() in ' +
+        'ui.js falls back to \'❔\' whenever CROPS/GOODS/ANIMALS/MATERIALS[id].icon is missing, ' +
+        'and grepping the whole of data.js for the literal text "icon:" returns zero matches — ' +
+        'no crop, good, animal or material in this build defines one, so every itemIcon() call ' +
+        'in every DOM panel (barn, silo, orders, this queue, the Workshop\'s own craft/build ' +
+        'grids below) shows "❔" instead of a real icon. The world-canvas radial menus are ' +
+        'unaffected — they draw crop icons a different way (see 04-plant-radial-menu.png).',
+      alt: 'A building queue panel showing a Chicken Feed card with a question-mark icon and a ' +
+        'partially filled progress bar with the label Crafting.',
+      tags: ['building-queue'],
+    });
+
+    // Backdate the real production entry the same way window.__farmDebug.timeSkip() would,
+    // then re-tap so the panel re-renders against the now-ready entry.
+    await cdp.evaluate(`
+      (function () {
+        const entry = window.__cap.state.state.production.find(
+          (p) => p.objectId === '${built.mill.id}' && p.recipeId === 'chicken_feed');
+        if (entry) entry.readyAt = Date.now() - 1000;
+        return true;
+      })()
+    `);
+    await tapTile(cdp, built.mill.x, built.mill.y, 2.2);
+    await clearToasts(cdp); // drop the "Queued Chicken Feed!" toast from the click above
+    await new Promise((res) => setTimeout(res, 150));
+    await shot(cdp, {
+      name: '11b-building-queue-ready',
+      surface: 'Building queue panel (Feed Mill): Chicken Feed ready to collect',
+      stateDescription: 'Same real queue entry, backdated to ready. renderQueue() now shows a ' +
+        'full progress bar, "Ready to collect!", and a real Collect button — production.js has ' +
+        'no per-building collect UI at all before 2b33dec; this is the first capture of it existing.',
+      alt: 'A building queue panel showing a Chicken Feed card with a full progress bar, the ' +
+        'label Ready to collect, and a Collect button.',
+      tags: ['building-queue'],
+    });
+
+    // Real production.collectBuilding(millId) via the Collect button.
+    await clickSelector(cdp, '#sheet-content .order-card button');
+    await new Promise((r) => setTimeout(r, 200));
+    await shot(cdp, {
+      name: '11c-building-queue-collected',
+      surface: 'Building queue panel (Feed Mill): Chicken Feed collected',
+      stateDescription: 'Clicked Collect. production.collectBuilding() moved the finished ' +
+        'Chicken Feed into the barn, the queue entry is gone, and a green "Collected Chicken ' +
+        'Feed!" toast confirms it — the same real production.collectBuilding() call the ' +
+        'Workshop\'s own kit/component collect buttons make (see the Workshop crafting-flow ' +
+        'captures below).',
+      alt: 'A building queue panel with an empty queue and a green toast reading Collected ' +
+        'Chicken Feed, over the farm.',
       tags: ['building-queue'],
     });
   } else {
@@ -812,13 +886,10 @@ async function main() {
     { key: 'helipad', file: '24-panel-helipad', label: 'Helicopter Pad', tag: 'panel-helipad',
       desc: 'helicopter.js is implemented (156 lines) but not wired into ui.js\'s panel switch — generic fallback.',
       alt: 'A sliding panel titled Helicopter reading that the Helicopter Pad is being built — check back soon.' },
-    { key: 'workshop_yard', file: '25-panel-workshop_yard', label: 'Building Workshop', tag: 'panel-workshop_yard',
-      desc: 'Real content, but not the materials→components→kit flow workshop.js implements: ' +
-        'renderWorkshop() lists every BUILDINGS/ANIMALS entry as a direct coin-cost Build card. ' +
-        'workshop.js (123 lines, a real kit-crafting module) is never imported by ui.js or ' +
-        'input.js — grepped both files for "workshop.js" and "kit"/"component" and found nothing.',
-      alt: 'A sliding panel titled Workshop with a grid of building and animal pen cards, each ' +
-        'showing an icon, name, coin cost, and a Build button.' },
+    // workshop_yard is deliberately NOT in this generic list — as of commit 2b33dec it has a
+    // real, multi-step materials -> components -> kits -> building flow, captured in its own
+    // dedicated block (files 25, 25b-25h) right after this loop, not the one-shot pattern
+    // every other structure panel gets here.
     { key: 'museum_hall', file: '26-panel-museum_hall', label: 'Museum', tag: 'panel-museum_hall',
       desc: 'museum.js is implemented (74 lines) but not wired into ui.js\'s panel switch — generic fallback.',
       alt: 'A sliding panel titled Museum reading that the Museum is being built — check back soon.' },
@@ -857,6 +928,262 @@ async function main() {
       alt: p.alt,
       tags: [p.tag],
     });
+  }
+
+  // -------------------------------------------------------------------
+  // 8b. Building Workshop crafting flow (workshop.js, wired into ui.js by commit 2b33dec) —
+  //     the game's own headline mechanic per CLAUDE.md: buildings are CRAFTED, not bought.
+  //     Every craft/collect/build action below is the real click handler in src/ui.js calling
+  //     the real workshop.js/production.js functions — never called directly and presented as
+  //     what the UI shows. The only direct state mutations are inventory GRANTS (raw materials
+  //     for one component, then — after that component's real craft/collect has already run
+  //     once — the remaining inputs for one kit recipe), the same "inventory bump" convention
+  //     used throughout this script (window.__farmDebug.give() does the same thing).
+  // -------------------------------------------------------------------
+  await cdp.evaluate('window.__cap.ui.closePanel(); true');
+  await clearToasts(cdp);
+
+  // 1. Tap the (still unbuilt) Workshop structure — renderWorkshop() shows only its own
+  //    coin-cost Build card until BUILDINGS.build_workshop is actually placed.
+  await tapStructure(cdp, 'workshop_yard');
+  await new Promise((r) => setTimeout(r, 150));
+  await shot(cdp, {
+    name: '25-panel-workshop_yard',
+    surface: 'Structure panel: Building Workshop (not yet built)',
+    stateDescription: 'Tapped the workshop_yard structure before the Workshop itself has been ' +
+      'placed. renderWorkshop() shows a single coin-cost "Build the Workshop" card and nothing ' +
+      'else — the materials/components/kits chain only exists once this building is up.',
+    alt: 'A sliding panel titled Workshop with one card offering to build the Workshop itself for coins.',
+    tags: ['panel-workshop_yard'],
+  });
+
+  // 2. Build the Workshop for real (farm.place() via the panel's own Build button).
+  await clickSelector(cdp, '#sheet-content .build-card button');
+  await new Promise((r) => setTimeout(r, 200));
+  await clearToasts(cdp); // drop "Built Workshop!" — this block's shots each show their own fresh toast, not a stack of old ones
+  const workshopId = await cdp.evaluate(`
+    (function () {
+      const obj = window.__cap.state.state.farm.objects.find(
+        (o) => o.kind === 'building' && o.type === 'build_workshop');
+      return obj ? obj.id : null;
+    })()
+  `);
+
+  if (workshopId) {
+    await shot(cdp, {
+      name: '25b-workshop-craft-available',
+      surface: 'Workshop panel: crafting chain unlocked (materials granted)',
+      stateDescription: 'The Workshop is now built. renderWorkshop() shows the real crafting ' +
+        'chain: 1 slab + 1 nails were granted directly into the barn (an inventory bump, same ' +
+        'convention as chicken_feed above), enough to craft one Roof Shingle. Every other ' +
+        'component/kit card on this recipe list shows exactly which inputs are still short — ' +
+        'this IS the materials economy CLAUDE.md describes, rendered honestly rather than a ' +
+        'blanket "locked" state. Every card shows a "❔" instead of a real icon — see ' +
+        '11-building-queue-panel\'s manifest entry for why (data.js defines no icon field on ' +
+        'any item; a separate, pre-existing gap this capture pass found but was not asked to fix).',
+      alt: 'A Workshop panel showing a grid of craftable components and kits with question-mark ' +
+        'icons, most disabled with a note listing which materials are missing, one (Roof Shingle) enabled.',
+      tags: ['workshop-crafting-flow'],
+    });
+
+    // 3. Craft the Roof Shingle component for real — workshop.craft('shingle') via the Craft
+    //    button, which is the first .build-card in the DOM (the queue is empty so renderQueue()
+    //    renders nothing yet, and 'shingle' is recipes[0] in BUILDINGS.build_workshop.recipes).
+    await clickSelector(cdp, '#sheet-content .build-card button');
+    await new Promise((r) => setTimeout(r, 200));
+    await shot(cdp, {
+      name: '25c-workshop-craft-in-progress',
+      surface: 'Workshop panel: Roof Shingle crafting',
+      stateDescription: 'Clicked Craft on the Roof Shingle card. Real workshop.craft(\'shingle\') ' +
+        '-> production.enqueue() consumed the granted slab + nails and pushed a real queue ' +
+        'entry; renderQueue() shows it with a live progress bar and the label "Crafting…".',
+      alt: 'A Workshop panel showing a Roof Shingle card with a progress bar partway full and the label Crafting.',
+      tags: ['workshop-crafting-flow'],
+    });
+
+    // 4. Backdate the real entry (same technique as every other timer in this script), retap
+    //    to force a fresh render, then collect it for real.
+    await cdp.evaluate(`
+      (function () {
+        const entry = window.__cap.state.state.production.find(
+          (p) => p.objectId === '${workshopId}' && p.recipeId === 'shingle');
+        if (entry) entry.readyAt = Date.now() - 1000;
+        return true;
+      })()
+    `);
+    await tapStructure(cdp, 'workshop_yard');
+    await clearToasts(cdp); // drop the "Crafting Roof Shingle…" toast from step 3
+    await new Promise((r) => setTimeout(r, 150));
+    await shot(cdp, {
+      name: '25d-workshop-craft-ready',
+      surface: 'Workshop panel: Roof Shingle ready to collect',
+      stateDescription: 'The same real queue entry, backdated to ready. Full progress bar, ' +
+        '"Ready to collect!", and a real Collect button — the Workshop\'s own crafting queue ' +
+        'uses the exact same renderQueue()/Collect UI as an ordinary production building\'s ' +
+        'queue panel (see the Feed Mill captures above), just backed by workshop.collect() ' +
+        'instead of production.collectBuilding().',
+      alt: 'A Workshop panel showing a Roof Shingle card with a full progress bar, the label Ready to collect, and a Collect button.',
+      tags: ['workshop-crafting-flow'],
+    });
+
+    await clickSelector(cdp, '#sheet-content .order-card button'); // real workshop.collect(0)
+    await new Promise((r) => setTimeout(r, 200));
+    await shot(cdp, {
+      name: '25e-workshop-component-collected',
+      surface: 'Workshop panel: Roof Shingle collected into the barn',
+      stateDescription: 'Clicked Collect. Real workshop.collect() moved 1 Roof Shingle into the ' +
+        'barn and awarded its XP; a green "Collected Roof Shingle!" toast confirms it and the ' +
+        'queue is empty again.',
+      alt: 'A Workshop panel with an empty crafting queue and a green toast reading Collected Roof Shingle.',
+      tags: ['workshop-crafting-flow'],
+    });
+
+    // 5. Kit tier: grant the REMAINING inputs kit_dairy needs (frame:2, panel:2, shingle: 2
+    //    more, on top of the 1 real Roof Shingle just collected, for 3 total) directly into the
+    //    barn — one tier up from the raw-material grant above, same convention, documented here
+    //    rather than spending another dozen captures crafting every intermediate component for
+    //    real. The kit itself is still crafted and collected for real, exactly like the
+    //    component above.
+    await cdp.evaluate(`
+      (function () {
+        const b = window.__cap.state.state.barn.items;
+        b.frame = (b.frame || 0) + 2;
+        b.panel = (b.panel || 0) + 2;
+        b.shingle = (b.shingle || 0) + 2;
+        return true;
+      })()
+    `);
+    await tapStructure(cdp, 'workshop_yard');
+    await clearToasts(cdp); // drop "Collected Roof Shingle!" from step 4
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Craft the Dairy Kit for real — locate its card by its exact <strong> name (recipes[8] in
+    // the list, not recipes[0], so a position-based selector would hit the wrong card).
+    const kitCraft = await cdp.evaluate(`
+      (function () {
+        const cards = Array.from(document.querySelectorAll('#sheet-content .build-card'));
+        const card = cards.find((c) => (c.querySelector('strong')?.textContent || '').trim() === 'Dairy Kit');
+        if (!card) return { ok: false, error: 'no Dairy Kit card found' };
+        const btn = card.querySelector('button');
+        if (!btn || btn.disabled) return { ok: false, error: 'Dairy Kit Craft button missing/disabled' };
+        btn.click();
+        return { ok: true };
+      })()
+    `);
+    if (!kitCraft || !kitCraft.ok) console.warn('[warn] Dairy Kit craft click failed:', JSON.stringify(kitCraft));
+    await new Promise((r) => setTimeout(r, 200));
+
+    await cdp.evaluate(`
+      (function () {
+        const entry = window.__cap.state.state.production.find(
+          (p) => p.objectId === '${workshopId}' && p.recipeId === 'kit_dairy');
+        if (entry) entry.readyAt = Date.now() - 1000;
+        return true;
+      })()
+    `);
+    await tapStructure(cdp, 'workshop_yard');
+    await clearToasts(cdp); // drop "Crafting Dairy Kit…" from the click just above
+    await new Promise((r) => setTimeout(r, 150));
+    await shot(cdp, {
+      name: '25f-workshop-kit-ready',
+      surface: 'Workshop panel: Dairy Kit ready to collect',
+      stateDescription: 'Crafted the Dairy Kit for real (workshop.craft(\'kit_dairy\')) from 2 ' +
+        'Timber Frame + 2 Wall Panel + 3 Roof Shingle, backdated to ready. This is the KIT tier ' +
+        'of the chain, not the component tier captured above — same real queue/Collect UI, one ' +
+        'level higher.',
+      alt: 'A Workshop panel showing a Dairy Kit card with a full progress bar, the label Ready to collect, and a Collect button.',
+      tags: ['workshop-crafting-flow'],
+    });
+
+    const kitCollect = await cdp.evaluate(`
+      (function () {
+        const cards = Array.from(document.querySelectorAll('#sheet-content .order-card'));
+        const card = cards.find((c) => c.textContent.includes('Dairy Kit'));
+        const btn = card && card.querySelector('button');
+        if (!btn) return { ok: false, error: 'no Dairy Kit Collect button found' };
+        btn.click();
+        return { ok: true };
+      })()
+    `);
+    if (!kitCollect || !kitCollect.ok) console.warn('[warn] Dairy Kit collect click failed:', JSON.stringify(kitCollect));
+    await new Promise((r) => setTimeout(r, 200));
+    await clearToasts(cdp); // drop "Collected Dairy Kit!" — this shot is about the Build gate, not the collect toast
+
+    // 6. Scroll to the Build section: the Dairy building card now shows a checked kit line and
+    //    an enabled Build button, while every OTHER kit-gated building on the same list still
+    //    shows the ❌ gated state — both halves of the gate visible in one honest screenshot.
+    await cdp.evaluate(`
+      (function () {
+        const cards = Array.from(document.querySelectorAll('#sheet-content .build-card'));
+        const card = cards.find((c) => (c.querySelector('strong')?.textContent || '').trim() === 'Dairy');
+        card && card.scrollIntoView({ block: 'center' });
+        return !!card;
+      })()
+    `);
+    await new Promise((r) => setTimeout(r, 150));
+    await shot(cdp, {
+      name: '25g-workshop-build-gate',
+      surface: 'Workshop panel: Build section, kit gate',
+      stateDescription: 'Collected 1 Dairy Kit for real. The Dairy building card now shows a ' +
+        'checked ✅ Dairy Kit line and an enabled Build button, while neighbouring kit-gated ' +
+        'buildings (Sugar Mill, Popcorn Pot, …) still show ❌ and stay disabled — the exact gate ' +
+        'commit 2b33dec added: BUILDINGS[x].kit held (workshop.hasKitFor) before Build is ever clickable.',
+      alt: 'A Workshop panel Build section: the Dairy card shows a checked kit and an enabled ' +
+        'Build button, while other building cards show an unchecked kit requirement and are disabled.',
+      tags: ['workshop-crafting-flow'],
+    });
+
+    // 7. Place the Dairy for real — farm.place() + workshop.consumeKit('dairy'), never the
+    //    other way around, and never on a failed placement (see workshop.consumeKit()).
+    const buildClick = await cdp.evaluate(`
+      (function () {
+        const cards = Array.from(document.querySelectorAll('#sheet-content .build-card'));
+        const card = cards.find((c) => (c.querySelector('strong')?.textContent || '').trim() === 'Dairy');
+        const btn = card && card.querySelector('button');
+        if (!btn || btn.disabled) return { ok: false, error: 'Dairy Build button missing/disabled' };
+        btn.click();
+        return { ok: true };
+      })()
+    `);
+    if (!buildClick || !buildClick.ok) console.warn('[warn] Dairy build click failed:', JSON.stringify(buildClick));
+    await new Promise((r) => setTimeout(r, 250));
+    await shot(cdp, {
+      name: '25h-workshop-building-placed',
+      surface: 'Workshop panel: Dairy built',
+      stateDescription: 'Clicked Build on the Dairy card. Real farm.place(\'building\', \'dairy\', ' +
+        '...) placed it and workshop.consumeKit(\'dairy\') consumed the 1 Dairy Kit — a green ' +
+        '"Built Dairy!" toast confirms it, and the Dairy card is gone from the Build grid (it\'s ' +
+        'now a placed object, not an available one).',
+      alt: 'A Workshop panel Build section with a green toast reading Built Dairy, and no Dairy card left in the list.',
+      tags: ['workshop-crafting-flow'],
+    });
+
+    const dairyObj = await cdp.evaluate(`
+      (function () {
+        const obj = window.__cap.state.state.farm.objects.find((o) => o.type === 'dairy');
+        return obj ? JSON.stringify({ x: obj.x, y: obj.y }) : null;
+      })()
+    `);
+    if (dairyObj) {
+      const dairy = JSON.parse(dairyObj);
+      await cdp.evaluate('window.__cap.ui.closePanel(); true');
+      await panTo(cdp, dairy.x + 0.5, dairy.y + 0.5, 2.2);
+      await clearToasts(cdp);
+      await new Promise((r) => setTimeout(r, 250));
+      await shot(cdp, {
+        name: '25i-workshop-dairy-in-world',
+        surface: 'World view: the real placed Dairy building',
+        stateDescription: 'The Dairy placed through the crafting flow above, rendered in the ' +
+          'world by sprites.js like any other production building — the payoff of the whole ' +
+          'materials -> components -> kit -> building chain.',
+        alt: 'A dairy building sitting on the farm, freshly placed.',
+        tags: ['workshop-crafting-flow'],
+      });
+    } else {
+      console.warn('[warn] could not find placed Dairy object for the world-view capture');
+    }
+  } else {
+    console.warn('[warn] could not build the Workshop — workshop-crafting-flow captures skipped');
   }
 
   // -------------------------------------------------------------------
@@ -945,17 +1272,6 @@ async function main() {
         'currently no way to reach a minigame from the running app.',
     },
     {
-      surface: 'Workshop materials -> components -> kit crafting flow', tag: 'workshop-crafting-flow',
-      reason: 'src/workshop.js (123 lines) implements the real kit-crafting economy CLAUDE.md ' +
-        'describes as the game\'s defining mechanic, and is exercised directly by ' +
-        'tools/test-crafting.mjs, but it is never imported by src/ui.js or src/input.js — ' +
-        'grepped both for "workshop.js", "kit" and "component" and found nothing. The live ' +
-        'Workshop panel (captured above) instead lets buildings be bought outright with coins ' +
-        'via farm.place(), bypassing workshop.js entirely. Capturing the real kit flow would ' +
-        'mean calling workshop.js directly and presenting that as what the UI shows, which the ' +
-        'UI does not currently show — not done, per this run\'s honesty rules.',
-    },
-    {
       surface: 'Mine panel real content (depths/digs)', tag: 'mine-panel-content',
       reason: 'src/mine.js (153 lines) is fully implemented and exercised by ' +
         'tools/test-crafting.mjs directly, but src/ui.js has no "mine" case in its panel ' +
@@ -995,24 +1311,39 @@ async function main() {
       '(dist/win-unpacked/Farm Tycoon.exe), launched headlessly on an off-screen Windows ' +
       'desktop via the cheap Lowlevel MCP route, with --remote-debugging-port on a task-only ' +
       'loopback port. No mockups, no dev-server captures.',
-    knownConstraint: 'renderer.js\'s tickCamera() calls clampCamera(viewportW, viewportH) every ' +
-      'animation frame with no bounds argument, defaulting to worldBounds([], []) — the padded ' +
-      'FARM.startZone rectangle only ({minX:9,minY:9,maxX:23,maxY:23}), never STRUCTURES ' +
-      'positions or unlocked expansions. Commit 556fe8f (pulled mid-session and rebuilt from, ' +
-      'see "commit" above) fixed a SEPARATE, real defect in the same function — it had treated ' +
-      'the north and south visible margins as equal, when tileToScreen actually places the ' +
-      'camera target near the TOP of the screen (OY_RATIO=0.2375), so the old symmetric formula ' +
-      'overstated how far north the camera could pan and understated the south/east margin. ' +
-      'That fix measurably improved reachability for structures close to the default box (e.g. ' +
-      'workshop_yard, barn, silo — all near y=10, previously unreachable north of the fields). ' +
-      'It did NOT widen worldBounds() itself, so a structure whose own tile sits genuinely ' +
-      'outside the box (mine_entrance, town_gate, zoo_gate, laboratory, museum_hall, airport, ' +
-      'expedition_camp, merge_plot, helipad — 9 of the 22) still cannot be brought into the ' +
-      'visible frame by any camera assignment; every panel still opens correctly regardless ' +
-      '(the tap resolves synchronously against the live camera, before the next clamp runs), ' +
-      'but a locked-structure world-background capture for one of those 9 may show unrelated ' +
-      'nearby terrain instead of the structure itself. Confirmed by direct comparison of the ' +
-      'same capture before and after the fix landed, both retained in this session\'s history.',
+    knownConstraint: 'RESOLVED, as of commits c1b74e4 and bb4524e (both landed after the prior ' +
+      '47-shot capture pass at 556fe8f, and present in the commit this run captured from — see ' +
+      '"commit" above). Three real, separate camera-clamp defects existed in sequence: (1) ' +
+      'clampCamera() treated the north and south visible margins as equal, when tileToScreen ' +
+      'actually places the camera target near the TOP of the screen (OY_RATIO=0.2375), fixed by ' +
+      '556fe8f; (2) main.js\'s boot() called clampCamera() with no bounds argument at all, so it ' +
+      'fell back to worldBounds([], []) — the padded FARM.startZone rectangle only ' +
+      '({minX:9,minY:9,maxX:23,maxY:23}), never STRUCTURES positions or unlocked expansions — ' +
+      'meaning only 1 of 22 structures could ever be centred on boot, fixed by c1b74e4, which ' +
+      'made main.js union every STRUCTURES footprint (locked or not) plus every unlocked ' +
+      'expansion into the real bounds; (3) renderer.js\'s tickCamera() — which clamps EVERY ' +
+      'ANIMATION FRAME, before drawFrame — still called clampCamera(viewportW, viewportH) with ' +
+      'no bounds argument, silently discarding boot()\'s wider bounds on frame 1 and reverting ' +
+      'to the tiny start-zone default every frame after, fixed by bb4524e via a registered ' +
+      'setBoundsProvider() callback that both boot() and tickCamera() now read from the same ' +
+      'live source. With all three fixed, every one of the 22 STRUCTURES entries — locked or ' +
+      'unlocked — sits inside worldBounds() and is reachable by camera assignment; this run\'s ' +
+      'locked/unlocked structure world-background captures show the real structure sprite ' +
+      'behind its toast/panel, not leftover terrain. (Panel-opening itself was never affected by ' +
+      'any of this: the tap always resolved synchronously against the live camera, before the ' +
+      'next clamp ran — only the world-background scenery around a tap was ever wrong.)',
+    secondaryDefectFoundThisPass: 'Not one of the four fixes this pass recaptured, and not ' +
+      'fixed here — flagged because it is visible in a large fraction of this run\'s own ' +
+      'captures and a caption claiming a real item icon would otherwise be misleading. ' +
+      'src/ui.js\'s itemIcon(id) (line ~28) falls back to the literal string \'❔\' whenever ' +
+      'CROPS/GOODS/ANIMALS/MATERIALS[id].icon is undefined. Grepping the entirety of ' +
+      'src/data.js for the literal text "icon:" returns zero matches: no crop, good, animal, ' +
+      'building or raw material in this build defines an icon field, so itemIcon() ALWAYS ' +
+      'falls through to \'❔\' for every call, everywhere. Every DOM panel that lists items by ' +
+      'name (barn, silo, orders, the Feed Mill/Workshop queues, the Workshop\'s craft and build ' +
+      'grids) shows a "❔" glyph beside every item name as a direct result. The world-canvas ' +
+      'radial menus (planting/harvesting/feeding — see 04-plant-radial-menu.png) are unaffected ' +
+      'because they resolve their icon a different way, not through itemIcon().',
     notReachable: NOT_REACHABLE,
     captures: manifest,
   }, null, 2));

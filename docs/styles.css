@@ -368,7 +368,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .brand-mark { width: 27px; height: 27px; }
 }
 @media (max-width: 400px) {
+  /* With the wordmark gone the link is just the 27px mark, which left it a 35x31
+     target sitting next to 42px buttons. Give it the same footprint as its
+     neighbours rather than letting it shrink to whatever the icon happens to be. */
   .brand-text { display: none; }
+  .brand { min-width: 42px; min-height: 42px; justify-content: center; }
   .icon-btn { width: 42px; height: 42px; }
 }
 
@@ -428,6 +432,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: none;
   outline: none;
   font-size: var(--fs-sm);
+  /* An input takes its intrinsic ~24px height inside a centred flex row, so the
+     field's real hit area was a third of the pill it appears to fill. Stretching
+     it makes the whole pill height tappable, which on a phone is the difference
+     between hitting the field and hitting nothing. */
+  align-self: stretch;
+  padding: 0;
 }
 .searchbar-input::-webkit-search-cancel-button { display: none; }
 .searchbar-clear { width: 30px; height: 30px; border-radius: var(--r-pill); }
@@ -454,19 +464,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--c-accent); border-color: var(--c-accent); color: var(--c-on-accent);
 }
 .searchbar.is-invalid { border-color: var(--c-danger); }
-
-/* On a touch screen the two controls inside the search pill need real room,
-   so the pill itself grows rather than the buttons being squeezed. */
-@media (pointer: coarse) {
-  .searchbar { height: 52px; padding-right: 7px; gap: 8px; }
-  .searchbar-clear { width: 40px; height: 40px; }
-  .searchbar-clear .icon { width: 18px; height: 18px; }
-  .searchbar-regex { min-height: 40px; padding: 0 12px; }
-  .icon-btn { width: 46px; height: 46px; }
-  .rb-flag { min-height: 40px; padding: 8px 14px; }
-  .rb-token { min-height: 44px; }
-  .swatch { width: 40px; height: 40px; }
-}
 
 /* search results dropdown */
 .search-results {
@@ -1367,10 +1364,25 @@ input[type="range"].field { padding: 0; background: none; border: 0; min-height:
   .toast-region { left: 12px; right: 12px; width: auto; bottom: 12px; }
 }
 
-/* -------------------------------------------------- explicit motion opt-out */
-/* The system preference is honoured throughout by its own media queries. This
-   block is the site-only override offered in Settings, for readers who want
-   less motion here without changing their whole device. */
+/* ------------------------------------------------------------------ motion */
+/* Two ways in, one behaviour. The scattered per-component media queries above
+   cover the flashes and the smooth scroll, but they never covered the drawer's
+   280px slide or the skip link's, so the system preference alone still animated
+   the largest movement on the page. Both routes now suppress motion globally,
+   and the per-component rules above remain as the specific replacements (an
+   outline instead of the teleport flash, and so on).
+
+   The Motion setting offers "Follow system" or "Always reduce" and nothing that
+   forces animation back on, so these two blocks only ever agree. */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 :root[data-motion="reduce"] *,
 :root[data-motion="reduce"] *::before,
@@ -1386,6 +1398,54 @@ input[type="range"].field { padding: 0; background: none; border: 0; min-height:
   outline-offset: 3px;
 }
 :root[data-motion="reduce"] .related-card:hover { transform: none; }
+
+/* ---------------------------------------------------------- touch targets -- */
+/* This block sits at the very end of the stylesheet deliberately, and moving it
+   back up would quietly switch parts of it off.
+
+   It used to live beside the search bar, a few hundred lines above the settings
+   and regex-builder components. Every rule in it is a single class, so it had
+   exactly the same specificity as the component rule it was meant to override
+   and lost on source order alone. Measured on an emulated touch device before
+   this was moved: .swatch stayed 30x30 against a rule asking for 40x40, and
+   .rb-flag stayed 29x32 against one asking for a 40px minimum. Nothing errored
+   and nothing logged — the rules were simply inert, which is the failure that
+   reads as "the touch sizes are handled" to anyone who greps for them.
+
+   Everything a finger has to hit gets at least 40px in its smallest dimension
+   here. Sizes stay in the pointer query rather than becoming unconditional so a
+   mouse-driven settings page keeps its compact rows. */
+
+@media (pointer: coarse) {
+  /* app bar and search */
+  .searchbar { height: 52px; padding-right: 7px; gap: 8px; }
+  .searchbar-clear { width: 40px; height: 40px; }
+  .searchbar-clear .icon { width: 18px; height: 18px; }
+  .searchbar-regex { min-height: 40px; padding: 0 12px; }
+  .icon-btn { width: 46px; height: 46px; }
+
+  /* regex builder. The flags are one-letter buttons and the tokens can be a
+     single character, so they need a minimum WIDTH as well — height alone
+     leaves a 37px-wide target that is still awkward to hit. */
+  .rb-flag { min-height: 40px; min-width: 44px; padding: 8px 14px; }
+  .rb-token { min-height: 44px; min-width: 44px; }
+  .rb-cat > summary { min-height: 44px; }
+
+  /* settings: segmented choices, disclosures, fields and the colour picker */
+  .segmented button { min-height: 44px; padding: 0 12px; }
+  details.set-more > summary { min-height: 40px; padding: 8px 6px; }
+  select.field, input.field { min-height: 44px; }
+  input[type="range"].field { min-height: 40px; }
+  .picker-fields input { min-height: 44px; }
+  .swatch { width: 40px; height: 40px; }
+  .picker-swatches { gap: 8px; }
+
+  /* A 22px hue strip is a hard thing to hit and a harder one to drag. Grow the
+     track and the thumb together, or the thumb ends up smaller than the rail. */
+  .picker-hue { height: 44px; }
+  .picker-hue::-webkit-slider-thumb { width: 28px; height: 28px; }
+  .picker-hue::-moz-range-thumb { width: 26px; height: 26px; }
+}
 
 /* ------------------------------------------------------------------ print */
 

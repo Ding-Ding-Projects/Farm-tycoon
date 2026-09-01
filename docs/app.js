@@ -1505,7 +1505,13 @@ function moveSearchActive(delta) {
   const items = $$('.sr-item', $('#searchResults'));
   if (items.length === 0) return;
   items.forEach((it) => { it.classList.remove('is-active'); it.setAttribute('aria-selected', 'false'); });
-  searchActiveIndex = (searchActiveIndex + delta + items.length + 1) % (items.length + 1) - 1;
+  // The cursor has items.length + 1 positions: -1 (the field itself, nothing
+  // highlighted) followed by 0..items.length-1. Shift by one into 0..n so the
+  // wrap arithmetic is ordinary, move, then shift back. Doing the modulo on the
+  // unshifted index leaves -1 mapping to -1 for every downward press, which is
+  // exactly the state that made ArrowDown a permanent no-op.
+  const slots = items.length + 1;
+  searchActiveIndex = (((searchActiveIndex + 1 + delta) % slots) + slots) % slots - 1;
   if (searchActiveIndex < 0) { $('#searchInput').removeAttribute('aria-activedescendant'); return; }
   const active = items[searchActiveIndex];
   active.classList.add('is-active');
@@ -2678,11 +2684,28 @@ function openPalette() {
  * 17. Drawer (narrow widths)
  * ------------------------------------------------------------------------ */
 
+/* Below 720px the rail is slid off the left edge with a transform. A transform
+   moves pixels and nothing else: every control inside it stays in the tab order
+   and stays in the accessibility tree, so a keyboard user tabbing out of the app
+   bar falls into a navigation drawer they cannot see, and a screen reader reads
+   out a whole contents list that is not on screen. `inert` is the one thing that
+   removes both at once, so it is kept in step with the drawer's own state. */
+const drawerQuery = window.matchMedia('(max-width: 720px)');
+
+function syncRailInert() {
+  const rail = $('#rail');
+  if (!rail) return;
+  const hidden = drawerQuery.matches && !$('#app').classList.contains('rail-open');
+  if (hidden) rail.setAttribute('inert', '');
+  else rail.removeAttribute('inert');
+}
+
 function openRailDrawer() {
   const app = $('#app');
   app.classList.add('rail-open');
   $('#drawerBtn').setAttribute('aria-expanded', 'true');
   $('#railScrim').hidden = false;
+  syncRailInert();
   const first = $('.tab', $('#railStrip'));
   if (first) first.focus();
 }
@@ -2690,9 +2713,15 @@ function openRailDrawer() {
 function closeRailDrawer() {
   const app = $('#app');
   if (!app.classList.contains('rail-open')) return;
+  // Take focus back out before the rail goes inert, or the browser drops it on
+  // <body> and the next Tab starts again from the top of the document.
+  const rail = $('#rail');
+  const hadFocus = rail && rail.contains(document.activeElement);
   app.classList.remove('rail-open');
   $('#drawerBtn').setAttribute('aria-expanded', 'false');
   $('#railScrim').hidden = true;
+  if (hadFocus) $('#drawerBtn').focus();
+  syncRailInert();
 }
 
 /* ---------------------------------------------------------------------------
@@ -2716,6 +2745,10 @@ function initChrome() {
     if ($('#app').classList.contains('rail-open')) closeRailDrawer(); else openRailDrawer();
   });
   $('#railClose').addEventListener('click', () => { closeRailDrawer(); $('#drawerBtn').focus(); });
+  // A resize across the 720px line changes whether the rail is a drawer at all.
+  if (drawerQuery.addEventListener) drawerQuery.addEventListener('change', syncRailInert);
+  else if (drawerQuery.addListener) drawerQuery.addListener(syncRailInert);
+  syncRailInert();
   $('#railScrim').addEventListener('click', closeRailDrawer);
 
   $('#themeBtn').addEventListener('click', () => {

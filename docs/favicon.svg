@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Farm Tycoon">
+  <!-- The brand sprout, drawn locally. Nothing here is fetched from another
+       origin, and the two colours are picked so the mark reads on both a light
+       and a dark browser tab strip rather than relying on either. -->
+  <rect width="32" height="32" rx="7" fill="#e4f0d2"/>
+  <g fill="none" stroke="#427d12" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 25.5v-9.2"/>
+    <path d="M16 16.3c0-4.6 3.3-7.9 8.1-7.9 0 4.8-3.3 7.9-8.1 7.9Z"/>
+    <path d="M16 19.2c0-3.6-2.7-6.1-6.4-6.1 0 3.7 2.6 6.1 6.4 6.1Z"/>
+  </g>
+</svg>

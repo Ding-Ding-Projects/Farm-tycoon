@@ -8,7 +8,11 @@
  * derived figure, computed from the real tables rather than estimated. Where the
  * code and the data disagree, or where something is declared and never used, the
  * article says so instead of quietly presenting the tidier version.
+ *
+ * Content counts come from ./data-counts.js, a generated module — never typed here.
  */
+
+import { COUNTS } from './data-counts.js';
 
 export const article = {
   id: 'logistics',
@@ -27,7 +31,7 @@ export const article = {
   Everything the farm grows or cooks is worth coins. That much is ordinary. What
   makes the middle of this game work is a second thing that cannot be bought with
   coins at all: <strong>construction materials</strong>. Bricks, planks, shovels
-  and their twenty relatives are what pay for a bigger barn, a wider farm, a house
+  and their ${COUNTS.materials - 3} relatives are what pay for a bigger barn, a wider farm, a house
   in the town, and, through the Building Workshop, every production building you
   will ever place.
 </p>

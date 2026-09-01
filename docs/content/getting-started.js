@@ -7,7 +7,11 @@
  * article says so rather than rounding it up into a claim.
  *
  * Article contract: see the comment block at the top of ../app.js.
+ *
+ * Content counts come from ./data-counts.js, a generated module — never typed here.
  * ==========================================================================*/
+
+import { COUNTS } from './data-counts.js';
 
 const ICON_INFO = '<svg class="icon" aria-hidden="true"><use href="#ui-info"></use></svg>';
 const ICON_WARN = '<svg class="icon" aria-hidden="true"><use href="#ui-warning"></use></svg>';
@@ -37,12 +41,12 @@ export const article = {
         </p>
 
         <div class="stat-row">
-          <div class="stat"><div class="stat-num">22</div><div class="stat-label">crops</div></div>
-          <div class="stat"><div class="stat-num">12</div><div class="stat-label">animals</div></div>
-          <div class="stat"><div class="stat-num">26</div><div class="stat-label">buildings</div></div>
-          <div class="stat"><div class="stat-num">128</div><div class="stat-label">recipes</div></div>
-          <div class="stat"><div class="stat-num">192</div><div class="stat-label">goods</div></div>
-          <div class="stat"><div class="stat-num">95</div><div class="stat-label">levels</div></div>
+          <div class="stat"><div class="stat-num">${COUNTS.crops}</div><div class="stat-label">crops</div></div>
+          <div class="stat"><div class="stat-num">${COUNTS.animals}</div><div class="stat-label">animals</div></div>
+          <div class="stat"><div class="stat-num">${COUNTS.buildings}</div><div class="stat-label">buildings</div></div>
+          <div class="stat"><div class="stat-num">${COUNTS.recipes}</div><div class="stat-label">recipes</div></div>
+          <div class="stat"><div class="stat-num">${COUNTS.goods}</div><div class="stat-label">goods</div></div>
+          <div class="stat"><div class="stat-num">${COUNTS.maxLevel}</div><div class="stat-label">levels</div></div>
         </div>
 
         <h3>Two things that make it its own game</h3>
@@ -458,7 +462,7 @@ export const article = {
         </p>
 
         <h3>What is where</h3>
-        <p>All twenty-two, in the order they open to you:</p>
+        <p>All ${COUNTS.structures}, in the order they open to you:</p>
         <table>
           <thead>
             <tr><th>Level</th><th>Structure</th><th>What it opens</th></tr>
@@ -735,12 +739,16 @@ export const article = {
           real good, an input that resolves to nothing, a building kit that cannot be crafted in
           the Workshop, a building that unlocks before the Workshop that would have to build it,
           a construction material demanded from the wrong economy (a barn upgrade asking for
-          expansion tools, for instance), and any level between 1 and 95 that carries no unlock at
-          all, which is what stops the late game becoming a silent experience corridor. Its
-          summary line reports the content it validated: 22 crops, 12 animals, 26 buildings, 128
-          recipes, 192 goods, 3 merge chains, 39 achievements, 95 levels all with unlocks, 10
-          weekend events, 6 mini-events, 25 fair tasks, 6 holidays, 16 town houses, 10 community
-          buildings, 14 zoo enclosures, 8 islands and 23 materials.
+          expansion tools, for instance), and any level between 1 and ${COUNTS.maxLevel} that
+          carries no unlock at all, which is what stops the late game becoming a silent
+          experience corridor. Its summary line reports the content it validated: ${COUNTS.crops}
+          crops, ${COUNTS.animals} animals, ${COUNTS.buildings} buildings, ${COUNTS.recipes}
+          recipes, ${COUNTS.goods} goods, ${COUNTS.mergeChains} merge chains,
+          ${COUNTS.achievements} achievements, ${COUNTS.maxLevel} levels all with unlocks,
+          ${COUNTS.weekendEvents} weekend events, ${COUNTS.miniEvents} mini-events,
+          ${COUNTS.fairTasks} fair tasks, ${COUNTS.holidays} holidays, ${COUNTS.townHouses} town
+          houses, ${COUNTS.townCommunity} community buildings, ${COUNTS.zooEnclosures} zoo
+          enclosures, ${COUNTS.islands} islands and ${COUNTS.materials} materials.
         </p>
 
         <h3>What those tests do not cover</h3>

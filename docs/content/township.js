@@ -4,7 +4,11 @@
  * One article for the documentation shell; see ./README-CONTRACT.md for the module
  * contract. Every figure below was derived from src/data.js or from running the
  * modules directly, never quoted from prose elsewhere in the repository.
+ *
+ * Content counts come from ./data-counts.js, a generated module — never typed here.
  */
+
+import { COUNTS, FMT } from './data-counts.js';
 
 export const article = {
   id: "township",
@@ -25,17 +29,17 @@ what consume them.</p>
 
 <p>That separation is the whole design. A farm with nothing to build towards eventually becomes a
 coin printer with no sink, and coins with nothing to buy stop being interesting. The town is a
-sink that does not fill: 814 material items and 3,614,400 coins buys one of
+sink that does not fill: ${COUNTS.townCombinedMaterialsTotal} material items and ${FMT.townCombinedCoinsTotal} coins buys one of
 every house and one of every community building, and that is only the beginning, because the
-final population milestone asks for 2,000 residents and one of everything comes to
-1,476.</p>
+final population milestone asks for ${COUNTS.townFinalPopulationTarget.toLocaleString('en-US')} residents and one of everything comes to
+${COUNTS.townPopulationTotal.toLocaleString('en-US')}.</p>
 
 <div class="stat-row">
-  <div class="stat"><div class="stat-num">16</div><div class="stat-label">house types</div></div>
-  <div class="stat"><div class="stat-num">10</div><div class="stat-label">community buildings</div></div>
-  <div class="stat"><div class="stat-num">9</div><div class="stat-label">population milestones</div></div>
-  <div class="stat"><div class="stat-num">14</div><div class="stat-label">zoo enclosures</div></div>
-  <div class="stat"><div class="stat-num">8</div><div class="stat-label">island destinations</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.townHouses}</div><div class="stat-label">house types</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.townCommunity}</div><div class="stat-label">community buildings</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.townMilestones}</div><div class="stat-label">population milestones</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.zooEnclosures}</div><div class="stat-label">zoo enclosures</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.islands}</div><div class="stat-label">island destinations</div></div>
 </div>
 
 <h3>Three systems, three doors</h3>
@@ -225,7 +229,7 @@ economy module, so the usual tracking applies; diamonds are added directly.</p>
       id: "materials",
       heading: "Where the materials come from, and how many",
       html: `
-<p>The town consumes the <strong>building set</strong>: 8 distinct materials across
+<p>The town consumes the <strong>building set</strong>: ${COUNTS.townBuildingMaterialsDistinct} distinct materials across
 houses and community buildings. It never asks for the expansion set, which buys land; never the
 storage set, which upgrades the barn and silo; and never the advanced set, which comes only from
 the tool exchange and expedition loot.</p>
@@ -234,13 +238,13 @@ the tool exchange and expedition loot.</p>
   <caption>Total bill for one of every town building</caption>
   <thead><tr><th>What</th><th>Coins</th><th>Material items</th></tr></thead>
   <tbody>
-    <tr><td>One of each of the 16 house types</td><td>2,242,400</td><td>&mdash;</td></tr>
-    <tr><td>One of each of the 10 community buildings</td><td>1,372,000</td><td>&mdash;</td></tr>
-    <tr><td><strong>Combined</strong></td><td><strong>3,614,400</strong></td><td><strong>814</strong></td></tr>
+    <tr><td>One of each of the ${COUNTS.townHouses} house types</td><td>${FMT.townHousesCoinsTotal}</td><td>&mdash;</td></tr>
+    <tr><td>One of each of the ${COUNTS.townCommunity} community buildings</td><td>${FMT.townCommunityCoinsTotal}</td><td>&mdash;</td></tr>
+    <tr><td><strong>Combined</strong></td><td><strong>${FMT.townCombinedCoinsTotal}</strong></td><td><strong>${COUNTS.townCombinedMaterialsTotal}</strong></td></tr>
   </tbody>
 </table>
 
-<p>Broken down by material, that combined bill is: Brick &times;216, Glass &times;198, Slab &times;156, Paint &times;80, Hammer &times;54, Cement &times;48, Roof Tile &times;44, Nails &times;18.</p>
+<p>Broken down by material, that combined bill is: ${COUNTS.townMaterialBreakdown}.</p>
 
 <h3>The supply side</h3>
 
@@ -258,9 +262,9 @@ them the town can actually use.</p>
   </tbody>
 </table>
 
-<p>Trains are the town's channel. Their pool carries 14 materials by
-weight, of which the 8 the town uses account for
-<strong>72.6%</strong> of the draw. The remainder is wire, rope and timber:
+<p>Trains are the town's channel. Their pool carries ${COUNTS.trainPoolMaterials} materials by
+weight, of which the ${COUNTS.townBuildingMaterialsDistinct} the town uses account for
+<strong>${COUNTS.trainPoolTownSharePercent}%</strong> of the draw. The remainder is wire, rope and timber:
 building-set materials the town never asks for, which go instead to the Building Workshop's
 components, the deeper mine seams and the laboratory. One pool serving two demands is why the
 building set is as large as it is.</p>
@@ -326,9 +330,9 @@ produces a souvenir, and souvenirs sell for several times what the feed would ha
   </tbody>
 </table>
 
-<p>One of every enclosure costs <strong>1,912,000 coins</strong> and
-<strong>284 material items</strong> (Brick &times;87, Slab &times;75, Glass &times;66, Paint &times;22, Hammer &times;16, Cement &times;10, Nails &times;8). The unlock levels run from
-34 to 91, which makes the zoo one of the few systems still adding
+<p>One of every enclosure costs <strong>${FMT.zooCoinsTotal} coins</strong> and
+<strong>${COUNTS.zooMaterialsTotal} material items</strong> (${COUNTS.zooMaterialBreakdown}). The unlock levels run from
+${COUNTS.zooLevelMin} to ${COUNTS.zooLevelMax}, which makes the zoo one of the few systems still adding
 content at the level cap.</p>
 
 <h3>Where the feed is taken from</h3>
@@ -568,8 +572,8 @@ counter at present. It is recorded for one that does not exist yet.</p>
       heading: "Why the cargo exists: the Tropical Café",
       html: `
 <p>Island cargo has one destination that justifies the trip. The Tropical Café unlocks at level
-36, the same level as the islands themselves, which is not a coincidence, and every
-one of its 9 recipes is built on goods that only a voyage can supply.</p>
+${COUNTS.cafeUnlockLevel}, the same level as the islands themselves, which is not a coincidence, and every
+one of its ${COUNTS.cafeRecipes} recipes is built on goods that only a voyage can supply.</p>
 
 <table>
   <caption>Tropical Café recipes and the value they add</caption>

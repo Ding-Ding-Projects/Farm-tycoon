@@ -11,7 +11,11 @@
  * generated from those tables rather than typed by hand. Where something is
  * defined in data but has no code consuming it yet, this article says so
  * rather than describing an intention as a behaviour.
+ *
+ * Content counts come from ./data-counts.js, a generated module — never typed here.
  * ==========================================================================*/
+
+import { COUNTS, BUILDINGS_TABLE } from './data-counts.js';
 
 export const article = {
   id: 'farming',
@@ -168,7 +172,7 @@ function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; 
   absence without anything having to be saved.
 </p>
 
-<h3>All twenty-two crops</h3>
+<h3>All ${COUNTS.crops} crops</h3>
 <p>
   <strong>Coins per hour</strong> below assumes a perfect cadence — that you
   harvest and replant the instant a crop finishes. Nobody plays that way, and
@@ -417,7 +421,7 @@ const qty = animal.capacity;     // products returned</code></pre>
   collected as a unit.
 </p>
 
-<h3>All twelve species</h3>
+<h3>All ${COUNTS.animals} species</h3>
 <table>
   <caption>Every animal, with the cost of one cycle and what it returns</caption>
   <thead>
@@ -518,7 +522,8 @@ const qty = animal.capacity;     // products returned</code></pre>
       heading: 'Production buildings and recipe queues',
       html: `
 <p>
-  Twenty-six production buildings between them hold 128 recipes. A building is a
+  ${COUNTS.buildings} production buildings between them hold ${COUNTS.recipes} recipes. A
+  building is a
   2 &times; 2 slab (3 &times; 2 for the Building Workshop) with a small queue.
   You pick a recipe, it takes the inputs immediately, and some time later you
   collect one finished item per slot.
@@ -527,9 +532,10 @@ const qty = animal.capacity;     // products returned</code></pre>
 <h3>Buildings are crafted, not bought</h3>
 <p>
   This is the mechanic that most distinguishes Farm Tycoon from the games it
-  takes after. Only three buildings can be paid for in coins alone — the
+  takes after. Only ${COUNTS.buildings - COUNTS.kitBuildings} buildings can be paid for in
+  coins alone — the
   <strong>Bakery</strong>, the <strong>Feed Mill</strong> and the
-  <strong>Building Workshop</strong> itself. The other twenty-three each require
+  <strong>Building Workshop</strong> itself. The other ${COUNTS.kitBuildings} each require
   a <em>kit</em>, and a kit is a Workshop recipe: raw construction materials
   become components, components become the kit, and the kit is consumed to place
   the building.
@@ -580,7 +586,7 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
   </p>
 </div>
 
-<h3>All twenty-six buildings</h3>
+<h3>All ${COUNTS.buildings} buildings</h3>
 <table>
   <caption>Every production building, with its kit, queue and minigame</caption>
   <thead>
@@ -590,32 +596,7 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
     </tr>
   </thead>
   <tbody>
-<tr><td><code>bakery</code></td><td>Bakery</td><td>3</td><td>200</td><td>coins only</td><td>3</td><td>4</td><td>Knead the Dough</td><td><code>bonusYield</code></td><td>+30%</td></tr>
-<tr><td><code>feed_mill</code></td><td>Feed Mill</td><td>5</td><td>300</td><td>coins only</td><td>3</td><td>10</td><td>Grain Sort</td><td><code>seedRefundChance</code></td><td>+25%</td></tr>
-<tr><td><code>build_workshop</code></td><td>Building Workshop</td><td>6</td><td>900</td><td>coins only</td><td>3</td><td>31</td><td>Fit the Frame</td><td><code>materialRefund</code></td><td>+25%</td></tr>
-<tr><td><code>dairy</code></td><td>Dairy</td><td>6</td><td>450</td><td><code>kit_dairy</code></td><td>3</td><td>4</td><td>Churn Timing</td><td><code>speedMult</code></td><td>+20%</td></tr>
-<tr><td><code>sugar_mill</code></td><td>Sugar Mill</td><td>8</td><td>600</td><td><code>kit_sugar_mill</code></td><td>3</td><td>3</td><td>Press Pressure</td><td><code>extraOutput</code></td><td>+25%</td></tr>
-<tr><td><code>popcorn_pot</code></td><td>Popcorn Pot</td><td>9</td><td>750</td><td><code>kit_popcorn_pot</code></td><td>3</td><td>3</td><td>Catch the Pops</td><td><code>byproductChance</code></td><td>+35%</td></tr>
-<tr><td><code>grill</code></td><td>Grill</td><td>12</td><td>1,100</td><td><code>kit_grill</code></td><td>3</td><td>5</td><td>Flip Timing</td><td><code>sellPriceMult</code></td><td>+20%</td></tr>
-<tr><td><code>loom</code></td><td>Loom</td><td>14</td><td>1,500</td><td><code>kit_loom</code></td><td>3</td><td>3</td><td>Weave the Pattern</td><td><code>rarityTier</code></td><td>+20%</td></tr>
-<tr><td><code>juice_press</code></td><td>Juice Press</td><td>15</td><td>1,700</td><td><code>kit_juice_press</code></td><td>3</td><td>4</td><td>Press at Peak</td><td><code>juiceYieldBonus</code></td><td>+30%</td></tr>
-<tr><td><code>pie_oven</code></td><td>Pie Oven</td><td>16</td><td>1,800</td><td><code>kit_pie_oven</code></td><td>3</td><td>4</td><td>Crimp the Crust</td><td><code>xpMult</code></td><td>+30%</td></tr>
-<tr><td><code>sewing_machine</code></td><td>Sewing Machine</td><td>20</td><td>2,800</td><td><code>kit_sewing_machine</code></td><td>3</td><td>3</td><td>Hold the Seam</td><td><code>fabricSaveChance</code></td><td>+25%</td></tr>
-<tr><td><code>jam_maker</code></td><td>Jam Maker</td><td>22</td><td>3,600</td><td><code>kit_jam_maker</code></td><td>3</td><td>3</td><td>Hold the Heat</td><td><code>setQualityBonus</code></td><td>+25%</td></tr>
-<tr><td><code>smelter</code></td><td>Smelter</td><td>24</td><td>4,200</td><td><code>kit_smelter</code></td><td>2</td><td>3</td><td>Work the Bellows</td><td><code>purityChance</code></td><td>+20%</td></tr>
-<tr><td><code>candy_machine</code></td><td>Candy Machine</td><td>26</td><td>5,000</td><td><code>kit_candy_machine</code></td><td>3</td><td>3</td><td>Pour the Moulds</td><td><code>mouldPrecision</code></td><td>+25%</td></tr>
-<tr><td><code>coffee_kiosk</code></td><td>Coffee Kiosk</td><td>30</td><td>6,500</td><td><code>kit_coffee_kiosk</code></td><td>3</td><td>3</td><td>Pull the Shot</td><td><code>rushHourChance</code></td><td>+30%</td></tr>
-<tr><td><code>tropical_cafe</code></td><td>Tropical Café</td><td>36</td><td>12,000</td><td><code>kit_tropical_cafe</code></td><td>3</td><td>9</td><td>Stack the Garnish</td><td><code>tipChance</code></td><td>+35%</td></tr>
-<tr><td><code>oil_press</code></td><td>Oil Press</td><td>52</td><td>18,000</td><td><code>kit_oil_press</code></td><td>3</td><td>3</td><td>Watch the Flow</td><td><code>oilClarity</code></td><td>+25%</td></tr>
-<tr><td><code>tea_house</code></td><td>Tea House</td><td>56</td><td>26,000</td><td><code>kit_tea_house</code></td><td>3</td><td>4</td><td>Steep the Leaves</td><td><code>steepQuality</code></td><td>+30%</td></tr>
-<tr><td><code>sushi_bar</code></td><td>Sushi Bar</td><td>60</td><td>36,000</td><td><code>kit_sushi_bar</code></td><td>3</td><td>3</td><td>Knife Work</td><td><code>knifePrecision</code></td><td>+25%</td></tr>
-<tr><td><code>perfumery</code></td><td>Perfumery</td><td>64</td><td>50,000</td><td><code>kit_perfumery</code></td><td>3</td><td>3</td><td>Blend the Notes</td><td><code>blendHarmony</code></td><td>+30%</td></tr>
-<tr><td><code>salad_bar</code></td><td>Salad Bar</td><td>68</td><td>68,000</td><td><code>kit_salad_bar</code></td><td>3</td><td>3</td><td>Toss the Bowl</td><td><code>plateFreshness</code></td><td>+25%</td></tr>
-<tr><td><code>pasta_kitchen</code></td><td>Pasta Kitchen</td><td>72</td><td>90,000</td><td><code>kit_pasta_kitchen</code></td><td>3</td><td>3</td><td>Stretch the Dough</td><td><code>doughStretch</code></td><td>+30%</td></tr>
-<tr><td><code>fondue_pot</code></td><td>Fondue Pot</td><td>76</td><td>120,000</td><td><code>kit_fondue_pot</code></td><td>3</td><td>3</td><td>Stir the Melt</td><td><code>meltEvenness</code></td><td>+25%</td></tr>
-<tr><td><code>preservation_station</code></td><td>Preservation Station</td><td>80</td><td>155,000</td><td><code>kit_preservation_station</code></td><td>3</td><td>5</td><td>Seal the Jars</td><td><code>sealTightness</code></td><td>+30%</td></tr>
-<tr><td><code>jeweler</code></td><td>Jeweler</td><td>85</td><td>200,000</td><td><code>kit_jeweler</code></td><td>3</td><td>3</td><td>Set the Stone</td><td><code>settingAccuracy</code></td><td>+20%</td></tr>
-<tr><td><code>yogurt_maker</code></td><td>Yogurt Maker</td><td>90</td><td>260,000</td><td><code>kit_yogurt_maker</code></td><td>3</td><td>3</td><td>Hold the Culture</td><td><code>cultureVigour</code></td><td>+30%</td></tr>
+${BUILDINGS_TABLE.map((b) => `<tr><td><code>${b.id}</code></td><td>${b.name}</td><td>${b.level}</td><td>${b.cost}</td><td>${b.kit}</td><td>${b.slots}</td><td>${b.recipes}</td><td>${b.minigame}</td><td>${b.effect}</td><td>${b.maxBonus}</td></tr>`).join('')}
   </tbody>
 </table>
 
@@ -623,7 +604,7 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
 <p>
   Each production building carries exactly one minigame, and each does something
   only that building would plausibly do — this is not one minigame reskinned
-  twenty-six times. The Smelter works bellows; the Sewing Machine holds a seam;
+  ${COUNTS.buildings} times. The Smelter works bellows; the Sewing Machine holds a seam;
   the Pie Oven crimps a crust.
 </p>
 <p>
@@ -686,36 +667,41 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
               ' but inputs sell for ' + inSum +
               ' - underwater and not marked sink: true');</code></pre>
 <p>
-  Checked against the shipped tables, the rule holds exactly. Of the 128
-  recipes, 39 produce an output worth less than their inputs — and every single
-  one of those 39 carries <code>sink: true</code>. There is not one
+  Checked against the shipped tables, the rule holds exactly. Of the ${COUNTS.recipes}
+  recipes, ${COUNTS.recipesUnderwaterTotal} produce an output worth less than their inputs —
+  and every single
+  one of those ${COUNTS.recipesUnderwaterTotal} carries <code>sink: true</code>
+  (${COUNTS.recipesUnderwaterUnmarkedSink} do not, which would be the actual defect this check
+  exists to catch). There is not one
   value-negative recipe that is unmarked.
 </p>
 
 <h3>What counts as a sink, and why</h3>
 <p>
-  Forty-one recipes are flagged as sinks. They fall into two groups, and neither
+  ${COUNTS.recipesSinkTotal} recipes are flagged as sinks. They fall into two groups, and
+  neither
   exists to be resold:
 </p>
 <ul>
-  <li><strong>The ten Feed Mill recipes.</strong> Feed is eaten by animals. Its
+  <li><strong>The ${COUNTS.recipesSinkFeedMill} Feed Mill recipes.</strong> Feed is eaten by animals. Its
     sale price is close to irrelevant, and it is deeply value-negative on
     purpose — Alpaca Feed costs 644 coins of crops and sells for 28. That is the
     crop sink that stops late-game fields from simply becoming a coin printer.</li>
-  <li><strong>All thirty-one Building Workshop recipes.</strong> Components and
+  <li><strong>All ${COUNTS.recipesSinkWorkshop} Building Workshop recipes.</strong> Components and
     kits exist to place a building, not to be flipped. A kit that was worth more
     than its materials would turn the Workshop into an arbitrage machine and
     detach building from the material economy entirely.</li>
 </ul>
 <p>
-  Two of the forty-one — <code>shingle</code> and <code>panel</code> — happen to
-  break even or slightly better. They are still flagged, because what the flag
-  records is intent rather than the arithmetic of the moment.
+  ${COUNTS.recipesSinkNonUnderwaterCount} of the ${COUNTS.recipesSinkTotal} —
+  ${COUNTS.recipesSinkNonUnderwaterNames || 'none, currently'} — happen${COUNTS.recipesSinkNonUnderwaterCount === 1 ? 's' : ''} to
+  break even or slightly better. ${COUNTS.recipesSinkNonUnderwaterCount > 0 ? 'They are still flagged, because what the flag records is intent rather than the arithmetic of the moment.' : 'Every sink recipe is currently underwater, which is the ordinary case rather than a guaranteed one — the flag records intent, and a future recipe could land here without breaking anything.'}
 </p>
 
 <h3>What the uplift actually looks like</h3>
 <p>
-  Across the 87 non-sink recipes, the median output is worth about 1.75 times
+  Across the ${COUNTS.recipesNonSinkTotal} non-sink recipes, the median output is worth about
+  ${COUNTS.recipesNonSinkMedianUplift}&times;
   its inputs. A few examples, at instant-sell prices:
 </p>
 <table>
@@ -744,7 +730,7 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
 
 <h3>Every crop earns its place</h3>
 <p>
-  All twenty-two crops appear as an input to at least one recipe. None is
+  All ${COUNTS.crops} crops appear as an input to at least one recipe. None is
   decorative and none is purely a sell-item, which means a newly unlocked crop
   always opens something rather than just adding a row to the plant menu.
 </p>
@@ -764,8 +750,10 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
       heading: 'The silo and the barn',
       html: `
 <p>
-  Both start at 50 slots. A slot is one item, not one stack — fifty wheat fills
-  the silo exactly as fifty different crops would. Storage is the game's real
+  Both start at ${COUNTS.siloBaseCapacity} slots (silo and barn currently share the same
+  starting capacity). A slot is one item, not one stack —
+  ${COUNTS.siloBaseCapacity} wheat fills
+  the silo exactly as ${COUNTS.siloBaseCapacity} different crops would. Storage is the game's real
   constraint far more often than coins are.
 </p>
 
@@ -895,8 +883,8 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
       html: `
 <p>
   Two currencies and one progression track. Coins buy land, fields, pens and the
-  three coin-only buildings. Experience buys levels. Levels unlock content, and
-  every single one of the ninety-five unlocks something.
+  ${COUNTS.buildings - COUNTS.kitBuildings} coin-only buildings. Experience buys levels. Levels unlock content, and
+  every single one of the ${COUNTS.maxLevel} unlocks something.
 </p>
 
 <h3>Coins cannot go negative, ever</h3>
@@ -922,9 +910,11 @@ if (next &lt; 0) throw new Error('addCoins: ' + state.coins + ' + ' + amount + '
   level-up pays <strong>one diamond</strong>.
 </p>
 <p>
-  There are ninety-five levels. Reaching the cap therefore pays 94 diamonds from
-  levelling alone, on top of the 5 you start with and the 497 available across
-  the game's 39 achievements. At the cap the loop stops and experience simply
+  There are ${COUNTS.maxLevel} levels. Reaching the cap therefore pays ${COUNTS.maxLevel - 1}
+  diamonds from
+  levelling alone, on top of the ${COUNTS.startDiamonds} you start with and the
+  ${COUNTS.achievementDiamondsTotal} available across
+  the game's ${COUNTS.achievements} achievements. At the cap the loop stops and experience simply
   accumulates without being spent.
 </p>
 
@@ -1000,7 +990,7 @@ n &gt;  50 :  round(50 * 50^1.8 * (n / 50)^1.65)</code></pre>
       heading: 'What unlocks at every level',
       html: `
 <p>
-  All ninety-five levels, the experience each one costs, the running total to
+  All ${COUNTS.maxLevel} levels, the experience each one costs, the running total to
   reach it, and what it opens. Every level carries at least one unlock: the data
   validator refuses a level with an empty list, which is what stops the late game
   from becoming a silent corridor of experience with nothing at the end of it.
@@ -1227,7 +1217,7 @@ n &gt;  50 :  round(50 * 50^1.8 * (n / 50)^1.65)</code></pre>
 </p>
 <ul>
   <li>A non-sink recipe whose output sells for no more than its inputs.</li>
-  <li>A level in the ninety-five with no unlock at all.</li>
+  <li>A level in the ${COUNTS.maxLevel} with no unlock at all.</li>
   <li>An expansion rectangle out of grid bounds, or overlapping another.</li>
   <li>Silo and barn upgrade materials that are not from the storage set, or that
     share a single entry between the two.</li>

@@ -8,7 +8,11 @@
  * EXPEDITIONS, MINE, TOWN, STORAGE, FARM), src/workshop.js, src/minigames.js,
  * src/collections.js, src/production.js, src/economy.js, src/lab.js and
  * tools/validate-data.mjs. Nothing here is remembered or inferred.
+ *
+ * Content counts come from ./data-counts.js, a generated module — never typed here.
  * ------------------------------------------------------------------------ */
+
+import { COUNTS, MINIGAMES_TABLE, KITS_TABLE } from './data-counts.js';
 
 export const article = {
   id: 'crafting',
@@ -24,7 +28,7 @@ export const article = {
       html: `
 <p>
   Most farm games price a production building in coins and stop there. Farm Tycoon does not.
-  Twenty-three of the twenty-six buildings carry a <code>kit</code> field, and that kit is a
+  ${COUNTS.kitBuildings} of the ${COUNTS.buildings} buildings carry a <code>kit</code> field, and that kit is a
   crafted good that has to exist in your barn before the building can be placed. Coins are
   still charged on top, but coins alone are never enough.
 </p>
@@ -40,8 +44,8 @@ export const article = {
 <h3>The chain, in full</h3>
 <ol>
   <li><strong>Materials</strong> arrive in the barn from a transport, a chest, an expedition, a milestone or the daily wheel. They are never crafted.</li>
-  <li>The <strong>Building Workshop</strong> turns materials into one of eight <strong>components</strong> &mdash; a Roof Shingle, a Steel Beam, a Glazing Unit and so on.</li>
-  <li>The same Workshop turns components (and occasionally raw materials again) into one of twenty-three <strong>kits</strong>.</li>
+  <li>The <strong>Building Workshop</strong> turns materials into one of ${COUNTS.workshopComponents} <strong>components</strong> &mdash; a Roof Shingle, a Steel Beam, a Glazing Unit and so on.</li>
+  <li>The same Workshop turns components (and occasionally raw materials again) into one of ${COUNTS.kitBuildings} <strong>kits</strong>.</li>
   <li>Placing the building <strong>consumes the kit</strong> and charges its coin cost. The kit is gone; the factory is yours.</li>
 </ol>
 
@@ -76,7 +80,7 @@ export const article = {
       heading: 'The four material sets',
       html: `
 <p>
-  There are twenty-three construction materials, and they are not one undifferentiated pile.
+  There are ${COUNTS.materials} construction materials, and they are not one undifferentiated pile.
   Each carries a <code>set</code>, and the four sets are a closed list &mdash;
   <code>MATERIAL_SETS</code> is <code>['building', 'expansion', 'storage', 'advanced']</code> and
   the validator rejects anything outside it. The split matters because it decides what a delivery
@@ -278,7 +282,7 @@ export const article = {
 
     {
       id: 'kits',
-      heading: 'The twenty-three kits',
+      heading: `The ${COUNTS.kitBuildings} kits`,
       html: `
 <p>
   A kit is a single barn item that unlocks one specific building. The mapping is one-to-one and
@@ -303,36 +307,15 @@ export const article = {
     </tr>
   </thead>
   <tbody>
-    <tr><td>Dairy Kit</td><td>Dairy</td><td>6</td><td>6</td><td>2 Timber Frame + 2 Wall Panel + 3 Roof Shingle</td><td>1 h 30 min</td><td>20</td><td>450</td></tr>
-    <tr><td>Sugar Mill Kit</td><td>Sugar Mill</td><td>8</td><td>6</td><td>2 Steel Beam + 2 Timber Frame + 3 Roof Shingle</td><td>1 h 45 min</td><td>23</td><td>600</td></tr>
-    <tr><td>Popcorn Pot Kit</td><td>Popcorn Pot</td><td>9</td><td>6</td><td>2 Steel Beam + 3 Wall Panel + 1 Brass Fitting</td><td>2 h</td><td>26</td><td>750</td></tr>
-    <tr><td>BBQ Grill Kit</td><td>Grill</td><td>12</td><td>6</td><td>3 Steel Beam + 2 Brass Fitting + 4 Roof Shingle</td><td>2 h 15 min</td><td>29</td><td>1,100</td></tr>
-    <tr><td>Loom Kit</td><td>Loom</td><td>14</td><td>6</td><td>4 Timber Frame + 3 Wall Panel + 1 Wiring Loom</td><td>3 h</td><td>37</td><td>1,500</td></tr>
-    <tr><td>Juice Press Kit</td><td>Juice Press</td><td>15</td><td>6</td><td>4 Steel Beam + 2 Plumbing Set + 2 Glazing Unit</td><td>4 h</td><td>47</td><td>1,700</td></tr>
-    <tr><td>Pie Oven Kit</td><td>Pie Oven</td><td>16</td><td>6</td><td>4 Brick + 3 Steel Beam + 1 Plumbing Set</td><td>2 h 30 min</td><td>33</td><td>1,800</td></tr>
-    <tr><td>Sewing Machine Kit</td><td>Sewing Machine</td><td>20</td><td>6</td><td>4 Timber Frame + 3 Brass Fitting + 1 Wiring Loom</td><td>3 h 30 min</td><td>42</td><td>2,800</td></tr>
-    <tr><td>Jam Maker Kit</td><td>Jam Maker</td><td>22</td><td>21</td><td>5 Wall Panel + 2 Glazing Unit + 2 Plumbing Set</td><td>4 h 30 min</td><td>53</td><td>3,600</td></tr>
-    <tr><td>Smelter Kit</td><td>Smelter</td><td>24</td><td>21</td><td>8 Steel Beam + 4 Cement + 3 Plumbing Set</td><td>8 h</td><td>84</td><td>4,200</td></tr>
-    <tr><td>Candy Machine Kit</td><td>Candy Machine</td><td>26</td><td>21</td><td>5 Brass Fitting + 3 Wiring Loom + 4 Steel Beam</td><td>6 h</td><td>66</td><td>5,000</td></tr>
-    <tr><td>Coffee Kiosk Kit</td><td>Coffee Kiosk</td><td>30</td><td>21</td><td>3 Glazing Unit + 2 Wiring Loom + 4 Wall Panel</td><td>5 h</td><td>59</td><td>6,500</td></tr>
-    <tr><td>Tropical Cafe Kit</td><td>Tropical Caf&eacute;</td><td>36</td><td>21</td><td>4 Glazing Unit + 3 Plumbing Set + 6 Timber Frame</td><td>7 h</td><td>74</td><td>12,000</td></tr>
-    <tr><td>Oil Press Kit</td><td>Oil Press</td><td>52</td><td>21</td><td>3 Steel Beam + 2 Plumbing Set + 3 Wall Panel</td><td>9 h</td><td>92</td><td>18,000</td></tr>
-    <tr><td>Tea House Kit</td><td>Tea House</td><td>56</td><td>21</td><td>4 Timber Frame + 3 Glazing Unit + 5 Roof Shingle + 4 Roof Tile</td><td>10 h 5 min</td><td>103</td><td>26,000</td></tr>
-    <tr><td>Sushi Bar Kit</td><td>Sushi Bar</td><td>60</td><td>21</td><td>5 Wall Panel + 3 Glazing Unit + 3 Brass Fitting</td><td>11 h 18 min</td><td>115</td><td>36,000</td></tr>
-    <tr><td>Perfumery Kit</td><td>Perfumery</td><td>64</td><td>21</td><td>5 Glazing Unit + 4 Brass Fitting + 2 Wiring Loom</td><td>12 h 39 min</td><td>129</td><td>50,000</td></tr>
-    <tr><td>Salad Bar Kit</td><td>Salad Bar</td><td>68</td><td>21</td><td>5 Timber Frame + 5 Wall Panel + 2 Plumbing Set</td><td>14 h 10 min</td><td>144</td><td>68,000</td></tr>
-    <tr><td>Pasta Kitchen Kit</td><td>Pasta Kitchen</td><td>72</td><td>21</td><td>5 Steel Beam + 4 Brass Fitting + 3 Plumbing Set</td><td>15 h 52 min</td><td>161</td><td>90,000</td></tr>
-    <tr><td>Fondue Pot Kit</td><td>Fondue Pot</td><td>76</td><td>21</td><td>6 Brass Fitting + 3 Wiring Loom + 3 Cement</td><td>17 h 46 min</td><td>180</td><td>120,000</td></tr>
-    <tr><td>Jeweler Kit</td><td>Jeweler</td><td>85</td><td>75</td><td>7 Glazing Unit + 6 Brass Fitting + 4 Wiring Loom + <strong>2 Jackhammer</strong></td><td>22 h 17 min</td><td>226</td><td>200,000</td></tr>
-    <tr><td>Preservation Kit</td><td>Preservation Station</td><td>80</td><td>80</td><td>6 Glazing Unit + 4 Plumbing Set + 5 Steel Beam + <strong>2 Electric Saw</strong></td><td>19 h 54 min</td><td>202</td><td>155,000</td></tr>
-    <tr><td>Yogurt Maker Kit</td><td>Yogurt Maker</td><td>90</td><td>86</td><td>5 Plumbing Set + 7 Wall Panel + 4 Wiring Loom + <strong>3 Drill</strong></td><td>24 h 57 min</td><td>253</td><td>260,000</td></tr>
+${KITS_TABLE.map((k) => `<tr><td>${k.kitName}</td><td>${k.building}</td><td>${k.buildingLevel}</td><td>${k.kitLevel}</td><td>${k.inputs}</td><td>${k.craftTime}</td><td>${k.xp}</td><td>${k.coinCost.toLocaleString('en-US')}</td></tr>`).join('')}
   </tbody>
 </table>
 
 <h3>Reading the shape of that table</h3>
 <p>
   Three things are worth pulling out. First, the kit recipes cluster at two unlock levels &mdash;
-  eight of them open with the Workshop at 6, and thirteen more at 21, the same level trains
+  ${COUNTS.kitsAtWorkshopLevel} of them open with the Workshop at ${COUNTS.workshopUnlockLevel},
+  and ${COUNTS.kitsAtTrainLevel} more at 21, the same level trains
   arrive. That is not a coincidence: the second batch of kits assumes a train line feeding them.
 </p>
 <p>
@@ -341,7 +324,7 @@ export const article = {
   expedition runs that produce the three Drills.
 </p>
 <p>
-  Third, only the last three kits touch advanced materials, and their kit-recipe levels (75, 80
+  Third, only the last ${COUNTS.kitsAdvancedCount} kits touch advanced materials, and their kit-recipe levels (75, 80
   and 86) all sit above the level 57 expedition gate, exactly as the advanced-tier guard demands.
 </p>
 <figure class="shot">
@@ -417,9 +400,9 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
       heading: 'Per-factory minigames: a bonus layer, never a gate',
       html: `
 <p>
-  Every one of the twenty-six production buildings has exactly one minigame, and every one of
-  those twenty-six minigames carries a different effect. Not one minigame reskinned twenty-six
-  times, and not twenty-six variations on a single timing bar that all do the same thing. The
+  Every one of the ${COUNTS.buildings} production buildings has exactly one minigame, and every one of
+  those ${COUNTS.minigames} minigames carries a different effect. Not one minigame reskinned ${COUNTS.buildings}
+  times, and not ${COUNTS.buildings} variations on a single timing bar that all do the same thing. The
   Bakery kneads dough for extra yield; the Smelter works the bellows for purity; the Workshop
   lines a frame up to save material. The verb and the reward both belong to that factory.
 </p>
@@ -464,43 +447,19 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
       heading: 'Every minigame',
       html: `
 <p>
-  Twenty-six buildings, twenty-six minigames, twenty-six distinct effect keys. The cap is the most
+  ${COUNTS.buildings} buildings, ${COUNTS.minigames} minigames, ${COUNTS.minigames} distinct
+  effect keys. The cap is the most
   a perfect run can grant, so no bonus is farmable without bound; the range across the whole set
   is 20% to 35%.
 </p>
 
 <table>
-  <caption>All twenty-six per-factory minigames</caption>
+  <caption>All ${COUNTS.minigames} per-factory minigames</caption>
   <thead>
     <tr><th>Minigame</th><th>Factory</th><th>Effect key</th><th>Cap</th><th>What it is</th></tr>
   </thead>
   <tbody>
-    <tr><td>Grain Sort</td><td>Feed Mill</td><td><code>seedRefundChance</code></td><td>25%</td><td>Sort the good grain from the chaff. Clean batches hand seed back.</td></tr>
-    <tr><td>Knead the Dough</td><td>Bakery</td><td><code>bonusYield</code></td><td>30%</td><td>Knead to the rhythm. Well-worked dough rises into an extra loaf.</td></tr>
-    <tr><td>Churn Timing</td><td>Dairy</td><td><code>speedMult</code></td><td>20%</td><td>Hold the churn at the right speed to finish the batch sooner.</td></tr>
-    <tr><td>Press Pressure</td><td>Sugar Mill</td><td><code>extraOutput</code></td><td>25%</td><td>Lean on the press without cracking it. More cane, more sugar.</td></tr>
-    <tr><td>Catch the Pops</td><td>Popcorn Pot</td><td><code>byproductChance</code></td><td>35%</td><td>Catch kernels as they fly. Strays become a second snack.</td></tr>
-    <tr><td>Flip Timing</td><td>Grill</td><td><code>sellPriceMult</code></td><td>20%</td><td>Flip at the sear, not after. Char sells for more.</td></tr>
-    <tr><td>Crimp the Crust</td><td>Pie Oven</td><td><code>xpMult</code></td><td>30%</td><td>Trace the crimp around the rim. A neat pie teaches a neat baker.</td></tr>
-    <tr><td>Weave the Pattern</td><td>Loom</td><td><code>rarityTier</code></td><td>20%</td><td>Follow the pattern thread. A clean weave lifts the cloth a tier.</td></tr>
-    <tr><td>Hold the Seam</td><td>Sewing Machine</td><td><code>fabricSaveChance</code></td><td>25%</td><td>Keep the seam straight and the offcut is big enough to reuse.</td></tr>
-    <tr><td>Press at Peak</td><td>Juice Press</td><td><code>juiceYieldBonus</code></td><td>30%</td><td>Stop the press at peak flow. Overpressing bruises the fruit.</td></tr>
-    <tr><td>Hold the Heat</td><td>Jam Maker</td><td><code>setQualityBonus</code></td><td>25%</td><td>Keep the pot inside the setting band. A firm set fills an extra jar.</td></tr>
-    <tr><td>Pull the Shot</td><td>Coffee Kiosk</td><td><code>rushHourChance</code></td><td>30%</td><td>Pull to the timing window. A good crema brings the morning rush.</td></tr>
-    <tr><td>Pour the Moulds</td><td>Candy Machine</td><td><code>mouldPrecision</code></td><td>25%</td><td>Pour clean into every mould. Spillage sets into offcut sweets.</td></tr>
-    <tr><td>Stack the Garnish</td><td>Tropical Caf&eacute;</td><td><code>tipChance</code></td><td>35%</td><td>Balance the garnish. A drink that looks the part earns a tip.</td></tr>
-    <tr><td>Work the Bellows</td><td>Smelter</td><td><code>purityChance</code></td><td>20%</td><td>Time the bellows to hold the heat. Hotter metal pours purer.</td></tr>
-    <tr><td>Fit the Frame</td><td>Building Workshop</td><td><code>materialRefund</code></td><td>25%</td><td>Line the joints up before fixing. A tight fit leaves offcuts over.</td></tr>
-    <tr><td>Watch the Flow</td><td>Oil Press</td><td><code>oilClarity</code></td><td>25%</td><td>Keep the flow steady. Cloudy oil is worth less than clear.</td></tr>
-    <tr><td>Steep the Leaves</td><td>Tea House</td><td><code>steepQuality</code></td><td>30%</td><td>Pull the leaves at the right moment. Over-steeped tea turns bitter.</td></tr>
-    <tr><td>Knife Work</td><td>Sushi Bar</td><td><code>knifePrecision</code></td><td>25%</td><td>Slice clean and even. A ragged cut ruins the roll.</td></tr>
-    <tr><td>Blend the Notes</td><td>Perfumery</td><td><code>blendHarmony</code></td><td>30%</td><td>Balance top and base notes. One loud note flattens the blend.</td></tr>
-    <tr><td>Toss the Bowl</td><td>Salad Bar</td><td><code>plateFreshness</code></td><td>25%</td><td>Toss without bruising. Handled well, the leaves stay crisp.</td></tr>
-    <tr><td>Stretch the Dough</td><td>Pasta Kitchen</td><td><code>doughStretch</code></td><td>30%</td><td>Stretch thin without tearing. Thin sheets cook true.</td></tr>
-    <tr><td>Stir the Melt</td><td>Fondue Pot</td><td><code>meltEvenness</code></td><td>25%</td><td>Keep it moving. A fondue left still catches and splits.</td></tr>
-    <tr><td>Seal the Jars</td><td>Preservation Station</td><td><code>sealTightness</code></td><td>30%</td><td>Seat every lid square. A poor seal spoils the batch.</td></tr>
-    <tr><td>Set the Stone</td><td>Jeweler</td><td><code>settingAccuracy</code></td><td>20%</td><td>Seat the stone dead centre. Off-centre and the claw shows.</td></tr>
-    <tr><td>Hold the Culture</td><td>Yogurt Maker</td><td><code>cultureVigour</code></td><td>30%</td><td>Hold the warmth steady. A cold spot and the culture stalls.</td></tr>
+${MINIGAMES_TABLE.map((m) => `<tr><td>${m.name}</td><td>${m.factory}</td><td><code>${m.effect}</code></td><td>${m.capPercent}%</td><td>${m.purpose}</td></tr>`).join('')}
   </tbody>
 </table>
 
@@ -634,9 +593,9 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
   disagreement will be invisible because each one is individually correct.
 </p>
 <p>
-  So there is one closed list of thirty-six effect keys, and every bonus in the game must name one
-  of them. Twenty-six of the thirty-six belong to the minigames, one per factory. The remaining
-  ten are shared: <code>cropGrowMult</code>, <code>productionTimeMult</code>,
+  So there is one closed list of ${COUNTS.effectKeysTotal} effect keys, and every bonus in the game must name one
+  of them. ${COUNTS.minigames} of the ${COUNTS.effectKeysTotal} belong to the minigames, one per factory. The remaining
+  ${COUNTS.effectKeysShared} are shared: <code>cropGrowMult</code>, <code>productionTimeMult</code>,
   <code>animalProduceMult</code>, <code>siloCapBonus</code>, <code>barnCapBonus</code>,
   <code>orderPayoutMult</code>, <code>mineYieldBonus</code>, <code>fishRareChance</code>,
   <code>zooIncomeMult</code> and <code>truckIntervalMult</code>.
@@ -781,8 +740,9 @@ for (const [inputId, qty] of Object.entries(recipe.inputs)) {
 <p>
   Against the committed tree, <code>tools/test-crafting.mjs</code> reports
   <strong>23 passed, 0 failed</strong> and <code>tools/test-deadtime.mjs</code> reports
-  <strong>16 passed, 0 failed</strong>. <code>tools/validate-data.mjs</code> passes, reporting 26
-  buildings, 128 recipes, 192 goods and 23 materials.
+  <strong>16 passed, 0 failed</strong>. <code>tools/validate-data.mjs</code> passes, reporting
+  ${COUNTS.buildings} buildings, ${COUNTS.recipes} recipes, ${COUNTS.goods} goods and
+  ${COUNTS.materials} materials.
 </p>
 
 <h3>Written, correct, and not yet called</h3>

@@ -5,7 +5,11 @@
  * Every figure in this article was read out of src/data.js, src/foraging.js,
  * src/collections.js, src/decorate.js and src/extras.js rather than from any
  * design document, and simulated results are stated as simulations.
+ *
+ * Content counts come from ./data-counts.js, a generated module — never typed here.
  * ------------------------------------------------------------------------ */
+
+import { COUNTS } from './data-counts.js';
 
 export const article = {
   id: 'deadtime',
@@ -424,7 +428,7 @@ object, so undo restores the whole gesture rather than one fence at a time.</p>
       pushing, which is the standard behaviour: doing something new after an undo
       discards the redo branch.</li>
   <li>Past <code>undoDepth</code> the oldest entry is shifted off and the index
-      adjusted, so the list stays bounded at fifty gestures.</li>
+      adjusted, so the list stays bounded at ${COUNTS.decorateUndoDepth} gestures.</li>
   <li>A refused move pushes nothing at all, so an invalid drag never leaves a no-op
       step in the history for you to undo twice.</li>
 </ul>
@@ -437,7 +441,7 @@ breaks anything, all of which are worth knowing:</p>
 <ul>
   <li><strong><code>multiSelectMax</code> is declared but not enforced.</strong>
       <code>select(objectId, true)</code> appends without consulting it, so a selection
-      can exceed forty objects. The cap is a stated intent waiting for the selection
+      can exceed ${COUNTS.decorateMultiSelectMax} objects. The cap is a stated intent waiting for the selection
       interface to honour it.</li>
   <li><strong><code>gridSnap</code> is not read.</strong> It is true by construction
       rather than by policy: <code>move(dx, dy)</code> takes integer tile deltas, so
@@ -457,19 +461,19 @@ enforces on itself.</p>
 
 <h3>The decoration catalogue</h3>
 
-<p><code>DECORATIONS</code> holds <strong>54</strong> entries, and the interesting rule
+<p><code>DECORATIONS</code> holds <strong>${COUNTS.decorations}</strong> entries, and the interesting rule
 about them is not what they look like but how you are allowed to get one. Every
 decoration must have <strong>exactly one</strong> route:</p>
 
 <table>
-  <caption>How the 54 decorations are obtained</caption>
+  <caption>How the ${COUNTS.decorations} decorations are obtained</caption>
   <thead><tr><th>Route</th><th>Count</th><th>Examples</th></tr></thead>
   <tbody>
-    <tr><td>Coins, always available</td><td>24</td><td>Wooden Fence 30, Windmill 3,000, Hedge Maze 6,800</td></tr>
-    <tr><td>Coins, but only in season</td><td>7</td><td>Snowman 600, Pumpkin Pile 450, Red Lanterns 480</td></tr>
-    <tr><td>Boat vouchers</td><td>7</td><td>Topiary Horse 15, Koi Pond 30, Glass House 38</td></tr>
-    <tr><td>Event rewards</td><td>12</td><td>Bunting Fence, Festival Tent, the three Fair trophies</td></tr>
-    <tr><td>Subsystem flags</td><td>4</td><td>Co-op Flagpole, Regatta Buoy, Relic Plinth, Fossil Display</td></tr>
+    <tr><td>Coins, always available</td><td>${COUNTS.decorationsCoinAlways}</td><td>Wooden Fence 30, Windmill 3,000, Hedge Maze 6,800</td></tr>
+    <tr><td>Coins, but only in season</td><td>${COUNTS.decorationsCoinSeasonal}</td><td>Snowman 600, Pumpkin Pile 450, Red Lanterns 480</td></tr>
+    <tr><td>Boat vouchers</td><td>${COUNTS.decorationsVoucher}</td><td>Topiary Horse 15, Koi Pond 30, Glass House 38</td></tr>
+    <tr><td>Event rewards</td><td>${COUNTS.decorationsEventOnly}</td><td>Bunting Fence, Festival Tent, the three Fair trophies</td></tr>
+    <tr><td>Subsystem flags</td><td>${COUNTS.decorationsSubsystem}</td><td>Co-op Flagpole, Regatta Buoy, Relic Plinth, Fossil Display</td></tr>
   </tbody>
 </table>
 
@@ -540,12 +544,12 @@ pre-decorated template.</p>
       id: 'achievements',
       heading: 'Achievements, and the single stat hook',
       html: `
-<p>Thirty-nine achievements, paying <strong>497 diamonds</strong> in total across the
+<p>${COUNTS.achievements} achievements, paying <strong>${COUNTS.achievementDiamondsTotal} diamonds</strong> in total across the
 life of a farm. They are pure observation — you never go and do an achievement, you
 simply find you have done one — which makes them the cheapest possible long-gap content
 and also the easiest to get architecturally wrong.</p>
 
-<h3>One hook, not thirty-nine checks</h3>
+<h3>One hook, not ${COUNTS.achievements} checks</h3>
 
 <p>The wrong version of this feature sprinkles achievement checks through every system
 that could advance one. The version here registers exactly two callbacks at the bottom
@@ -573,7 +577,7 @@ it and reads <code>state.level</code> directly; without the second hook, reachin
 <h3>The full list</h3>
 
 <table>
-  <caption>All 39 achievements, in table order. Every one pays diamonds; the validator
+  <caption>All ${COUNTS.achievements} achievements, in table order. Every one pays diamonds; the validator
   requires a positive target and a positive diamond reward, and rejects a duplicate
   id.</caption>
   <thead>
@@ -625,9 +629,9 @@ it and reads <code>state.level</code> directly; without the second hook, reachin
 <div class="callout callout-warn">
 <p><strong>One target is out of step with its own description.</strong>
 <code>fish_all</code> is called Compleat Angler and reads "Catch every fish species",
-but its target is <strong>8</strong> unique species while <code>FISHING.species</code>
-now lists <strong>14</strong>. The species list grew with the expansion content and this
-target did not follow, so the achievement fires at eight of fourteen. Nothing is broken
+but its target is <strong>${COUNTS.fishAllAchievementTarget}</strong> unique species while <code>FISHING.species</code>
+now lists <strong>${COUNTS.fishSpecies}</strong>. The species list grew with the expansion content and this
+target did not follow, so the achievement fires at ${COUNTS.fishAllAchievementTarget} of ${COUNTS.fishSpecies}. Nothing is broken
 — the validator only checks that the target is positive — but the name currently
 promises more than the number asks for.</p>
 </div>
@@ -940,8 +944,9 @@ Reading the threshold alone would badly misjudge both.</p>
       id: 'fair',
       heading: 'The Farm Fair',
       html: `
-<p>The week-long one. It runs the first full week of each month from level 15, hands you
-nine tasks drawn from a pool of twenty-five, asks you to finish any seven, and pays a
+<p>The week-long one. It runs the first full week of each month from level ${COUNTS.fairUnlockLevel}, hands you
+${COUNTS.fairTasksPerFair} tasks drawn from a pool of ${COUNTS.fairTasks}, asks you to finish any
+${COUNTS.fairTasksToComplete}, and pays a
 bronze, silver or gold ribbon according to the points those completed tasks were
 worth.</p>
 
@@ -966,7 +971,7 @@ opened, so progress is measured as a delta rather than against your career total
 <h3>The task pool</h3>
 
 <table>
-  <caption>All 25 fair tasks. Nine are drawn each month; seven must be completed.</caption>
+  <caption>All ${COUNTS.fairTasks} fair tasks. ${COUNTS.fairTasksPerFair} are drawn each month; ${COUNTS.fairTasksToComplete} must be completed.</caption>
   <thead><tr><th>Id</th><th>Task</th><th>Stat</th><th>Target</th><th>Points</th></tr></thead>
   <tbody>
 <tr><td><code>harvest_150</code></td><td>Harvest 150 crops</td><td><code>cropsHarvested</code></td><td>150</td><td>300</td></tr>
@@ -1278,7 +1283,7 @@ some of these may have been wired since.</p>
     </tr>
     <tr>
       <td><code>DECORATE.multiSelectMax</code> is declared and not enforced by <code>select()</code>.</td>
-      <td>A selection can exceed the intended forty-object cap.</td>
+      <td>A selection can exceed the intended ${COUNTS.decorateMultiSelectMax}-object cap.</td>
     </tr>
   </tbody>
 </table>

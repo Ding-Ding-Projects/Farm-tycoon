@@ -6,7 +6,11 @@
  * from any design document, and the arithmetic was recomputed against those
  * tables. Where the code and the design notes disagree, the code wins and the
  * disagreement is written down.
+ *
+ * Content counts come from ./data-counts.js, a generated module — never typed here.
  * ==========================================================================*/
+
+import { COUNTS, FMT } from './data-counts.js';
 
 export const article = {
   id: 'exploration',
@@ -246,7 +250,8 @@ mining event yields exactly what a dig on any other day yields. See
       id: 'museum',
       heading: 'The museum and its artifacts',
       html: `
-<p>The museum opens at level 60 and holds 24 artifacts across six exhibits of four each.
+<p>The museum opens at level ${COUNTS.museumUnlockLevel} and holds ${COUNTS.artifacts} artifacts
+across ${COUNTS.museumExhibits} exhibits of four each.
 Complete an exhibit — one of each of its four artifacts — and it pays out once, permanently.</p>
 
 <h3>Artifacts live in the museum, never in the barn</h3>
@@ -278,7 +283,7 @@ follow, and each one is a bug that did not happen:</p>
 checked against the goods, crops and materials tables for collisions, because a shared id
 would mean two stores disagreeing about what you own with nothing to notice.</p>
 
-<h3>The six exhibits</h3>
+<h3>The ${COUNTS.museumExhibits} exhibits</h3>
 
 <table>
   <thead>
@@ -295,16 +300,16 @@ would mean two stores disagreeing about what you own with nothing to notice.</p>
 </table>
 
 <div class="stat-row">
-  <div class="stat"><div class="stat-num">24</div><div class="stat-label">artifacts</div></div>
-  <div class="stat"><div class="stat-num">6</div><div class="stat-label">exhibits</div></div>
-  <div class="stat"><div class="stat-num">915,000</div><div class="stat-label">coins for all six</div></div>
-  <div class="stat"><div class="stat-num">86</div><div class="stat-label">diamonds for all six</div></div>
-  <div class="stat"><div class="stat-num">+515</div><div class="stat-label">visitor income per hour</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.artifacts}</div><div class="stat-label">artifacts</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.museumExhibits}</div><div class="stat-label">exhibits</div></div>
+  <div class="stat"><div class="stat-num">${FMT.museumCoinsTotal}</div><div class="stat-label">coins for all ${COUNTS.museumExhibits}</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.museumDiamondsTotal}</div><div class="stat-label">diamonds for all ${COUNTS.museumExhibits}</div></div>
+  <div class="stat"><div class="stat-num">+${COUNTS.museumIncomeTotal}</div><div class="stat-label">visitor income per hour</div></div>
 </div>
 
-<p>Six exhibits is a deliberate rejection of the genre's usual scale. The design note in the
+<p>${COUNTS.museumExhibits} exhibits is a deliberate rejection of the genre's usual scale. The design note in the
 content tables says so directly: a museum with dozens of collections and hundreds of artifacts
-is a years-long treadmill, and this game is not asking for one. Twenty-four artifacts is a
+is a years-long treadmill, and this game is not asking for one. ${COUNTS.artifacts} artifacts is a
 target you can actually see the end of.</p>
 
 <h3>Duplicates, and the rule that protects you from yourself</h3>
@@ -503,10 +508,12 @@ simulated offline gap.</p>
     /* --------------------------------------------------------------------- */
     {
       id: 'laboratory',
-      heading: 'The laboratory: 28 permanent nodes',
+      heading: `The laboratory: ${COUNTS.researchNodes} permanent nodes`,
       html: `
-<p>The laboratory opens at level 54, costs 120,000 coins plus 12 glass, 8 wire and 6 cement to
-build, and then offers 28 research nodes arranged as seven branches of four.</p>
+<p>The laboratory opens at level ${COUNTS.labUnlockLevel}, costs
+${COUNTS.labBuildCoins.toLocaleString('en-US')} coins plus ${COUNTS.labBuildMaterials} to
+build, and then offers ${COUNTS.researchNodes} research nodes arranged as
+${COUNTS.researchBranches} branches of four.</p>
 
 <h3>Permanent, not rented</h3>
 
@@ -517,7 +524,7 @@ why. The goal is that <em>a late player's farm is measurably better than an earl
 rather than merely better stocked</em>. A permanent tree makes progress structural; a rental
 makes it a subscription.</p>
 
-<h3>The seven branches</h3>
+<h3>The ${COUNTS.researchBranches} branches</h3>
 
 <p>Each branch is a strict chain — tier 2 requires tier 1, tier 3 requires tier 2, and so on —
 so there are no build orders to optimise within a branch, only across them. One project runs
@@ -539,10 +546,10 @@ at a time.</p>
 </table>
 
 <div class="stat-row">
-  <div class="stat"><div class="stat-num">28</div><div class="stat-label">nodes</div></div>
-  <div class="stat"><div class="stat-num">1</div><div class="stat-label">project at a time</div></div>
-  <div class="stat"><div class="stat-num">6,545,000</div><div class="stat-label">coins, build included</div></div>
-  <div class="stat"><div class="stat-num">11.5</div><div class="stat-label">days of research</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.researchNodes}</div><div class="stat-label">nodes</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.labSlots}</div><div class="stat-label">project at a time</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.labTotalCoinsWithBuild.toLocaleString('en-US')}</div><div class="stat-label">coins, build included</div></div>
+  <div class="stat"><div class="stat-num">${COUNTS.labTotalResearchDays}</div><div class="stat-label">days of research</div></div>
 </div>
 
 <p>Because only one slot exists, the 276 hours of research time is strictly sequential — you
@@ -619,7 +626,7 @@ left them.</p>
     /* --------------------------------------------------------------------- */
     {
       id: 'fishing',
-      heading: 'Fishing: a cast, a reel and fourteen species',
+      heading: `Fishing: a cast, a reel and ${COUNTS.fishSpecies} species`,
       html: `
 <p>The lake unlocks at level 12 and is the earliest of these six systems apart from Merge
 Meadow. Cast, wait twenty seconds, then reel with a timing minigame.</p>

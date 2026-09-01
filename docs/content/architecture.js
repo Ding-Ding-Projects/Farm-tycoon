@@ -10,7 +10,13 @@
  * pin where they are stated. Where a count can move the article says so and
  * names the command that prints the current value, rather than pretending a
  * snapshot is permanent.
+ *
+ * Content counts (crops, buildings, recipes, and the rest of the census below) come from
+ * ./data-counts.js, a generated module — never typed here. See docs/generate-data-counts.mjs
+ * and docs/verify-data-counts.mjs.
  * ========================================================================= */
+
+import { COUNTS, CENSUS_LINE } from './data-counts.js';
 
 export const article = {
   id: 'architecture',
@@ -122,7 +128,7 @@ export const article = {
   <tbody>
     <tr><td><code>main.js</code></td><td>238</td><td>Boot order, the <code>requestAnimationFrame</code> loop, autosave, the <code>window.__farmDebug</code> hook, and <code>buildWorld()</code>, the per-frame translation from state into the flat object list the renderer wants.</td></tr>
     <tr><td><code>state.js</code></td><td>326</td><td>The one live state object, new-game defaults, save, load, migrate, export, import, reset.</td></tr>
-    <tr><td><code>data.js</code></td><td>1940</td><td>All content. 44 exported tables and nothing else: no logic, no imports.</td></tr>
+    <tr><td><code>data.js</code></td><td>1940</td><td>All content. ${COUNTS.dataTables} exported tables and nothing else: no logic, no imports.</td></tr>
     <tr><td><code>economy.js</code></td><td>164</td><td>Coins, XP, levelling, unlock checks, sell values, diamond skip pricing, and the multiplier provider registry.</td></tr>
     <tr><td><code>farm.js</code></td><td>160</td><td>The grid model: tiles, placement, footprints, expansion zones.</td></tr>
     <tr><td><code>production.js</code></td><td>189</td><td>Every timer that grows, feeds or crafts something.</td></tr>
@@ -147,7 +153,7 @@ export const article = {
   <thead><tr><th>Module</th><th>Lines</th><th>Owns</th></tr></thead>
   <tbody>
     <tr><td><code>workshop.js</code></td><td>123</td><td>Materials into components, components into kits, kits into placed factories. Delegates the actual timers to <code>production.js</code> rather than growing a second queue system.</td></tr>
-    <tr><td><code>minigames.js</code></td><td>148</td><td>26 per-factory minigames, one per production building, each doing something only that factory would plausibly do.</td></tr>
+    <tr><td><code>minigames.js</code></td><td>148</td><td>${COUNTS.minigames} per-factory minigames, one per production building, each doing something only that factory would plausibly do.</td></tr>
   </tbody>
 </table>
 
@@ -156,8 +162,8 @@ export const article = {
   <thead><tr><th>Module</th><th>Lines</th><th>Owns</th></tr></thead>
   <tbody>
     <tr><td><code>fishing.js</code></td><td>138</td><td>Cast, the reeling timing game, species by rarity weight, treasure chests.</td></tr>
-    <tr><td><code>mine.js</code></td><td>153</td><td>Five tiered depths, ore and gem weight tables per depth, artifact drops below the surface seam.</td></tr>
-    <tr><td><code>merge.js</code></td><td>219</td><td>Merge Meadow: a 7&times;9 board, three chains, energy that regenerates while the game is closed.</td></tr>
+    <tr><td><code>mine.js</code></td><td>153</td><td>${COUNTS.mineDepths} tiered depths, ore and gem weight tables per depth, artifact drops below the surface seam.</td></tr>
+    <tr><td><code>merge.js</code></td><td>219</td><td>Merge Meadow: a 7&times;9 board, ${COUNTS.mergeChains} chains, energy that regenerates while the game is closed.</td></tr>
     <tr><td><code>foraging.js</code></td><td>140</td><td>Free respawning world nodes, the only activity in the game with no cost at all, which is the entire point of it.</td></tr>
   </tbody>
 </table>
@@ -220,7 +226,7 @@ export const article = {
 <h3>The rule that shapes the whole thing</h3>
 <p>
   <strong>Systems open by clicking their structure in the world, not from a menu.</strong>
-  <code>STRUCTURES</code> in <code>data.js</code> gives each of the 22 world objects a
+  <code>STRUCTURES</code> in <code>data.js</code> gives each of the ${COUNTS.structures} world objects a
   footprint, a grid position, an unlock level and a panel id.
   <code>input.js</code> resolves a tap to a structure and asks <code>ui.js</code> to open that
   panel by id, so there is no giant switch statement anywhere. A structure below its unlock
@@ -492,7 +498,7 @@ correctly, offline or not.</pre>
 
 <h3>What this protects</h3>
 <p>
-  The absolute-timestamp model is also the reason the 26 per-factory minigames are an optional
+  The absolute-timestamp model is also the reason the ${COUNTS.minigames} per-factory minigames are an optional
   bonus layer rather than a gate. Production runs to completion whether or not the player ever
   opens one. Gating a recipe behind hand-eye skill would break exactly the contract this model
   exists to keep: that the game keeps its promises while nobody is looking at it.
@@ -871,12 +877,13 @@ npm start          # electron .</pre>
   about ids, not by a confusing failure three suites later.
 </p>
 <p>
-  Its summary line doubles as a content census:
+  Its summary line doubles as a content census. This is not a snapshot copied from a run of the
+  command: it is built from the same tables the command itself reads, via
+  <code>docs/content/data-counts.js</code> — a generated module rather than typed prose — so it
+  cannot drift the way a quoted number can. Run <code>npm test</code> yourself for the
+  authoritative figure at your own checkout.
 </p>
-<pre>data.js OK — 22 crops, 12 animals, 26 buildings, 128 recipes, 192 goods,
-3 merge chains, 39 achievements, 95 levels all with unlocks,
-10 weekend events + 6 mini-events + 25 fair tasks + 6 holidays,
-town: 16 houses + 10 community, 14 zoo enclosures, 8 islands, 23 materials</pre>
+<pre>data.js OK — ${CENSUS_LINE}</pre>
 
 <h3>The suites</h3>
 <table>
@@ -939,8 +946,8 @@ town: 16 houses + 10 community, 14 zoo enclosures, 8 islands, 23 materials</pre>
       heading: 'Adding content',
       html: `
 <p>
-  All content is data. <code>data.js</code> exports 44 tables and imports nothing, and every
-  system reads them at runtime. A content addition should therefore touch
+  All content is data. <code>data.js</code> exports ${COUNTS.dataTables} tables and imports
+  nothing, and every system reads them at runtime. A content addition should therefore touch
   <strong>three places at most</strong>:
 </p>
 <ol>
@@ -980,7 +987,7 @@ cow: { name: 'Cow', pen: 'Cow Pasture', unlockLevel: 6, feed: 'cow_feed',
     <tr><td>Crop</td><td>Sell price roughly the seed cost plus 1.5 per minute of growth; XP roughly the sell price divided by five, minimum 1. Harvest always returns twice the planted seed.</td></tr>
     <tr><td>Recipe</td><td>Output sell price 1.6 to 2.2 times the summed sell price of its inputs, longer recipes taking the higher multiplier. XP roughly minutes divided by six, minimum 2.</td></tr>
     <tr><td>Building</td><td>Cost roughly <code>150 * 1.45^(unlockLevel - 3)</code>, rounded to something friendly.</td></tr>
-    <tr><td>Unlock level</td><td>Slot into a level with few unlocks. The design goal is an unlock at <em>every</em> level, and all 95 currently have one.</td></tr>
+    <tr><td>Unlock level</td><td>Slot into a level with few unlocks. The design goal is an unlock at <em>every</em> level, and all ${COUNTS.maxLevel} currently have one.</td></tr>
   </tbody>
 </table>
 
@@ -994,13 +1001,14 @@ cow: { name: 'Cow', pen: 'Cow Pasture', unlockLevel: 6, feed: 'cow_feed',
 <p>
   The original curve is preserved exactly below level 50, so every level the game has already
   shipped costs precisely what it did. Above 50 the exponent eases to 1.65, because at a flat
-  1.8 level 95 alone would cost about 190,000 XP and levels 51 to 95 several million, an
+  1.8 level ${COUNTS.maxLevel} alone would cost about 190,000 XP and levels 51 to ${COUNTS.maxLevel} several million, an
   endgame nobody reaches. The two halves join at 50 so there is no jump at the seam.
 </p>
 
 <h3>A worked example: crafting a Dairy</h3>
 <p>
-  Buildings are not bought with coins. 23 of the 26 production buildings require a
+  Buildings are not bought with coins. ${COUNTS.kitBuildings} of the ${COUNTS.buildings}
+  production buildings require a
   <em>kit</em>, and a kit is the end of a three-stage chain that starts with raw materials
   brought in by train, plane or helicopter. For the Dairy, whose entry carries
   <code>kit: 'kit_dairy'</code>:
@@ -1016,8 +1024,10 @@ cow: { name: 'Cow', pen: 'Cow Pasture', unlockLevel: 6, feed: 'cow_feed',
   </tbody>
 </table>
 <p>
-  The Building Workshop unlocks at level 6, costs 900 coins, occupies 3&times;2 tiles, has three
-  queue slots and holds 31 recipes. It is an ordinary <code>BUILDINGS</code> entry, so the
+  The Building Workshop unlocks at level ${COUNTS.workshopUnlockLevel}, costs
+  ${COUNTS.workshopCost} coins, occupies ${COUNTS.workshopSize} tiles, has
+  ${COUNTS.workshopQueueSlots} queue slots and holds ${COUNTS.workshopRecipes} recipes. It is an
+  ordinary <code>BUILDINGS</code> entry, so the
   crafting timers go through <code>production.enqueue()</code> like everything else;
   <code>workshop.js</code> adds only the placement gate:
 </p>

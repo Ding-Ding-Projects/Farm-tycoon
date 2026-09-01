@@ -174,6 +174,12 @@ const OPTIMAL = {
     }
     return { padIndex: null };
   },
+
+  roll_press: () => () => ({ left: 1, right: 1 }),   // both rollers equal and driven hard
+
+  boil_size: () => (snap) => ({ held: snap.thickness < snap.ceiling * 0.97, heldMs: 16 }),
+
+  dip_wick: () => (snap) => (snap.slot === 1 ? { taps: [{ tMs: 0 }] } : { taps: [] }),
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

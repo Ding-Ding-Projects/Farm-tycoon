@@ -57,7 +57,8 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
     'oil_press', 'tea_house', 'sushi_bar', 'perfumery', 'salad_bar', 'pasta_kitchen',
     'fondue_pot', 'preservation_station', 'jeweler', 'yogurt_maker', 'cake_oven',
     'ice_cream_maker', 'soup_kitchen', 'flower_shop', 'sauce_maker',
-    'sandwich_bar', 'taco_kitchen', 'hat_maker', 'donut_maker'];
+    'sandwich_bar', 'taco_kitchen', 'hat_maker', 'donut_maker',
+    'paper_mill', 'rubber_factory', 'candle_maker'];
   const COIN_ONLY = ['feed_mill', 'bakery', 'build_workshop'];
   for (const bid of MUST_HAVE_KIT) {
     if (!d.BUILDINGS[bid]) errors.push(`kit inventory names unknown building '${bid}'`);

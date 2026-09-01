@@ -46,6 +46,14 @@ export const CROPS = {
   peony:      { icon: '🌸', name: 'Peony',       unlockLevel: 71, growTime: 93600,  seedCost: 60, sellPrice: 365, xp: 30 },
   watermelon: { icon: '🍉', name: 'Watermelon',  unlockLevel: 77, growTime: 108000, seedCost: 69, sellPrice: 424, xp: 35 },
   mint:       { icon: '🌿', name: 'Mint',        unlockLevel: 84, growTime: 129600, seedCost: 80, sellPrice: 492, xp: 41 },
+
+  // Tree crops. Township grows these on dedicated tree plots; this game has no such subsystem, so
+  // they are ordinary field crops with long timers, which is the same shape a player already
+  // understands. They exist to unlock the industrial branch: rubber and paper are what Plastics,
+  // Stationery, Furniture, Shoe, Bag, Gardening and Pet Supply are all built on, and none of those
+  // can be added while their inputs do not exist.
+  pine:        { icon: '🌲', name: 'Pine',        unlockLevel: 40, growTime: 21600, seedCost: 34, sellPrice: 168, xp: 16 },
+  rubber_tree: { icon: '🌳', name: 'Rubber Tree', unlockLevel: 44, growTime: 28800, seedCost: 46, sellPrice: 224, xp: 20 },
 };
 
 /** Animal pens. Animals eat feed (made in the Feed Mill) and produce goods on a timer. */
@@ -326,6 +334,18 @@ export const GOODS = {
   kit_taco_kitchen: { icon: '🌮', name: 'Taco Kitchen Kit', sellPrice: 360 },
   kit_hat_maker:    { icon: '🎩', name: 'Hat Maker Kit',    sellPrice: 420 },
   kit_donut_maker:  { icon: '🍩', name: 'Donut Maker Kit',  sellPrice: 460 },
+
+  // The industrial intermediates. These are inputs to other factories rather than things a player
+  // wants for their own sake, which is exactly why they unlock so much downstream.
+  paper:        { icon: '📄', name: 'Paper',        sellPrice: 262 },
+  cardboard:    { icon: '📦', name: 'Cardboard',    sellPrice: 730 },
+  rubber:       { icon: '🛞', name: 'Rubber',       sellPrice: 330 },
+  glue:         { icon: '🧴', name: 'Glue',         sellPrice: 700 },
+  scented_candle: { icon: '🕯', name: 'Scented Candle', sellPrice: 476 },
+  beeswax_taper:  { icon: '🐇', name: 'Beeswax Taper',  sellPrice: 214 },
+  kit_paper_mill:     { icon: '📄', name: 'Paper Mill Kit',     sellPrice: 520 },
+  kit_rubber_factory: { icon: '🛞', name: 'Rubber Factory Kit', sellPrice: 580 },
+  kit_candle_maker:   { icon: '🕯', name: 'Candle Maker Kit',   sellPrice: 440 },
 
   // Dessert tier — the Cake Oven's own intermediates and its cakes. batter/frosting/fondant are
   // made in the Cake Oven itself and feed its later recipes, which is what gives the building an
@@ -714,6 +734,37 @@ export const BUILDINGS = {
     ],
   },
 
+  paper_mill: {
+    name: 'Paper Mill', unlockLevel: 42, cost: 19000, size: [2, 2],
+    kit: 'kit_paper_mill', minigame: 'press_sheet', queueSlots: 3,
+    recipes: [
+      { id: 'paper',     inputs: { pine: 1 },                        time: 3000, xp: 20, unlockLevel: 42 },
+      // PLAYABLE - dual, but the two sides fight each other rather than drift apart.
+      { id: 'cardboard', inputs: { pine: 3 },                       time: 6000, xp: 38, unlockLevel: 45,
+        play: { stages: [{ verb: 'roll_press' }] } },
+    ],
+  },
+  rubber_factory: {
+    name: 'Rubber Factory', unlockLevel: 46, cost: 26000, size: [2, 2],
+    kit: 'kit_rubber_factory', minigame: 'tap_flow', queueSlots: 3,
+    recipes: [
+      { id: 'rubber', inputs: { rubber_tree: 1 },                    time: 3600, xp: 24, unlockLevel: 46 },
+      // PLAYABLE - sustain, but the target is a CEILING you approach and must not cross.
+      { id: 'glue',   inputs: { rubber_tree: 2, pine: 1 },           time: 7200, xp: 46, unlockLevel: 49,
+        play: { stages: [{ verb: 'boil_size' }] } },
+    ],
+  },
+  candle_maker: {
+    name: 'Candle Maker', unlockLevel: 58, cost: 38000, size: [2, 2],
+    kit: 'kit_candle_maker', minigame: 'wick_true', queueSlots: 3,
+    recipes: [
+      { id: 'beeswax_taper',  inputs: { honey: 2, cotton: 1 },       time: 3600, xp: 26, unlockLevel: 58 },
+      // PLAYABLE - rhythm, but a REPEATING pattern rather than a metronome.
+      { id: 'scented_candle', inputs: { honey: 3, lavender: 1, cotton: 1 }, time: 7200, xp: 48, unlockLevel: 61,
+        play: { stages: [{ verb: 'dip_wick' }] } },
+    ],
+  },
+
   build_workshop: {
     name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
     recipes: [
@@ -737,6 +788,9 @@ export const BUILDINGS = {
       { id: 'kit_taco_kitchen', inputs: { beam: 2, panel: 2, fitting: 1 },      time: 7800,  xp: 28, unlockLevel: 6, sink: true },
       { id: 'kit_hat_maker',    inputs: { frame: 3, panel: 2, glazing: 1 },     time: 9600,  xp: 32, unlockLevel: 6, sink: true },
       { id: 'kit_donut_maker',  inputs: { beam: 2, frame: 2, plumbing: 1 },     time: 11400, xp: 36, unlockLevel: 6, sink: true },
+      { id: 'kit_paper_mill',     inputs: { beam: 3, panel: 2, fitting: 1 },  time: 12000, xp: 40, unlockLevel: 6, sink: true },
+      { id: 'kit_rubber_factory', inputs: { beam: 3, frame: 2, plumbing: 1 }, time: 13800, xp: 44, unlockLevel: 6, sink: true },
+      { id: 'kit_candle_maker',   inputs: { frame: 2, panel: 2, glazing: 1 }, time: 10200, xp: 34, unlockLevel: 6, sink: true },
       { id: 'kit_cake_oven', inputs: { frame: 3, panel: 2, fitting: 2, glazing: 1 }, time: 9000, xp: 34, unlockLevel: 6, sink: true },
       { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 6,  sink: true },
       { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 6,  sink: true },
@@ -810,6 +864,9 @@ export const MINIGAMES = {
   shell_crisp: { name: 'Crisp the Shell', building: 'taco_kitchen', effect: 'shellCrispness', cap: 0.30, purpose: 'A shell that holds together is worth more than one that does not.' },
   brim_true: { name: 'True the Brim', building: 'hat_maker', effect: 'brimTrueness', cap: 0.25, purpose: 'An even brim keeps its shape.' },
   glaze_even: { name: 'Even the Glaze', building: 'donut_maker', effect: 'glazeEvenness', cap: 0.30, purpose: 'An even glaze sets glossy.' },
+  press_sheet: { name: 'Press the Sheet', building: 'paper_mill', effect: 'sheetEvenness', cap: 0.30, purpose: 'An even sheet takes ink without blotting.' },
+  tap_flow: { name: 'Tap the Flow', building: 'rubber_factory', effect: 'latexPurity', cap: 0.25, purpose: 'Cleanly tapped latex sets without bubbles.' },
+  wick_true: { name: 'True the Wick', building: 'candle_maker', effect: 'wickTrueness', cap: 0.30, purpose: 'A centred wick burns down evenly.' },
 };
 
 /**
@@ -826,6 +883,7 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
+  'sheetEvenness', 'latexPurity', 'wickTrueness',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -971,6 +1029,24 @@ export const VERBS = {
     purpose: 'An even brim keeps its shape.',
     hint: 'Every pin needs the one straight across from it. Nothing lights up; work it out.',
     stageClass: 'stage-brim', durationMs: 15000,
+  },
+  roll_press: {
+    name: 'Press the Sheet', verbWord: 'roll', family: 'dual',
+    purpose: 'An even sheet takes ink without blotting.',
+    hint: 'Drive both rollers together. The sheet moves at the SLOWER one, and uneven tears it.',
+    stageClass: 'stage-dual', durationMs: 13000,
+  },
+  boil_size: {
+    name: 'Boil the Size', verbWord: 'boil', family: 'sustain',
+    purpose: 'Cleanly boiled size sets without bubbles.',
+    hint: 'Hold to thicken it. It never thins back, so stopping short beats going past.',
+    stageClass: 'stage-gauge', durationMs: 14000,
+  },
+  dip_wick: {
+    name: 'True the Wick', verbWord: 'dip', family: 'rhythm',
+    purpose: 'A centred wick burns down evenly.',
+    hint: 'Dip, dip, rest - in threes. Tapping through a rest spoils it as surely as missing a dip.',
+    stageClass: 'stage-rhythm', durationMs: 12000,
   },
 };
 export const QUALITY = {
@@ -1225,13 +1301,13 @@ export const LEVELS = {
     37: ['expansion_8'],
     38: ['master_orders', 'donut_maker'],
     39: ['expansion_9'],
-    40: ['golden_windmill'],
+    40: ['golden_windmill', 'pine'],
     41: ['zoo_penguin'],
-    42: ['zoo_flamingo'],
+    42: ['zoo_flamingo', 'paper_mill'],
     43: ['isle_coral'],
-    44: ['zoo_lion'],
+    44: ['zoo_lion', 'rubber_tree'],
     45: ['isle_lagoon'],
-    46: ['zoo_panda', 'soup_kitchen'],
+    46: ['zoo_panda', 'soup_kitchen', 'rubber_factory'],
     47: ['isle_volcano'],
     48: ['zoo_giraffe'],
     49: ['town_mega_milestone'],
@@ -1245,7 +1321,7 @@ export const LEVELS = {
     55: ['olive', 'sauce_maker'],
     56: ['tea_house', 'zoo_otter'],
     57: ['silo_titan_upgrade'],
-    58: ['lavender', 'quail', 'isle_olivia'],
+    58: ['lavender', 'quail', 'isle_olivia', 'candle_maker'],
     59: ['expansion_11'],
     60: ['sushi_bar'],
     61: ['barn_titan_upgrade'],

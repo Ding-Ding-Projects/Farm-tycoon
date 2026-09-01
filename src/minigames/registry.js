@@ -27,6 +27,9 @@ export const VERB_LOADERS = {
   stack_layers: () => import('./verbs/stack_layers.js'),
   fold_shell: () => import('./verbs/fold_shell.js'),
   pin_brim: () => import('./verbs/pin_brim.js'),
+  roll_press: () => import('./verbs/roll_press.js'),
+  boil_size: () => import('./verbs/boil_size.js'),
+  dip_wick: () => import('./verbs/dip_wick.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

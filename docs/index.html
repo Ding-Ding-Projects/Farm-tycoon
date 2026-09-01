@@ -2,373 +2,185 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Farm Tycoon — a Hay Day + Township management game</title>
-<meta name="description" content="Farm Tycoon is a farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Buildings are crafted, not bought, and every production building has its own minigame.">
-<meta property="og:title" content="Farm Tycoon">
-<meta property="og:description" content="A farm-and-town management game combining Hay Day's crop/animal/production loop with Township's town-building layer. Craft your buildings instead of buying them, and unlock a minigame for every factory you place.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Farm Tycoon documentation</title>
+<meta name="description" content="The complete documentation for Farm Tycoon, a farm-and-town management game combining a crop, animal and production loop with a town-building layer. Buildings are crafted rather than bought, and every production building has its own minigame.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#427d12">
+<meta property="og:title" content="Farm Tycoon documentation">
+<meta property="og:description" content="Every system, every module, every number — the full reference for Farm Tycoon.">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#4c8f1c">
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
 
-<header class="top-bar">
-  <div class="wrap top-bar-inner">
-    <a class="brand" href="#top">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-wheat"></use></svg>
-      Farm Tycoon
-    </a>
-    <nav class="top-nav" aria-label="Section navigation">
-      <a href="#status">Status</a>
-      <a href="#features">Features</a>
-      <a href="#modules">Architecture</a>
-      <a href="#download">Download</a>
-    </nav>
-    <button class="theme-toggle" id="themeToggle" type="button" aria-pressed="false" aria-label="Toggle dark theme">
-      <span id="themeIcon" aria-hidden="true">🌙</span>
+<!-- ------------------------------------------------------------------ -->
+<!-- Monochrome interface sprite. Inline so the chrome never depends on  -->
+<!-- a second request, and so every glyph inherits currentColor. The     -->
+<!-- colourful game iconography lives separately in ./icons.svg and is   -->
+<!-- available to article content that wants it.                         -->
+<!-- ------------------------------------------------------------------ -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="ui-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8 21 21"/></symbol>
+  <symbol id="ui-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="ui-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/></symbol>
+  <symbol id="ui-palette" viewBox="0 0 24 24"><path d="M12 3.2a8.8 8.8 0 0 0 0 17.6c1.3 0 2-.8 2-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7h1.6a4.4 4.4 0 0 0 4.5-4.5c0-4-3.9-7.3-8.8-7.3Z"/><circle cx="7.6" cy="11.4" r="1.1"/><circle cx="10.4" cy="7.4" r="1.1"/><circle cx="15.2" cy="8.2" r="1.1"/></symbol>
+  <symbol id="ui-bell" viewBox="0 0 24 24"><path d="M18 16.4V11a6 6 0 1 0-12 0v5.4L4.4 18.6h15.2Z"/><path d="M9.8 18.6a2.2 2.2 0 0 0 4.4 0"/></symbol>
+  <symbol id="ui-command" viewBox="0 0 24 24"><path d="M8.4 3.6a2.4 2.4 0 1 0 2.4 2.4v12a2.4 2.4 0 1 0 2.4-2.4h-12a2.4 2.4 0 1 0 2.4 2.4v-12a2.4 2.4 0 1 0-2.4 2.4h12a2.4 2.4 0 1 0-2.4-2.4"/></symbol>
+  <symbol id="ui-chevron-down" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
+  <symbol id="ui-chevron-right" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+  <symbol id="ui-more" viewBox="0 0 24 24"><circle cx="5.4" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.6" cy="12" r="1.5"/></symbol>
+  <symbol id="ui-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="ui-check" viewBox="0 0 24 24"><path d="m5 12.6 4.6 4.6L19 7.4"/></symbol>
+  <symbol id="ui-download" viewBox="0 0 24 24"><path d="M12 3.6v11.2M7.6 10.6l4.4 4.4 4.4-4.4M4.4 19.4h15.2"/></symbol>
+  <symbol id="ui-warning" viewBox="0 0 24 24"><path d="M12 4.2 21 19.4H3Z"/><path d="M12 10v3.8M12 16.6v.1"/></symbol>
+  <symbol id="ui-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.4M12 7.9v.1"/></symbol>
+  <symbol id="ui-book" viewBox="0 0 24 24"><path d="M4 4.6h5.4A2.6 2.6 0 0 1 12 7.2v12a2.2 2.2 0 0 0-2.2-2.2H4Z"/><path d="M20 4.6h-5.4A2.6 2.6 0 0 0 12 7.2v12a2.2 2.2 0 0 1 2.2-2.2H20Z"/></symbol>
+  <symbol id="ui-sprout" viewBox="0 0 24 24"><path d="M12 20.4v-7.2"/><path d="M12 13.2C12 9.6 14.6 7 18.4 7c0 3.8-2.6 6.2-6.4 6.2Z"/><path d="M12 15.4C12 12.6 9.9 10.6 7 10.6c0 2.9 2 4.8 5 4.8Z"/></symbol>
+  <symbol id="ui-hammer" viewBox="0 0 24 24"><path d="m13.4 8.2-8 8a2 2 0 0 0 2.9 2.9l8-8"/><path d="m11.4 4.4 8.2 8.2M15.6 3.4 20.6 8.4"/></symbol>
+  <symbol id="ui-truck" viewBox="0 0 24 24"><path d="M2.8 6.4h10.4v9.2H2.8Z"/><path d="M13.2 9.6h3.8l3.2 3.2v2.8h-7Z"/><circle cx="7" cy="17.8" r="1.8"/><circle cx="16.8" cy="17.8" r="1.8"/></symbol>
+  <symbol id="ui-town" viewBox="0 0 24 24"><path d="M3.4 20.4V10.6l5-3.4 5 3.4v9.8Z"/><path d="M13.4 20.4v-6.6l3.6-2.2 3.6 2.2v6.6Z"/><path d="M7 20.4v-3.6h2.8v3.6"/></symbol>
+  <symbol id="ui-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="m15.4 8.6-1.8 5-5 1.8 1.8-5Z"/></symbol>
+  <symbol id="ui-users" viewBox="0 0 24 24"><circle cx="9.4" cy="8.6" r="3.2"/><path d="M3.4 19.4c0-3.1 2.7-5.2 6-5.2s6 2.1 6 5.2"/><path d="M16.2 6.1a3.2 3.2 0 0 1 0 6.2M17.4 14.6c2.1.5 3.4 2.2 3.4 4.8"/></symbol>
+  <symbol id="ui-moon" viewBox="0 0 24 24"><path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.6 8.6 0 1 0 10.4 10.4Z"/></symbol>
+  <symbol id="ui-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.8v2M12 19.2v2M21.2 12h-2M4.8 12h-2M18.5 5.5 17 7M7 17l-1.5 1.5M18.5 18.5 17 17M7 7 5.5 5.5"/></symbol>
+  <symbol id="ui-monitor" viewBox="0 0 24 24"><rect x="3" y="4.6" width="18" height="12" rx="1.8"/><path d="M8.6 20.4h6.8M12 16.6v3.8"/></symbol>
+  <symbol id="ui-reset" viewBox="0 0 24 24"><path d="M4.6 12a7.4 7.4 0 1 0 2.3-5.4"/><path d="M4.2 3.8v3.6h3.6"/></symbol>
+  <symbol id="ui-regex" viewBox="0 0 24 24"><path d="M12 4.4v7.2M8.9 6.2l6.2 3.6M15.1 6.2 8.9 9.8"/><circle cx="6.6" cy="17.6" r="1.7"/></symbol>
+  <symbol id="ui-external" viewBox="0 0 24 24"><path d="M13.6 4.4H19.6v6"/><path d="M19.6 4.4 11 13"/><path d="M18 14.4v4.2a1.6 1.6 0 0 1-1.6 1.6H5.4a1.6 1.6 0 0 1-1.6-1.6V7.6A1.6 1.6 0 0 1 5.4 6h4.2"/></symbol>
+  <symbol id="ui-home" viewBox="0 0 24 24"><path d="M3.6 11.2 12 4l8.4 7.2v8.2a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4Z"/><path d="M9.4 20.8v-6h5.2v6"/></symbol>
+  <symbol id="ui-code" viewBox="0 0 24 24"><path d="m8.4 8-4.6 4 4.6 4M15.6 8l4.6 4-4.6 4M13.6 5 10.4 19"/></symbol>
+  <symbol id="ui-history" viewBox="0 0 24 24"><path d="M4.4 12a7.6 7.6 0 1 0 2.4-5.5"/><path d="M4 4v3.6h3.6"/><path d="M12 8.2V12l2.8 1.8"/></symbol>
+  <symbol id="ui-link" viewBox="0 0 24 24"><path d="M10.4 13.6a3.6 3.6 0 0 0 5.2 0l2.6-2.6a3.7 3.7 0 0 0-5.2-5.2l-1.4 1.4"/><path d="M13.6 10.4a3.6 3.6 0 0 0-5.2 0l-2.6 2.6a3.7 3.7 0 0 0 5.2 5.2l1.4-1.4"/></symbol>
+  <symbol id="ui-arrow-right" viewBox="0 0 24 24"><path d="M4.6 12h14M13.4 6.6 18.8 12l-5.4 5.4"/></symbol>
+  <symbol id="ui-dock-left" viewBox="0 0 24 24"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><path d="M9.4 4.6v14.8"/></symbol>
+  <symbol id="ui-dock-right" viewBox="0 0 24 24"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><path d="M14.6 4.6v14.8"/></symbol>
+  <symbol id="ui-dock-top" viewBox="0 0 24 24"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><path d="M3.4 9.6h17.2"/></symbol>
+  <symbol id="ui-dock-bottom" viewBox="0 0 24 24"><rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><path d="M3.4 14.4h17.2"/></symbol>
+  <symbol id="ui-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.2 2"/></symbol>
+  <symbol id="ui-text" viewBox="0 0 24 24"><path d="M5.4 6.4V4.8h13.2v1.6M12 4.8v14.4M9.2 19.2h5.6"/></symbol>
+  <symbol id="ui-density" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+</defs></svg>
+
+<a class="skip-link" href="#doc-main">Skip to content</a>
+
+<div class="app" id="app" data-dock="left" data-density="comfortable">
+
+  <header class="app-bar" id="appBar">
+    <div class="app-bar-lead">
+      <button class="icon-btn rail-drawer-btn" id="drawerBtn" type="button"
+              aria-expanded="false" aria-controls="rail" aria-label="Open contents">
+        <svg class="icon" aria-hidden="true"><use href="#ui-menu"></use></svg>
+      </button>
+      <a class="brand" href="#/home" aria-label="Farm Tycoon Documentation">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="15" class="brand-disc"/>
+          <path d="M16 24.5v-9.2M16 15.3c0-4.6 3.3-7.9 8.1-7.9 0 4.8-3.3 7.9-8.1 7.9Z" class="brand-leaf"/>
+          <path d="M16 18.2c0-3.6-2.7-6.1-6.4-6.1 0 3.7 2.6 6.1 6.4 6.1Z" class="brand-leaf"/>
+        </svg>
+        <span class="brand-text">
+          <span class="brand-name">Farm Tycoon</span>
+          <span class="brand-sub">Documentation</span>
+        </span>
+      </a>
+    </div>
+
+    <div class="app-bar-search">
+      <!-- The search field and its regex builder are one anchored unit. -->
+      <div class="searchbar" id="searchAnchor">
+        <label class="visually-hidden" for="searchInput">Search the documentation</label>
+        <svg class="icon searchbar-icon" aria-hidden="true"><use href="#ui-search"></use></svg>
+        <input class="searchbar-input" id="searchInput" type="search" autocomplete="off"
+               spellcheck="false" placeholder="Search articles and sections"
+               aria-describedby="searchModeHint" aria-expanded="false"
+               aria-controls="searchResults" role="combobox" aria-autocomplete="list">
+        <span class="visually-hidden" id="searchModeHint">Plain text search. Turn on regular expressions with the button beside this field.</span>
+        <button class="searchbar-clear icon-btn" id="searchClear" type="button" hidden aria-label="Clear search">
+          <svg class="icon" aria-hidden="true"><use href="#ui-close"></use></svg>
+        </button>
+        <button class="searchbar-regex" id="searchRegexBtn" type="button"
+                aria-expanded="false" aria-haspopup="dialog"
+                aria-label="Regular expression builder">
+          <svg class="icon" aria-hidden="true"><use href="#ui-regex"></use></svg>
+          <span class="searchbar-regex-text">.*</span>
+        </button>
+        <div class="search-results" id="searchResults" role="listbox" aria-label="Search results" hidden></div>
+      </div>
+    </div>
+
+    <div class="app-bar-actions">
+      <button class="icon-btn" id="paletteBtn" type="button"
+              aria-label="Open the command palette (Control plus Shift plus F)"
+              title="Command palette — Ctrl+Shift+F">
+        <svg class="icon" aria-hidden="true"><use href="#ui-command"></use></svg>
+      </button>
+      <button class="icon-btn" id="notifyBtn" type="button"
+              aria-label="Notification history" title="Notification history">
+        <svg class="icon" aria-hidden="true"><use href="#ui-bell"></use></svg>
+        <span class="badge" id="notifyBadge" hidden aria-hidden="true">0</span>
+      </button>
+      <button class="icon-btn" id="themeBtn" type="button"
+              aria-label="Change theme" title="Theme">
+        <svg class="icon" aria-hidden="true"><use href="#ui-sun"></use></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" type="button"
+              aria-label="Open settings" title="Settings">
+        <svg class="icon" aria-hidden="true"><use href="#ui-gear"></use></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="rail" id="rail" aria-label="Documentation sections">
+    <div class="rail-head">
+      <span class="rail-title">Contents</span>
+      <button class="icon-btn rail-close" id="railClose" type="button" aria-label="Close contents">
+        <svg class="icon" aria-hidden="true"><use href="#ui-close"></use></svg>
+      </button>
+    </div>
+    <div class="rail-strip" id="railStrip" role="tablist"
+         aria-label="Documentation articles" aria-orientation="vertical"></div>
+    <button class="rail-overflow" id="railOverflow" type="button" hidden
+            aria-expanded="false" aria-haspopup="dialog">
+      <svg class="icon" aria-hidden="true"><use href="#ui-more"></use></svg>
+      <span class="rail-overflow-label">More<span class="rail-overflow-count" id="railOverflowCount"></span></span>
     </button>
-  </div>
-</header>
+  </nav>
+  <div class="rail-scrim" id="railScrim" hidden></div>
 
-<main id="main">
+  <main class="doc-main" id="doc-main" tabindex="-1">
+    <div class="doc-panel" id="docPanel" role="tabpanel" tabindex="0">
+      <div class="boot">
+        <p class="boot-title">Loading the documentation…</p>
+        <p class="boot-note">
+          This reference is a single-page application built from plain ES modules, so it needs
+          JavaScript enabled. Nothing is fetched from another origin.
+        </p>
+      </div>
+    </div>
+  </main>
 
-<section class="hero" id="top">
-  <div class="wrap">
-    <span class="eyebrow">
-      <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>
-      Implemented and verified — 147 passing tests, 0 failures
-    </span>
-    <h1 class="hero-title">Hay Day's farm.<br>Township's town.<br>One game.</h1>
-    <p class="hero-sub">
-      Farm Tycoon combines a crop-and-animal production loop with a full town-building layer:
-      craft your buildings instead of buying them, and unlock a per-factory minigame for every
-      structure you place — fishing, mining, a merge board, and more.
+</div>
+
+<div class="toast-region" id="toastRegion" role="region" aria-label="Notifications"></div>
+<div class="toast-live visually-hidden" id="toastLive" aria-live="polite" aria-atomic="false"></div>
+<div id="overlayRoot"></div>
+
+<noscript>
+  <div class="noscript-note">
+    <h1>Farm Tycoon documentation</h1>
+    <p>
+      This documentation is rendered in the browser from local JavaScript modules, so it needs
+      JavaScript switched on. It makes no network requests to any other origin — everything it
+      needs is served from this site.
     </p>
-    <div class="hero-cta">
-      <a class="btn btn-filled" href="#download">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-crate"></use></svg>
-        Download for Windows
-      </a>
-      <a class="btn btn-outlined" href="https://github.com/Ding-Ding-Projects/Farm-tycoon" target="_blank" rel="noopener">
-        View source on GitHub
-      </a>
-    </div>
-    <p class="hero-note">Windows only, unsigned installer (permanent no-signing policy — Windows will show an "unknown publisher" warning) — read the status below for exactly what has been verified.</p>
+    <p>
+      The Windows installer is unsigned, and Windows will show an unknown-publisher warning when
+      you run it. Code signing is permanently out of scope for this project, so the artifact is
+      neither signed nor verified by a certificate authority.
+    </p>
   </div>
-</section>
+</noscript>
 
-<section id="status">
-  <div class="wrap">
-    <div class="status-card" role="note">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>
-      <div>
-        <h2>Honest status: it plays, and here's exactly what's been checked</h2>
-        <p>
-          <strong>The game runs.</strong> Every module in the source tree is implemented — the
-          world renders, crops plant and harvest on real timers, buildings craft through the
-          Workshop, and the save file round-trips through <code>localStorage</code>. Loaded in a
-          browser it produces zero console errors and exposes real, mutating game state (coins,
-          diamonds, silo, barn, placed structures) through a debug hook, not a static readout.
-        </p>
-        <p>
-          <code>npm test</code> runs a content validator plus eight gameplay-logic suites —
-          camera, core economy, logistics, crafting, township, research, dead-time systems, and
-          the social/co-op layer — for <strong>147 passing assertions across nine files, zero
-          failures</strong>. All 22 world structures are placed with zero overlaps; twenty of them
-          are locked at level 1 and still present in the world, derelict, and clickable.
-        </p>
-        <p>
-          <strong>There are no gameplay screenshots on this page yet</strong> — not because
-          anything is missing, but because a dedicated capture pass hasn't landed. A picture of a
-          placeholder would misrepresent the project either way, so this section stays honest
-          until real captures of the real running game replace it. Two small design/balance
-          questions are also still open — see the repository's <code>HANDOFF.md</code> for the
-          exact numbers behind both.
-        </p>
-      </div>
-    </div>
-
-    <div class="stat-strip">
-      <div class="stat-tile"><span class="num">22</span><span class="label">Crops</span></div>
-      <div class="stat-tile"><span class="num">12</span><span class="label">Animals</span></div>
-      <div class="stat-tile"><span class="num">26</span><span class="label">Buildings</span></div>
-      <div class="stat-tile"><span class="num">128</span><span class="label">Recipes</span></div>
-      <div class="stat-tile"><span class="num">192</span><span class="label">Goods</span></div>
-      <div class="stat-tile"><span class="num">95</span><span class="label">Levels</span></div>
-      <div class="stat-tile"><span class="num">39</span><span class="label">Achievements</span></div>
-      <div class="stat-tile"><span class="num">23</span><span class="label">Materials</span></div>
-    </div>
-  </div>
-</section>
-
-<section class="alt-surface" id="features" aria-labelledby="features-title">
-  <div class="wrap">
-    <div class="section-header">
-      <span class="section-kicker">What's implemented</span>
-      <h2 class="section-title" id="features-title">Every system, built and tested</h2>
-      <p class="section-desc">
-        Each card below describes a system that is implemented and exercised by
-        <code>npm test</code>'s gameplay-logic suites — not just data that's been validated for
-        shape. See the status note above for the exact test counts.
-      </p>
-    </div>
-
-    <div class="grid">
-      <article class="card">
-        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-wheat"></use></svg></div>
-        <h3>The farm loop</h3>
-        <p>Plant crops, raise animals in pens, and harvest on absolute wall-clock timers so
-        progress resolves correctly even after the game has been closed for hours.</p>
-        <span class="stat">22 crops · 12 animals</span>
-      </article>
-
-      <article class="card">
-        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-hammer"></use></svg></div>
-        <h3>Buildings are crafted, not bought</h3>
-        <p>Every production building is unlocked through the Building Workshop: gather raw
-        construction materials, craft them into components, assemble a kit, then the finished
-        factory goes up. This construction chain is its own small economy.</p>
-        <span class="stat">26 buildings · 23 materials</span>
-      </article>
-
-      <article class="card">
-        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-fish"></use></svg></div>
-        <h3>A minigame per factory</h3>
-        <p>Fishing, mining, the merge board, expeditions, and foraging are each tied to a
-        specific structure and produce an effect unique to it — bonus yield, rare materials,
-        faster queues. Always an optional bonus layer, never a gate: timers complete on their
-        own whether or not you ever play the minigame, and offline progress is never
-        penalized for skipping it.</p>
-        <span class="stat">3 merge chains</span>
-      </article>
-
-      <article class="card">
-        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-train"></use></svg></div>
-        <h3>The Township layer</h3>
-        <p>A town of houses and community buildings tracks population against a cap; trains and
-        an airport move finished goods out and construction materials back in; a zoo, a market,
-        and a set of islands round out the second half of the game.</p>
-        <span class="stat">16 houses · 10 community · 14 zoo enclosures · 8 islands</span>
-      </article>
-
-      <article class="card">
-        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-clock"></use></svg></div>
-        <h3>Dead-time systems</h3>
-        <p>Weekend events, mini-events, an annual Farm Fair, and seasonal holidays give the
-        idle time between check-ins something to look forward to, alongside a daily wheel,
-        achievements, and permanent research.</p>
-        <span class="stat">10 weekend events · 6 mini-events · 25 fair tasks · 6 holidays</span>
-      </article>
-
-      <article class="card">
-        <div class="card-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-users"></use></svg></div>
-        <h3>Simulated neighbours</h3>
-        <p>A request board and co-op systems are designed against simulated neighbour farms
-        rather than a live multiplayer backend, so the social loop works the same offline as
-        it will online.</p>
-        <span class="stat">39 achievements</span>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section id="modules" aria-labelledby="modules-title">
-  <div class="wrap">
-    <div class="section-header">
-      <span class="section-kicker">Under the hood</span>
-      <h2 class="section-title" id="modules-title">One module per system</h2>
-      <p class="section-desc">
-        No framework, no bundler, no build step for the game itself. Plain ES modules, DOM for
-        menus, canvas for the world. 37 modules in total (34 in <code>src/</code>, 3 under
-        <code>src/render/</code>), all implemented — this is a sample of the ownership map; see
-        the repository's <code>README.md</code> for the complete list.
-      </p>
-    </div>
-
-    <div class="table-scroll scroll-x">
-      <table class="modules">
-        <caption>Source module map</caption>
-        <thead>
-          <tr><th scope="col">Module</th><th scope="col">Owns</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>src/state.js</code></td><td>The state object; save/load/migrate via localStorage; export/import</td></tr>
-          <tr><td><code>src/data.js</code></td><td>All content: crops, animals, goods, buildings/recipes, levels, tuning</td></tr>
-          <tr><td><code>src/economy.js</code></td><td>Coins, XP/levels, unlock checks, sell values, diamond skips</td></tr>
-          <tr><td><code>src/farm.js</code></td><td>Grid, placement/footprints, expansion zones</td></tr>
-          <tr><td><code>src/production.js</code></td><td>Every timer: crops, animal pens, building queues, offline catch-up</td></tr>
-          <tr><td><code>src/orders.js</code></td><td>Order board and truck</td></tr>
-          <tr><td><code>src/merge.js</code></td><td>Merge Meadow: merge-board minigame</td></tr>
-          <tr><td><code>src/town.js</code></td><td>Town: houses, population/cap, milestones</td></tr>
-          <tr><td><code>src/trains.js</code></td><td>Trains and airport: goods out, construction materials in</td></tr>
-          <tr><td><code>src/zoo.js</code></td><td>Zoo enclosures, souvenirs, visitor income, zoo orders</td></tr>
-          <tr><td><code>src/render/renderer.js</code></td><td>Camera, iso tile math, frame drawing, DPR scaling</td></tr>
-          <tr><td><code>src/render/sprites.js</code></td><td>All vector art draw functions — no image assets, ever</td></tr>
-          <tr><td><code>src/ui.js</code></td><td>All DOM: HUD, dock, sheet panels, radial menu, toasts, modals</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<section class="alt-surface">
-  <div class="wrap">
-    <div class="transparency">
-      <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>What's finished vs. what's still open</h2>
-      <div class="transparency-grid">
-        <div>
-          <h3>Finished and validated</h3>
-          <p>All game content in <code>src/data.js</code>: every crop, animal, building, recipe,
-          good, level, and event. Verified by an automated checker (<code>npm test</code>) that
-          enforces roughly thirty rule families and was deliberately broken and watched fail before
-          being trusted.</p>
-        </div>
-        <div>
-          <h3>Finished and validated</h3>
-          <p>The Windows installer packaging (Squirrel.Windows, unsigned per this project's
-          permanent no-signing policy), the application icon, and the vendored font set used on
-          this page and in the app — all served from this repository, no CDN.</p>
-        </div>
-        <div>
-          <h3>Finished and tested</h3>
-          <p>Every other <code>src/</code> module — production timers, the renderer, input
-          handling, UI wiring, audio, tutorial, and the full Township/social layer. All 37 modules
-          are implemented and exercised by <code>npm test</code>'s eight gameplay-logic suites,
-          147 passing assertions, 0 failures.</p>
-        </div>
-        <div>
-          <h3>Still open</h3>
-          <p>Gameplay screenshots and recordings — a dedicated capture pass hasn't landed yet —
-          plus two small design/balance questions in the Building Workshop. See the repository's
-          <code>HANDOFF.md</code> and <code>ROADMAP.md</code> for the exact, current list.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section aria-labelledby="screens-title">
-  <div class="wrap">
-    <div class="section-header">
-      <span class="section-kicker">Screenshots</span>
-      <h2 class="section-title" id="screens-title">No gameplay screenshots yet — a capture pass is next</h2>
-    </div>
-    <div class="screens-placeholder">
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-clock"></use></svg>
-      <h3>The game runs; this page just hasn't been given real captures yet</h3>
-      <p>
-        The canvas renders the real farm and town — plant crops, place buildings through the
-        Workshop, click into any of the 22 world structures. What's missing here is a dedicated
-        capture pass through the built application, not the gameplay itself. A mockup or a
-        picture of an unrelated build would misrepresent the project just as badly as no picture
-        at all, so this panel stays honest until real captures replace it.
-      </p>
-    </div>
-  </div>
-</section>
-
-<section class="alt-surface" id="download" aria-labelledby="download-title">
-  <div class="wrap">
-    <div class="section-header">
-      <span class="section-kicker">Get it</span>
-      <h2 class="section-title" id="download-title">Download the installer</h2>
-      <p class="section-desc">
-        This installs the real, playable state of the project described above. CI builds and
-        publishes a new release from every push; it is not a signed installer (see the note
-        below), and it does not run tests as a release gate — <code>npm test</code> is the
-        local gate, run before every push.
-      </p>
-    </div>
-
-    <div class="download-card">
-      <h2>Farm Tycoon v0.1.0 for Windows</h2>
-      <div class="download-meta">
-        <span class="chip">
-          <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-check"></use></svg>
-          Windows 10/11 · x64
-        </span>
-        <span class="chip">
-          <svg class="icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><use href="./icons.svg#i-crate"></use></svg>
-          Farm.Tycoon-Setup-0.1.0.exe · ~114 MB
-        </span>
-      </div>
-      <a class="btn btn-filled" href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases/latest/download/Farm.Tycoon-Setup-0.1.0.exe">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-crate"></use></svg>
-        Download Farm.Tycoon-Setup-0.1.0.exe
-      </a>
-      <div class="warn-box" role="note">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./icons.svg#i-lock"></use></svg>
-        <div>
-          <strong>This installer is unsigned.</strong> Code signing is not used on this project.
-          Windows will show an "unknown publisher" warning, and SmartScreen may warn before you
-          run it — that is expected, not a sign that the file is broken.
-        </div>
-      </div>
-      <p class="section-desc">
-        See every published release on
-        <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases">GitHub Releases</a>.
-      </p>
-    </div>
-  </div>
-</section>
-
-</main>
-
-<footer>
-  <div class="wrap">
-    <div class="foot-links">
-      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon">Source</a>
-      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/blob/main/PLAN.md">Game design (PLAN.md)</a>
-      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/blob/main/HANDOFF.md">Handoff notes</a>
-      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/releases">Releases</a>
-      <a href="https://github.com/Ding-Ding-Projects/Farm-tycoon/issues">Issues</a>
-    </div>
-    <p>Farm Tycoon is implemented and tested, not a finished commercial product. No
-    dependencies, no build step, no CDN assets — everything on this page is served from this
-    repository.</p>
-  </div>
-</footer>
-
-<script>
-(function () {
-  var root = document.documentElement;
-  var btn = document.getElementById('themeToggle');
-  var icon = document.getElementById('themeIcon');
-  var KEY = 'farm-tycoon-theme';
-
-  function systemPrefersDark() {
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }
-
-  function apply(mode) {
-    if (mode === 'dark') {
-      root.setAttribute('data-theme', 'dark');
-      icon.textContent = '☀️';
-      btn.setAttribute('aria-pressed', 'true');
-    } else if (mode === 'light') {
-      root.setAttribute('data-theme', 'light');
-      icon.textContent = '🌙';
-      btn.setAttribute('aria-pressed', 'false');
-    } else {
-      root.removeAttribute('data-theme');
-      icon.textContent = systemPrefersDark() ? '☀️' : '🌙';
-      btn.setAttribute('aria-pressed', String(systemPrefersDark()));
-    }
-  }
-
-  var stored = null;
-  try { stored = window.localStorage.getItem(KEY); } catch (e) { /* private mode, no storage */ }
-  apply(stored);
-
-  btn.addEventListener('click', function () {
-    var current = root.getAttribute('data-theme') || (systemPrefersDark() ? 'dark' : 'light');
-    var next = current === 'dark' ? 'light' : 'dark';
-    apply(next);
-    try { window.localStorage.setItem(KEY, next); } catch (e) { /* ignore */ }
-  });
-})();
-</script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>

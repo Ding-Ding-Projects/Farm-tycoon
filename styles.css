@@ -182,6 +182,8 @@ a:hover { color: var(--color-primary); }
   background: var(--wood-bg);
   border: 4px solid var(--color-outline); border-radius: 20px;
   box-shadow: 0 7px 0 rgba(58, 37, 16, 0.55), var(--shadow-soft);
+  /* Keep the dock clear of a phone's home indicator / gesture bar. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .dock-btn {
   width: 60px; height: 60px; cursor: pointer; border-radius: 15px;
@@ -328,7 +330,13 @@ a:hover { color: var(--color-primary); }
 .modal-card {
   position: relative; background: var(--panel-bg); border: var(--panel-border);
   border-radius: 26px; box-shadow: 0 22px 50px rgba(0, 0, 0, 0.55);
-  padding: 26px; min-width: 380px; max-width: 560px; text-align: center;
+  padding: 26px; text-align: center;
+  /* Bounded by the VIEWPORT, not just by a fixed number. A flat min-width of 380px is wider than
+     a 320px phone, and because the backdrop is position:fixed the excess is CLIPPED rather than
+     scrolled - so the edge of every minigame simply vanished on the narrowest supported width. */
+  min-width: min(380px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px); overflow-y: auto;
   animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes modal-pop { from { transform: scale(0.86); opacity: 0; } }
@@ -349,6 +357,17 @@ a:hover { color: var(--color-primary); }
 .minigame-hint { margin: 0 0 15px; font-weight: 700; font-size: 14px; line-height: 1.5; color: var(--color-ink-soft); text-wrap: pretty; }
 .minigame-actions { display: flex; align-items: center; gap: var(--sp-3); }
 .minigame-actions .btn { flex: 1; }
+
+/* On a phone the head has no room for title, purpose, pips and score on one line: the title
+   squeezes to three words a line while the pips sit in the space it needed. Let it stack, and
+   put the pips and score on their own row where both stay readable. */
+@media (max-width: 420px) {
+  .minigame-head { flex-wrap: wrap; gap: var(--sp-2); }
+  .minigame-head > div:first-child { flex: 1 1 100%; }
+  .minigame-steps { margin-left: 0; }
+  .minigame-head .score { margin-left: auto; }
+  .minigame-actions { flex-wrap: wrap; }
+}
 
 /* stage pips — which step of a multi-stage chain you are on. Shell chrome, not a stage. */
 .minigame-steps { display: flex; align-items: center; gap: 6px; margin-left: auto; }

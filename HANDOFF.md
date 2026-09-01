@@ -308,8 +308,9 @@ Two items that were open problems in the previous version of this document:
 
 - **Screenshots exist now, and a recording still does not.** `screenshots/` holds real captures
   from the built artifacts: the 44-building contact sheet, the placement ghost mid-drag, and four
-  taken straight off an Android device with `adb exec-out screencap`. A screen RECORDING is still
-  missing and is still required. The old text below is kept because its warning has not expired -
+  taken straight off an Android device with `adb exec-out screencap`. A screen recording now
+  exists too: `screenshots/farm-tycoon-android.mp4`, 25s of the installed APK being played by real
+  touch on an Android 14 device. The old text below is kept because its warning has not expired -
   a reference to a file that isn't in the tree is worse than no image.
 - **The two open audit points above** (tea_house/oil_press unlock-inert gap; unverified multi-hop
   kit arbitrage) are real, small, and unaddressed.

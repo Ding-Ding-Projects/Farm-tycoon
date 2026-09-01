@@ -85,6 +85,29 @@ HUD, and the guided tutorial overlay auto-started.
 </details>
 
 <details>
+<summary><strong>Screen recording, on a phone</strong></summary>
+
+**[screenshots/farm-tycoon-android.mp4](screenshots/farm-tycoon-android.mp4)** — 25 seconds, 575 KB,
+recorded off an Android 14 device with `adb shell screenrecord` from the installed debug APK.
+
+Stills are proof a surface exists; only a recording proves the thing MOVES. This one shows a fresh
+farm, wheat planted by touch, the crop growing, a harvest, and the tutorial advancing as the silo
+fills — all driven by real touch events, not by calling functions.
+
+![Three frames from the recording: wheat growing on the field plots, then a "Harvested crop!" toast with the seed counter having gone from 4/50 to 6/50 and the silo from 0 to 6, and the tutorial advancing to say the crops are stored in the silo.](screenshots/android-recording-frames.png)
+
+Two honest notes. The frame rate is low, around 5fps, because the emulator runs software rendering
+with `-gpu swiftshader_indirect`; the app itself is not this choppy. And it captures the DEVICE
+screen, never the host monitor, so nothing of whoever recorded it is in the file.
+
+The first attempt at this recording is worth knowing about: it used `KEYCODE_BACK` to close panels,
+the app has no back handler, so the key exited it and 25 seconds of the Android home screen were
+recorded instead. That was caught by extracting frames and looking at them rather than trusting the
+duration and file size, which were both perfectly plausible.
+
+</details>
+
+<details>
 <summary><strong>Locked structures across the unlock curve</strong></summary>
 
 Every one of the 22 world structures is present and clickable from level 1 — locked ones render

@@ -326,6 +326,41 @@ async function main() {
   check('a 320px screen still does not scroll sideways',
     narrow.bodyScrollsSideways === false, JSON.stringify(narrow));
 
+  // --- the HUD counters must survive a rich player --------------------------------------
+  //
+  // Found on a real phone, not here: with 999,549 coins the four counter pills came to 414px
+  // inside a 412px screen and the barn pill's right edge landed at 461px, so 49px of it was off
+  // the side of the display. A million coins is ordinary mid-game play. No amount of shrinking
+  // four pills makes a seven-digit number fit beside three others, so ui.js abbreviates above
+  // 100,000 and the row is allowed to shrink; this asserts the result at four magnitudes.
+  await cdp.ev("window.__h = null; Promise.all([import('./src/state.js'), import('./src/ui.js')])"
+    + ".then(([s, u]) => { window.__h = { s, u }; });");
+  await cdp.poll('!!window.__h');
+  for (const coins of [1234, 99999, 999549, 12345678]) {
+    const r = await cdp.ev(`(() => {
+      window.__h.s.state.coins = ${coins};
+      window.__h.u.updateHud();
+      const row = document.querySelector('.hud-counters');
+      const kids = [...row.children];
+      const last = kids[kids.length - 1];
+      return {
+        right: Math.round(last.getBoundingClientRect().right),
+        viewport: window.innerWidth,
+        // scrollWidth beyond the rendered box means a pill is squashing its own text.
+        clipped: kids.filter((k) => k.scrollWidth > Math.ceil(k.getBoundingClientRect().width) + 1)
+          .map((k) => k.textContent.replace(/\s+/g, '')),
+        text: row.textContent.replace(/\s+/g, ' ').trim().slice(0, 40),
+      };
+    })()`);
+    check(`the HUD counters fit on screen with ${coins.toLocaleString()} coins`,
+      r.right <= r.viewport + 1, JSON.stringify(r));
+    // Both halves, because they trade against each other and one alone is satisfied by the other
+    // one breaking. An earlier version asserted only that the row fitted, and passed while the
+    // coin pill was squashed narrower than its own text and rendering "999.5" for "999.5k".
+    check(`and no counter is squashed narrower than its own text at ${coins.toLocaleString()} coins`,
+      r.clipped.length === 0, JSON.stringify(r));
+  }
+
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
 

@@ -111,6 +111,24 @@ function findDockButton(panelId) {
   return Array.from(el.dock.children || []).find((b) => b?.dataset?.panel === panelId) || null;
 }
 
+/**
+ * Short form for a HUD counter: 1,234 stays as it is, 999,549 becomes 999.5k.
+ *
+ * Measured on a real phone rather than guessed at. On a 412px screen with six-digit coins the
+ * four counter pills came to 414px and the barn pill's right edge landed at 461px, so 49px of it
+ * was simply off the side of the display. A million coins is ordinary mid-game play, not an edge
+ * case, and no amount of shrinking four pills makes a seven-digit number fit beside three others.
+ *
+ * Exact values below 100,000, because that is the range where a player is actually counting.
+ */
+function compactCount(n) {
+  const v = Math.floor(Number(n) || 0);
+  if (Math.abs(v) < 100000) return v.toLocaleString();
+  if (Math.abs(v) < 1000000) return `${(v / 1000).toFixed(1)}k`;
+  if (Math.abs(v) < 1000000000) return `${(v / 1000000).toFixed(2)}M`;
+  return `${(v / 1000000000).toFixed(2)}B`;
+}
+
 export function updateHud() {
   if (!state || !el.coinsValue) return;
   syncDockVisibility();
@@ -126,8 +144,8 @@ export function updateHud() {
   if (key === lastHud) return;
   lastHud = key;
 
-  el.coinsValue.textContent = Math.floor(state.coins).toLocaleString();
-  el.diamondsValue.textContent = Math.floor(state.diamonds).toLocaleString();
+  el.coinsValue.textContent = compactCount(state.coins);
+  el.diamondsValue.textContent = compactCount(state.diamonds);
   el.siloValue.textContent = `${siloUsed}/${state.silo.capacity}`;
   el.barnValue.textContent = `${barnUsed}/${state.barn.capacity}`;
   el.levelNumber.textContent = String(level);

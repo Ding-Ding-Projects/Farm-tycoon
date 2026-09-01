@@ -118,7 +118,18 @@ a:hover { color: var(--color-primary); }
 }
 .level-badge .progress-ring { display: none; }   /* the ring is the background now */
 
-.hud-counters { display: flex; gap: var(--sp-2); align-items: center; }
+/* min-width:0 so the row may actually shrink inside its flex parent, which a flex item will not
+   do by default. Belt and braces alongside compactCount() in ui.js: the short form keeps the
+   numbers narrow, and this keeps the row from pushing itself off a narrow screen even so. */
+.hud-counters {
+  display: flex; gap: var(--sp-2); align-items: center;
+  /* The ROW may shrink; the pills inside it may not. Letting the pills shrink was measured on a
+     real phone squashing the coin pill to 88px around 91px of content, so "999.5k" rendered as
+     "999.5" with the unit chopped off - a worse bug than the overflow it was meant to fix, and
+     invisible to any check that only asks whether the row fits. */
+  min-width: 0; flex-shrink: 1;
+}
+.hud-counters > * { flex-shrink: 0; }
 .pill-counter {
   display: flex; align-items: center; gap: var(--sp-2);
   background: var(--pill-bg); border: 3px solid var(--color-wood-dark);
@@ -678,7 +689,15 @@ a:hover { color: var(--color-primary); }
 /* ---------- 1024×640 floor ---------- */
 @media (max-width: 1100px), (max-height: 700px) {
   :root { --hit-dock: 58px; --hit-dock-primary: 68px; --radius-panel: 18px; }
-  .hud-top { height: 64px; padding: 0 var(--sp-3); }
+  /* Longhand padding, NOT the shorthand. The shorthand here used to reset padding-top to 0 and
+     height to a flat 64px, which quietly undid the safe-area handling above on every screen
+     narrower than 1100px - that is to say, on every phone, which is the only place the inset is
+     ever non-zero. Exactly the same class of bug as the dock's padding-bottom. */
+  .hud-top {
+    height: calc(64px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: var(--sp-3); padding-right: var(--sp-3);
+  }
   .level-badge { width: 52px; height: 52px; font-size: 20px; }
   .pill-counter { font-size: 17px; padding: 6px 14px 6px 8px; }
   .meter-chip .bar { width: 72px; }
@@ -694,3 +713,31 @@ a:hover { color: var(--color-primary); }
 .stage-aim svg { flex: 1; min-width: 0; height: 120px; }
 .stage-aim .table { stroke: var(--color-outline); stroke-width: 2; }
 .stage-aim .cup { fill: var(--color-accent, #7fd4f0); stroke: var(--color-outline); stroke-width: 1.5; rx: 1.5; }
+
+/* ---------- phone widths, LAST on purpose ----------
+   These have to come after the 1100px block above, not before it. Both queries match on a 412px
+   phone, neither is more specific than the other, so source order alone decides - and with this
+   block earlier the 1100px rule silently won, leaving .pill-counter at 17px while the gap change
+   beside it applied, because that block happens not to set the gap. Measured on the device:
+   font 17px and padding 6px 14px, exactly the values this block was supposed to have replaced.
+   Third time this HUD has been bitten by two rules both matching. */
+@media (max-width: 420px) {
+  /* Sized from measurement rather than taste. On a 412px phone the four pills came to 386px, plus
+     24px of gaps, a 42px level badge and 24px of bar padding: 476px total, overflowing by 64.
+     Shrinking the pills themselves was tried first and was worse - they clipped their own text, so
+     "999.5k" rendered as "999.5", which a row-fits check cannot see. Reducing type, padding and
+     gap keeps every pill whole. */
+  .hud-top { padding-left: var(--sp-2); padding-right: var(--sp-2); }
+  .hud-counters { gap: 4px; }
+  .pill-counter { font-size: 14px; padding: 5px 9px 5px 6px; }
+}
+
+/* The 320px floor needs a second step, and the numbers say why. At 320px the level badge takes
+   40px and the bar padding 16px, so four pills and three gaps share 264px. At the 420px sizing
+   above they wanted 327px, overflowing by 67. This buys that back and no more: the type is small
+   here because the alternative is a counter you cannot read at all. */
+@media (max-width: 360px) {
+  .hud-top { padding-left: 3px; padding-right: 3px; }
+  .hud-counters { gap: 2px; }
+  .pill-counter { font-size: 11px; padding: 4px 5px 4px 3px; }
+}

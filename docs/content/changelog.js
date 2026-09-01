@@ -396,7 +396,7 @@ locked at level 1 and still present and clickable — the barn and the silo are 
 two that open immediately. Locked structures render as derelict but stay in the
 world from the first minute, so the map itself is the roadmap.</p>
 
-<p>The save format is at version 3, with two migrations that were read rather
+<p>The save format is at version 4, with three migrations that were read rather
 than assumed: version 1 to 2 supplies defaults for the merge board, trains and
 airport for a save that predates them; version 2 to 3 does the same for the town,
 zoo and market. Both leave every other key untouched, and a save claiming a newer

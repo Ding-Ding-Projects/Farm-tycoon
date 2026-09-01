@@ -1141,7 +1141,7 @@ here that cannot be driven from a simulated clock.</p>
       heading: 'What all of this stores',
       html: `
 <p>Everything on this page persists in the single JSON save blob described by
-<code>src/state.js</code>, at <code>SAVE_VERSION</code> 3. The slices are small, which is
+<code>src/state.js</code>, at <code>SAVE_VERSION</code> 4. The slices are small, which is
 the point — most of these systems store a handful of numbers and derive everything else
 from the data tables at read time.</p>
 

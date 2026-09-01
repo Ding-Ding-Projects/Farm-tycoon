@@ -333,7 +333,7 @@ function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; 
       heading: 'Versioning and migrations: never break an existing save',
       html: `
 <p>
-  <code>SAVE_VERSION</code> is currently <strong>3</strong>. Every save carries its
+  <code>SAVE_VERSION</code> is currently <strong>4</strong>. Every save carries its
   <code>version</code>, and <code>load()</code> is the only door in.
 </p>
 
@@ -359,8 +359,8 @@ function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; 
 <h3>The migrations that exist</h3>
 <div class="callout callout-info">
   <p>
-    These are not hypothetical. Both correspond to real builds that shipped and put real saves
-    on real machines.
+    These are not hypothetical. All three correspond to real builds that shipped and put real
+    saves on real machines.
   </p>
 </div>
 <table>
@@ -375,6 +375,11 @@ function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; 
       <td><code>2 &rarr; 3</code></td>
       <td><code>town</code>, <code>zoo</code>, <code>market</code></td>
       <td>Builds through <code>v0.1.0-build15</code> shipped version&nbsp;2 saves. Those three modules built their own slices lazily on first use instead of <code>newGameState()</code> seeding them, so a real version&nbsp;2 save can genuinely lack all three.</td>
+    </tr>
+    <tr>
+      <td><code>3 &rarr; 4</code></td>
+      <td><code>cid</code> and <code>play</code> on every <code>production</code> entry, <code>craftSeq</code>, <code>minigames</code>, <code>settings.assist</code>, <code>settings.autoFinish</code></td>
+      <td>Playable crafts. A queue entry needed a stable handle, because an array index stops addressing the same craft once an earlier one is collected mid-session, and a <code>play</code> record to carry its minigame progress. <code>minigames.pending</code> is dropped rather than migrated: it was keyed by <code>buildingId</code>, which cannot address one queued craft, and it was transient. The load-bearing default is <code>play</code> &mdash; a craft queued under version&nbsp;3 was never gated, so it is grandfathered as already played at the floor tier instead of becoming gated retroactively by the upgrade.</td>
     </tr>
   </tbody>
 </table>

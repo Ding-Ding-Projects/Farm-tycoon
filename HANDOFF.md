@@ -3,6 +3,100 @@
 State of the repository as of commit `013509a` on `main`. Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
 
+## Session of 2026-09-01 — content completion, then an accessibility sweep
+
+Twelve commits on `input-families`, all dewed. Every figure below was read out of a real run at
+`683e95d`, not carried over from the previous handoff.
+
+**State: 49 buildings · 215 recipes · 279 goods · 46 verbs · 44/151 playable (1 in 3.4) ·
+674 assertions across 19 suites, zero failures.**
+
+### What landed
+
+**The wiki factory roster is closed.** The last five arrived: net maker (30), lobster pool (44),
+duck salon (50), doner kebab stand (54), pasta maker (67). Two levels deliberately differ from the
+wikis, and both are supply-chain decisions rather than transcription: the kebab stand is at 54
+because lamb does not exist here until 53, and the pasta maker sits UPSTREAM of the level-72 pasta
+kitchen, extruding dry shapes the kitchen then cooks — which is also why it cannot take
+`fresh_pasta` as an input.
+
+Five new verbs, each earning its slot against the neighbours in a family that already had two to
+five members. `batch_dies` is the one that nearly failed the way `work_rush` did: at the duration
+first written, first-come-first-served TIED batching on nine seeds of twelve. The clock came down
+to 13500ms, and the gap is now a guard — if it ever closes again the verb should be cut, not tuned.
+
+**Both open audit findings are closed.** The `tea_house`/`oil_press` inert-unlock gap is fixed and
+structurally guarded, and the multi-hop kit arbitrage is proven dead: `tools/test-economy.mjs`
+expands all 46 kits to raw leaves following the cheapest producing recipe at each step, and the
+best kit margin in the game is `kit_paper_mill` at **minus 35 coins**.
+
+**23 dead recipes revived.** Syrup turned 76 coins of sugar into 78 over a full hour. Each was
+lifted by the smallest amount clearing both a coins-per-second floor and the project's own
+documented 1.6x rule, iterated to a fixed point because butter, cheese and sugar are inputs to
+other recipes. Worst margin in the game went from 0.0006 to 0.010 per second.
+
+**Three new player-facing surfaces.** The Bake Book (every playable recipe, best tier, and which
+VERBS remain unmastered — skill is per verb while quality is recorded per recipe). A search bar on
+every panel with six or more cards, attached from one line at the end of `renderPanelContent` so
+new panels get it for free. And a one-time explanation of the playable-item gate, because nothing
+told a player that roughly one recipe in three cannot be collected any other way.
+
+### The accessibility sweep, which found the most
+
+Swept all 28 panels for controls with no accessible name. **Merge Meadow had 57 of 63 unnamed** —
+every cell a bare button, empty ones with no text, no title and no label. Selection was an outline
+and nothing else, and all 63 cells were tab stops. Now: every cell names its position and contents,
+`aria-pressed` on the picked-up one, one tab stop with arrow keys, and focus returns to the cell
+that was acted on.
+
+**The whole game had four focus rules and three were mine from earlier the same day.** Everything
+else relied on the browser default, on an interface where nearly every control already carries a
+3px near-black border for that ring to hide against. Interactive chrome now gets a two-ring
+`:focus-visible` indicator.
+
+**Reduced motion never reached the canvas.** `styles.css` had honoured it from early on, which made
+it look handled; the world is a canvas, so the factory machinery, coin bursts, XP floaters,
+sparkles and camera easing all ignored it. `src/motion.js` is now the single answer, with a
+`matchMedia` listener so mid-session changes take effect at once. `working` stays true and only the
+clock freezes, so a busy factory keeps its lit lantern and four-puff plume rather than going idle.
+
+**Touch targets: 33 controls under 44x44, every one of them in the search bar I had added hours
+earlier.** The rest of the game was already clean.
+
+### The one thing measured and deliberately NOT fixed
+
+White button text sits at **1.77** against the light end of the default green gradient, **1.47** on
+gold, **1.89** on gem, **2.57** on danger. AA wants 4.5. The `quiet` variant is fine at **7.08**
+once its translucent fill is composited properly — it first measured 1.19 because the comparison
+was against the overlay rather than the result.
+
+Unlike everything else in the sweep this has no repair without a cost: darkening the fills until
+white passes needs roughly `#3E7A19` throughout and turns a candy button forest-green, while
+switching to dark labels and lightening the fill measures 7.06 and keeps them bright but changes
+every button in the game. Both rewrite the look the design brief asked for, so it is the owner's
+call. Numbers and both routes are in `ROADMAP.md`.
+
+### Traps worth not rediscovering
+
+- **`timeSkip` is milliseconds.** Cost time twice in one session, once producing a recording where
+  every harvest said "Still growing".
+- **A `.modal-card` element exists empty at all times**, so "a modal is present" is true before
+  anything opens. Check its text, not its existence.
+- **Cache-busting an import gives a DIFFERENT module instance** from the one the app's modules
+  hold, so a test flag set on one has no effect on the other. Verify module-level state in Node.
+- **`test()` here is synchronous**, so returning a promise from it marks the test passed before the
+  assertion runs. One guard was written that way and could never have failed.
+- **Guards anchored to a substring pass on a commented-out line.** Anchor to the start of a line.
+- **`localStorage.clear()` does not give a fresh save** — autosave rewrites it.
+
+### Not done
+
+- The release keystore and a signed APK. The Gradle config is wired and the build script injects
+  it; only the key is missing, and it is a credential the owner should generate.
+- The GitHub Pages site still carries neither the screenshots nor either recording, though both
+  recordings are committed and linked from the README.
+- The button contrast decision above.
+
 ## Where the project actually is
 
 **Phase B is complete.** Every module contract in `src/` now has a real implementation body.
@@ -29,7 +123,8 @@ browser, at `http://127.0.0.1:8123`** (use the loopback address — a stale serv
 - `styles.css` at the repository root is the "Sunlit Homestead" overhaul — byte-identical to
   `design/handoff/styles.css` apart from line endings (root is CRLF, the design reference is LF).
   The design pass is applied to the running game, not sitting unintegrated in `design/`.
-- The dock (`index.html`) carries exactly four buttons: decorate, achievements, co-op/regatta
+- The dock carries five placeless surfaces. FOUR are in `index.html` - decorate, achievements,
+  co-op/regatta
   (hidden until unlocked), settings — matching the "systems open from their world structure"
   interaction rule.
 - `SAVE_VERSION` is **3**. `newGameState()` seeds every subsystem key — `workshop`, `minigames`,
@@ -46,10 +141,11 @@ browser, at `http://127.0.0.1:8123`** (use the loopback address — a stale serv
 suites. Real output from this checkout:
 
 ```
-data.js OK — 22 crops, 12 animals, 26 buildings, 128 recipes, 192 goods, 3 merge
-chains, 39 achievements, 95 levels all with unlocks, 10 weekend events + 6
+data.js OK - 24 crops, 12 animals, 49 buildings, 215 recipes, 279 goods, 3 merge
+chains, 43 achievements, 95 levels all with unlocks, 10 weekend events + 6
 mini-events + 25 fair tasks + 6 holidays, town: 16 houses + 10 community, 14 zoo
 enclosures, 8 islands, 23 materials
+playable share: 44/151 recipes (1 in 3.4), 46 verbs - at the 1-in-3 target
 ```
 
 followed by eight suites (`test-camera`, `test-core`, `test-logistics`, `test-crafting`,
@@ -183,29 +279,119 @@ messages:
    current data — this is what the audit's "70 recipes" count was measuring, and it is now
    structurally guarded, not just fixed once). Re-checking the three buildings the audit named
    directly: `build_workshop` no longer sits inert on unlock (unlock level 6, earliest usable
-   recipe also 6 — was inert for 15 levels). `tea_house` (unlocks 56, first recipe 62) and
-   `oil_press` (unlocks 52, first recipe 55) still open several levels before their first usable
-   recipe — a 6-level and 3-level gap respectively, unchanged from the original finding and not
-   covered by any guard. This narrower point is real, current, and small; it is not the "70
+   recipe also 6 — was inert for 15 levels). `tea_house` and `oil_press` are now fixed too.
+   Both opened before the crop they exist to process, and in both cases the recipes were correctly
+   gated on their inputs while the BUILDING arrived early: the oil press three levels before
+   olives, the tea house six before tea leaves. Both moved to meet their first usable recipe (oil
+   press 52 → 55, tea house 56 → 62) rather than dragging the crops forward, because a crop's
+   level is part of its own balance and has other consumers. `validate-data.mjs` now refuses ANY
+   building whose earliest recipe outranks its own unlock level, so this cannot come back;
+   reintroducing the oil press defect turns it red with the exact original numbers. It is not the
+   "70
    recipes" problem, which is closed.
 6. **Non-positive recipe margins.** Recomputed directly against the current data with the same
-   sell-value logic the validator uses: **0 of 128 recipes now have a non-positive margin among
+   sell-value logic the validator uses **as of the 128-recipe content set**: 0 of 128 had a
+   non-positive margin among
    non-sink recipes** (was 45). Every Building Workshop component and kit recipe (41 of them) is
    now explicitly tagged `sink: true` and exempted from the margin check by design — a sink is a
+   (The corpus has since grown to 215 recipes across 49 buildings. That audit has NOT been re-run
+   over the newer content, so treat the figure above as a result about the set it was measured
+   on, not a standing property of the game.)
    good meant to be consumed, not resold, exactly like feed. Checking those 41 sink recipes
    directly against a single-hop raw-input-cost comparison (cost to buy the recipe's direct inputs
    at their own sell price, vs. the recipe's own sell price), 40 of 41 now cost more to craft than
    they would fetch selling directly; one, `shingle` in `build_workshop`, still nets a small +5.
-   **This single-hop check does not rule out a multi-step arbitrage across the full chain** (raw
-   materials → components → kit, summing real material cost rather than component resale price),
-   which was not re-simulated end to end here. Flag this as reduced and very likely closed, not
-   proven eliminated — the original "craft components at a loss, sell the kit for ~9,800" scenario
-   specifically was not re-run.
+   **RESOLVED.** `tools/test-economy.mjs` now expands every kit to its raw leaves, following the
+   CHEAPEST producing recipe at each step so an exploit cannot hide behind an expensive sibling.
+   The best kit margin in the game is `kit_paper_mill` at **-35 coins** (raw 555, sells 520), and
+   nothing is profitable even with every input bought at the market's 1.4x. The original ~9,800
+   scenario is re-run by name on every `npm test`. Nothing is underwater on direct inputs or on
+   fully expanded raw inputs either.
+
+   What the same tool DID surface is a balance gap rather than an exploit: coins per second of
+   queue time spans twelve to one, and `syrup` turns 76 coins of inputs into 78 over a full hour.
+   That is printed on every run and recorded in `ROADMAP.md`; it is a design decision, so the
+   tool reports it instead of failing on it.
 
 Verified TRUE by the original audit and unaffected by any of the above: the 16 rects tile the grid
 to exactly 100% with zero gaps and zero overlaps; 22 structures; every crop has a sink; 26
 factories with 26 distinct minigame effects; no duplicate ids; no recipe input cycles;
 `unlockLevel` agrees with `LEVELS.unlocks` everywhere.
+
+## The building system, and Android
+
+Two large pieces landed after the content expansion above. Both are described here because neither
+is discoverable from the code alone: each fixed something that looked correct in source and was
+wrong in the running application.
+
+### Buildings are placed by the player now
+
+`ui.js`'s `buildAt()` used to call `findFreeTile()` and drop each new building on the first fitting
+tile it scanned. Nobody chose. Once the start zone filled front-to-back you got "No free space" with
+no way to rearrange, because `decorate.js` had shipped `select`/`move`/`rotate`/`undo`/`redo` with
+**zero callers** while the dock toggled a mode and toasted "drag decorations to arrange your farm".
+
+`src/placement.js` is the missing half. It is DOM-free, so `input.js` drives it and `renderer.js`
+draws its ghost, and nothing in it touches the document. Legality is never colour-only: the
+footprint tints, the outline goes dashed, and a cross paints over a blocked one. Arrow keys nudge,
+Enter places, Escape cancels, which matters more than usual because the automatic path it replaced
+is gone. A blocked tile is a no-op rather than a failure, so a mis-tap cannot throw away a crafted
+kit.
+
+`tools/verify-placement.mjs` drives the real running app for this, because a rules module tested
+through its own API says nothing about whether anything calls it.
+
+### Buildings look different, and look busy
+
+All 49 factories used to be one box, one gable roof and one of five accents, keyed only by roof
+colour. They now pick a roof form (gable, hip, flat, domed, sawtooth, pagoda, barrel, kiosk, tower)
+and hang real furniture off it, and `drawBuilding` takes `{ working, now }` so a factory animates
+ONLY while a craft is genuinely running. An idle one is completely still, which makes "is that one
+busy?" answerable from across the farm without opening a panel.
+
+`tools/capture-buildings.mjs` renders all 44 idle and working side by side. That contact sheet is
+what found floating flat roofs, detached silos, spike towers and crescent pagodas, none of which
+were visible from the code.
+
+### Android
+
+The app builds, installs, launches and plays on an emulator. `node tools/build-android.mjs` is one
+command; add `--release` once a keystore exists. Read `ANDROID.md` before touching any of it: its
+header records three traps that each cost real time because the error message pointed elsewhere,
+and one dead end (a spaced repository path) that was suspected, investigated and turned out to be
+innocent.
+
+The single largest fix there is invisible from the game: `capacitor.config.json` had `webDir` set
+to `"."`, the repository root, so the APK would have shipped `node_modules` (639 MB), `.git`,
+`design/` and `screenshots/` to anyone who installed it. `tools/build-web.mjs` stages the four
+things the game actually loads, at 1.8 MB, and refuses to continue if either ever reappears.
+
+Three defects were found only by running it on a device, because `env(safe-area-inset-*)` is zero
+everywhere else and a desktop window narrowed to phone width still has a mouse:
+
+- There was **no pinch handler at all**, and a phone has no wheel, so the camera could not be
+  zoomed by any means on an isometric world that does not fit a 390px screen.
+- The HUD counters overflowed at six-digit coin values, which is ordinary mid-game play.
+- Every minigame stage was exposed to the WebView's own scroll and pinch, either of which fires
+  `pointercancel` and ENDS a run. Drag, path, balance and steer verbs are all "a finger dragging
+  across a stage", so that was most of the library.
+
+### What the verification tools are for
+
+Three suites run against a real built artifact rather than the source tree, and are deliberately not
+counted in the `npm test` total because they need an app to drive:
+
+| tool | what it proves |
+|---|---|
+| `verify-placement.mjs` | the ghost is wired into ui/input/renderer, not merely implemented |
+| `verify-touch.mjs` | 26 gesture and layout checks, run against the real Android WebView |
+| `verify-persistence.mjs` | the save survives the process being killed, across two app launches |
+
+`verify-persistence.mjs` is deliberately not a page reload: a reload keeps the renderer and its
+storage cache alive and therefore proves nothing about a kill. Writing it turned up that
+`localStorage` commits lazily, so a force-quit seconds after a save loses it and the game reloads
+the previous one. `main.js` now saves on `pagehide` and `visibilitychange` as well as
+`beforeunload`, which is documented as frequently never firing on Android at all.
 
 ## Newly closed since the last handoff
 
@@ -226,12 +412,17 @@ Two items that were open problems in the previous version of this document:
 
 ## Not done — the honest list
 
-- **Screenshots and recordings.** None exist in this README or on the GitHub Pages site yet. A
-  separate pass is capturing the real, running, built application now; this document and the
-  README gain their capture matrix once that lands. Do not add image references ahead of that —
+- **Screenshots exist now, and a recording still does not.** `screenshots/` holds real captures
+  from the built artifacts: the 44-building contact sheet, the placement ghost mid-drag, and four
+  taken straight off an Android device with `adb exec-out screencap`. A screen recording now
+  exists too: `screenshots/farm-tycoon-android.mp4`, 25s of the installed APK being played by real
+  touch on an Android 14 device. The old text below is kept because its warning has not expired -
   a reference to a file that isn't in the tree is worse than no image.
-- **The two open audit points above** (tea_house/oil_press unlock-inert gap; unverified multi-hop
-  kit arbitrage) are real, small, and unaddressed.
+- **Both of the audit points above are now closed.** The tea_house/oil_press unlock-inert gap is
+  fixed and structurally guarded, and the multi-hop kit arbitrage is proven dead by
+  `tools/test-economy.mjs` (best kit margin -35 coins). What replaced them is a balance finding
+  rather than a defect: coins per second of queue time spans twelve to one, and the bottom of the
+  table is not worth crafting. That is printed on every run and tracked in `ROADMAP.md`.
 - Regatta league reward tables, Township community buildings past level 70, and per-expansion
   cost numbers were never independently verified against the wiki — they were sourced from
   wiki text and images and taken at face value.
@@ -243,10 +434,17 @@ Two items that were open problems in the previous version of this document:
 
 ## Suggested order for the next session
 
-1. Capture matrix — screenshots/recordings of the real running game for the README and the
-   GitHub Pages site, once the in-flight capture pass lands (or pick that up if it hasn't).
-2. The `tea_house`/`oil_press` unlock-inert gap (small; see "Audit findings" #5).
-3. Re-simulate the full component→kit chain end to end for the Building Workshop to settle the
-   multi-hop arbitrage question definitively (see "Audit findings" #6).
+1. The GitHub Pages site still shows neither the screenshots nor either recording, although both
+   recordings are committed and linked from the README.
+
+   Worth knowing before touching the UI: `panelsearch.attach(container)` at the end of
+   `renderPanelContent` is the ONLY thing giving every panel a search bar. It is one line, and
+   deleting or commenting it removes search from twenty-nine panels at once with nothing on screen
+   to say so, which is why `tools/test-panelsearch.mjs` anchors it to the start of a line rather
+   than checking for the substring - a commented-out call still contains the text.
+2. The coins-per-second balance gap (see `ROADMAP.md`): nothing is broken, but a recipe nobody
+   would ever choose is dead content, and six of them earn under a hundredth of a coin a second.
+3. Phase 6 integration — per-family audio, a Bake Book from `state.minigames.best`, and
+   Masterpiece achievements — which is the last unbuilt piece of the playable-item system.
 4. Re-derive the regatta league reward tables, post-level-70 Township buildings, and expansion
    costs directly from primary sources rather than wiki text/images, if that matters for release.

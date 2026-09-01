@@ -103,32 +103,32 @@ export const GOODS = {
   turkey_feed:  { icon: '🌕', name: 'Turkey Feed',  sellPrice: 30 },
   // bakery
   bread:        { icon: '🍞', name: 'Bread',           sellPrice: 22 },
-  corn_bread:   { icon: '🫓', name: 'Corn Bread',      sellPrice: 32 },
+  corn_bread:   { icon: '🫓', name: 'Corn Bread',      sellPrice: 39 },
   cookie:       { icon: '🍪', name: 'Cookie',          sellPrice: 100 },
   muffin:       { icon: '🧁', name: 'Strawberry Muffin', sellPrice: 220 },
   // dairy
   cream:        { icon: '🫗', name: 'Cream',        sellPrice: 28 },
-  butter:       { icon: '🧈', name: 'Butter',       sellPrice: 46 },
-  cheese:       { icon: '🧀', name: 'Cheese',       sellPrice: 60 },
-  goat_cheese:  { icon: '🐐', name: 'Goat Cheese',  sellPrice: 96 },
+  butter:       { icon: '🧈', name: 'Butter',       sellPrice: 71 },
+  cheese:       { icon: '🧀', name: 'Cheese',       sellPrice: 77 },
+  goat_cheese:  { icon: '🐐', name: 'Goat Cheese',  sellPrice: 141 },
   // sugar mill
   sugar:        { icon: '🧂', name: 'Sugar',        sellPrice: 30 },
-  brown_sugar:  { icon: '🟤', name: 'Brown Sugar',  sellPrice: 42 },
-  syrup:        { icon: '🧴', name: 'Syrup',        sellPrice: 78 },
+  brown_sugar:  { icon: '🟤', name: 'Brown Sugar',  sellPrice: 61 },
+  syrup:        { icon: '🧴', name: 'Syrup',        sellPrice: 122 },
   // popcorn pot
   popcorn:          { icon: '🍿', name: 'Popcorn',          sellPrice: 20 },
-  buttered_popcorn: { icon: '🧈', name: 'Buttered Popcorn', sellPrice: 74 },
-  chili_popcorn:    { icon: '🌶️', name: 'Chili Popcorn',    sellPrice: 130 },
+  buttered_popcorn: { icon: '🧈', name: 'Buttered Popcorn', sellPrice: 136 },
+  chili_popcorn:    { icon: '🌶️', name: 'Chili Popcorn',    sellPrice: 178 },
   // grill
   pancakes:     { icon: '🥞', name: 'Pancakes',     sellPrice: 170 },
-  bacon_eggs:   { icon: '🍳', name: 'Bacon & Eggs', sellPrice: 56 },
+  bacon_eggs:   { icon: '🍳', name: 'Bacon & Eggs', sellPrice: 72 },
   baked_potato: { icon: '🥔', name: 'Baked Potato', sellPrice: 220 },
-  burger:       { icon: '🍔', name: 'Burger',       sellPrice: 150 },
+  burger:       { icon: '🍔', name: 'Burger',       sellPrice: 199 },
   // pie oven
   carrot_pie:     { icon: '🥧', name: 'Carrot Pie',     sellPrice: 80 },
-  pumpkin_pie:    { icon: '🎃', name: 'Pumpkin Pie',    sellPrice: 116 },
+  pumpkin_pie:    { icon: '🎃', name: 'Pumpkin Pie',    sellPrice: 138 },
   strawberry_pie: { icon: '🍓', name: 'Strawberry Pie', sellPrice: 310 },
-  fish_pie:       { icon: '🐟', name: 'Fish Pie',       sellPrice: 170 },
+  fish_pie:       { icon: '🐟', name: 'Fish Pie',       sellPrice: 223 },
   // loom & sewing
   cotton_fabric: { icon: '🧵', name: 'Cotton Fabric', sellPrice: 130 },
   sweater:       { icon: '🧥', name: 'Wool Sweater',  sellPrice: 104 },
@@ -136,9 +136,9 @@ export const GOODS = {
   wooly_hat:     { icon: '🧢', name: 'Wooly Hat',     sellPrice: 300 },
   blue_hat:      { icon: '🟦', name: 'Blue Wooly Hat', sellPrice: 420 },
   // juice press
-  carrot_juice:  { icon: '🧃', name: 'Carrot Juice',       sellPrice: 40 },
-  tomato_juice:  { icon: '🍅', name: 'Tomato Juice',       sellPrice: 74 },
-  smoothie:      { icon: '🥤', name: 'Strawberry Smoothie',sellPrice: 128 },
+  carrot_juice:  { icon: '🧃', name: 'Carrot Juice',       sellPrice: 53 },
+  tomato_juice:  { icon: '🍅', name: 'Tomato Juice',       sellPrice: 96 },
+  smoothie:      { icon: '🥤', name: 'Strawberry Smoothie',sellPrice: 173 },
   grape_juice:   { icon: '🍇', name: 'Grape Juice',        sellPrice: 500 },
   // jam maker
   strawberry_jam: { icon: '🫙', name: 'Strawberry Jam', sellPrice: 300 },
@@ -149,9 +149,9 @@ export const GOODS = {
   latte:        { icon: '🧋', name: 'Latte',        sellPrice: 430 },
   honey_coffee: { icon: '🍯', name: 'Honey Coffee', sellPrice: 510 },
   // candy machine
-  caramel:      { icon: '🍬', name: 'Caramel',         sellPrice: 96 },
-  chili_choc:   { icon: '🍫', name: 'Chili Chocolate', sellPrice: 184 },
-  honey_toffee: { icon: '🧈', name: 'Honey Toffee',    sellPrice: 168 },
+  caramel:      { icon: '🍬', name: 'Caramel',         sellPrice: 141 },
+  chili_choc:   { icon: '🍫', name: 'Chili Chocolate', sellPrice: 266 },
+  honey_toffee: { icon: '🧈', name: 'Honey Toffee',    sellPrice: 191 },
   // fish
   fish_perch:   { icon: '🐟', name: 'Perch',      sellPrice: 30, rarity: 'common' },
   fish_trout:   { icon: '🐠', name: 'Trout',      sellPrice: 34, rarity: 'common' },
@@ -273,10 +273,40 @@ export const GOODS = {
   plain_yogurt:     { icon: '🥛', name: 'Plain Yogurt',         sellPrice: 1350 },
   berry_yogurt:     { icon: '🫐', name: 'Berry Yogurt',         sellPrice: 2000 },
   mint_yogurt:      { icon: '🍃', name: 'Mint Yogurt',          sellPrice: 4310 },
+  // lure_workbench
+  spinner_lure:     { icon: '🎣', name: 'Spinner Lure',         sellPrice: 420 },
+  feather_fly:      { icon: '🪶', name: 'Feather Fly',          sellPrice: 660 },
+  deep_rig:         { icon: '🪝', name: 'Deep Rig',             sellPrice: 1180 },
+  // honey_extractor
+  beeswax:          { icon: '🕯️', name: 'Beeswax',              sellPrice: 640 },
+  honeycomb:        { icon: '🍯', name: 'Honeycomb',            sellPrice: 980 },
+  royal_jelly:      { icon: '👑', name: 'Royal Jelly',          sellPrice: 1720 },
+  // milkshake_bar
+  vanilla_shake:    { icon: '🥤', name: 'Vanilla Shake',        sellPrice: 1420 },
+  choco_shake:      { icon: '🍫', name: 'Chocolate Shake',      sellPrice: 1880 },
+  berry_shake:      { icon: '🍓', name: 'Berry Shake',          sellPrice: 2540 },
+  // omelet_station
+  plain_omelet:     { icon: '🍳', name: 'Plain Omelet',         sellPrice: 780 },
+  cheese_omelet:    { icon: '🧀', name: 'Cheese Omelet',        sellPrice: 1260 },
+  garden_omelet:    { icon: '🍄', name: 'Garden Omelet',        sellPrice: 2080 },
+  // hot_dog_stand
+  hot_dog:          { icon: '🌭', name: 'Hot Dog',              sellPrice: 940 },
+  chili_dog:        { icon: '🌶️', name: 'Chili Dog',            sellPrice: 1480 },
+  corn_dog:         { icon: '🌽', name: 'Corn Dog',             sellPrice: 2140 },
+  // smoothie_mixer
+  berry_smoothie:   { icon: '🥤', name: 'Berry Smoothie',       sellPrice: 1180 },
+  mango_smoothie:   { icon: '🥭', name: 'Mango Smoothie',       sellPrice: 1540 },
+  green_smoothie:   { icon: '🥬', name: 'Green Smoothie',       sellPrice: 2260 },
   // sinks for the new animal products, added to existing buildings
   lamb_skewer:      { icon: '🍢', name: 'Lamb Skewer',          sellPrice: 820 },
   alpaca_scarf:     { icon: '🧣', name: 'Alpaca Scarf',         sellPrice: 420 },
   // kits for the ten buildings above
+  kit_lure_workbench:       { icon: '🎣', name: 'Lure Workbench Kit',   sellPrice: 430 },
+  kit_honey_extractor:      { icon: '🐝', name: 'Honey Extractor Kit',  sellPrice: 560 },
+  kit_milkshake_bar:        { icon: '🥤', name: 'Milkshake Bar Kit',     sellPrice: 840 },
+  kit_omelet_station:       { icon: '🍳', name: 'Omelet Station Kit',    sellPrice: 800 },
+  kit_hot_dog_stand:        { icon: '🌭', name: 'Hot Dog Stand Kit',     sellPrice: 780 },
+  kit_smoothie_mixer:       { icon: '🥤', name: 'Smoothie Mixer Kit',    sellPrice: 760 },
   kit_oil_press:            { icon: '🫒', name: 'Oil Press Kit',          sellPrice: 500 },
   kit_tea_house:            { icon: '🍵', name: 'Tea House Kit',          sellPrice: 730 },
   kit_sushi_bar:            { icon: '🍣', name: 'Sushi Bar Kit',          sellPrice: 720 },
@@ -324,9 +354,9 @@ export const GOODS = {
   // one recipe in three rather than one per building.
   club_sandwich:  { icon: '🥪', name: 'Club Sandwich',  sellPrice: 342 },
   bacon_butty:    { icon: '🥓', name: 'Bacon Butty',    sellPrice: 112 },
-  beef_taco:      { icon: '🌮', name: 'Beef Taco',      sellPrice: 268 },
-  corn_salsa:     { icon: '🌽', name: 'Corn Salsa',     sellPrice: 96  },
-  wool_hat:       { icon: '🎩', name: 'Wool Hat',       sellPrice: 160 },
+  beef_taco:      { icon: '🌮', name: 'Beef Taco',      sellPrice: 381 },
+  corn_salsa:     { icon: '🌽', name: 'Corn Salsa',     sellPrice: 130  },
+  wool_hat:       { icon: '🎩', name: 'Wool Hat',       sellPrice: 240 },
   sun_hat:        { icon: '👒', name: 'Sun Hat',        sellPrice: 358 },
   ring_donut:     { icon: '🍩', name: 'Ring Donut',     sellPrice: 190 },
   honey_donut:    { icon: '🍯', name: 'Honey Donut',    sellPrice: 306 },
@@ -341,18 +371,46 @@ export const GOODS = {
   cardboard:    { icon: '📦', name: 'Cardboard',    sellPrice: 730 },
   rubber:       { icon: '🛞', name: 'Rubber',       sellPrice: 330 },
   glue:         { icon: '🧴', name: 'Glue',         sellPrice: 700 },
-  scented_candle: { icon: '🕯', name: 'Scented Candle', sellPrice: 476 },
+  scented_candle: { icon: '🕯', name: 'Scented Candle', sellPrice: 688 },
   beeswax_taper:  { icon: '🐇', name: 'Beeswax Taper',  sellPrice: 214 },
   kit_paper_mill:     { icon: '📄', name: 'Paper Mill Kit',     sellPrice: 520 },
   kit_rubber_factory: { icon: '🛞', name: 'Rubber Factory Kit', sellPrice: 580 },
   kit_candle_maker:   { icon: '🕯', name: 'Candle Maker Kit',   sellPrice: 440 },
+  kit_net_maker:      { icon: '🕸', name: 'Net Maker Kit',      sellPrice: 380 },
+  kit_doner_stand:    { icon: '🥙', name: 'Doner Stand Kit',    sellPrice: 420 },
+  kit_lobster_pool:   { icon: '🦞', name: 'Lobster Pool Kit',   sellPrice: 560 },
+  kit_duck_salon:     { icon: '🦆', name: 'Duck Salon Kit',     sellPrice: 600 },
+  kit_pasta_maker:    { icon: '🍝', name: 'Pasta Maker Kit',    sellPrice: 720 },
+
+  // Net maker. Its three outputs are INPUTS to the lobster pool rather than sale goods, which is
+  // the same upstream/downstream shape the paper mill and rubber factory already have: a building
+  // whose products are worth making because something later wants them.
+  fishing_net:    { icon: '🕸', name: 'Fishing Net',    sellPrice: 500 },
+  lobster_trap:   { icon: '🧺', name: 'Lobster Trap',   sellPrice: 580 },
+  crab_trap:      { icon: '🦺', name: 'Crab Trap',      sellPrice: 640 },
+
+  doner_kebab:    { icon: '🥙', name: 'Doner Kebab',    sellPrice: 275 },
+  doner_wrap:     { icon: '🌯', name: 'Doner Wrap',     sellPrice: 400 },
+  kofta_plate:    { icon: '🍖', name: 'Kofta Plate',    sellPrice: 900 },
+
+  lobster:        { icon: '🦞', name: 'Lobster',        sellPrice: 1020 },
+  blue_crab:      { icon: '🦀', name: 'Blue Crab',      sellPrice: 1150 },
+  prawn_tail:     { icon: '🦐', name: 'Prawn Tail',     sellPrice: 1090 },
+
+  feather_duster: { icon: '🧹', name: 'Feather Duster', sellPrice: 310 },
+  down_pillow:    { icon: '🛏', name: 'Down Pillow',    sellPrice: 650 },
+  down_jacket:    { icon: '🧥', name: 'Down Jacket',    sellPrice: 1250 },
+
+  macaroni:       { icon: '🍜', name: 'Macaroni',       sellPrice: 620 },
+  penne:          { icon: '🍝', name: 'Penne',          sellPrice: 900 },
+  ravioli:        { icon: '🥟', name: 'Ravioli',        sellPrice: 2200 },
 
   // Dessert tier — the Cake Oven's own intermediates and its cakes. batter/frosting/fondant are
   // made in the Cake Oven itself and feed its later recipes, which is what gives the building an
   // internal chain rather than five unrelated one-shot recipes.
   batter:          { icon: '🥣', name: 'Batter',          sellPrice: 84 },
   frosting:        { icon: '🧁', name: 'Frosting',        sellPrice: 128 },
-  fondant:         { icon: '🎀', name: 'Fondant',         sellPrice: 197 },
+  fondant:         { icon: '🎀', name: 'Fondant',         sellPrice: 258 },
   sponge_cake:     { icon: '🍰', name: 'Sponge Cake',     sellPrice: 190 },
   carrot_cake:     { icon: '🥕', name: 'Carrot Cake',     sellPrice: 355 },
   strawberry_cake: { icon: '🍓', name: 'Strawberry Cake', sellPrice: 508 },
@@ -534,7 +592,7 @@ export const BUILDINGS = {
     ],
   },
   oil_press: {
-    name: 'Oil Press', unlockLevel: 52, cost: 18000, size: [2, 2], kit: 'kit_oil_press', minigame: 'press_flow', queueSlots: 3,
+    name: 'Oil Press', unlockLevel: 55, cost: 18000, size: [2, 2], kit: 'kit_oil_press', minigame: 'press_flow', queueSlots: 3,
     recipes: [
       { id: 'olive_oil',      inputs: { olive: 3 },                                   time: 2700,  xp: 22, unlockLevel: 55 },
       { id: 'herb_oil',       inputs: { olive: 2, mint: 2 },                          time: 3600,  xp: 28, unlockLevel: 84,
@@ -543,12 +601,66 @@ export const BUILDINGS = {
     ],
   },
   tea_house: {
-    name: 'Tea House', unlockLevel: 56, cost: 26000, size: [2, 2], kit: 'kit_tea_house', minigame: 'steep_timer', queueSlots: 3,
+    name: 'Tea House', unlockLevel: 62, cost: 26000, size: [2, 2], kit: 'kit_tea_house', minigame: 'steep_timer', queueSlots: 3,
     recipes: [
       { id: 'green_tea',      inputs: { tea_leaf: 3 },                                time: 1800,  xp: 24, unlockLevel: 62 },
       { id: 'milk_tea',       inputs: { tea_leaf: 2, milk: 1 },                       time: 2700,  xp: 30, unlockLevel: 62 },
       { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36, unlockLevel: 62 },
-      { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84 },
+      { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84,
+        play: { stages: [{ verb: 'arc_pour' }] } },
+    ],
+  },
+  lure_workbench: {
+    name: 'Lure Workbench', unlockLevel: 28, cost: 9500, size: [2, 2], kit: 'kit_lure_workbench', minigame: 'hook_timing', queueSlots: 3,
+    recipes: [
+      { id: 'spinner_lure',   inputs: { wire: 2, plank: 1 },                           time: 1800,  xp: 20, unlockLevel: 28 },
+      { id: 'feather_fly',    inputs: { wire: 1, wool: 2, cotton: 1 },                 time: 2700,  xp: 28, unlockLevel: 28 },
+      { id: 'deep_rig',       inputs: { wire: 3, rope: 2, plank: 1 },                  time: 5400,  xp: 48, unlockLevel: 32,
+        play: { stages: [{ verb: 'set_hook' }] } },
+    ],
+  },
+  honey_extractor: {
+    name: 'Honey Extractor', unlockLevel: 39, cost: 15000, size: [2, 2], kit: 'kit_honey_extractor', minigame: 'comb_nerve', queueSlots: 3,
+    recipes: [
+      { id: 'beeswax',        inputs: { honey: 3 },                                    time: 2400,  xp: 26, unlockLevel: 39 },
+      { id: 'honeycomb',      inputs: { honey: 4, sugar: 1 },                          time: 3600,  xp: 34, unlockLevel: 39 },
+      { id: 'royal_jelly',    inputs: { honey: 6, cream: 1 },                          time: 6300,  xp: 56, unlockLevel: 44,
+        play: { stages: [{ verb: 'press_luck' }] } },
+    ],
+  },
+  milkshake_bar: {
+    name: 'Milkshake Bar', unlockLevel: 86, cost: 62000, size: [2, 2], kit: 'kit_milkshake_bar', minigame: 'peek_judge', queueSlots: 3,
+    recipes: [
+      { id: 'vanilla_shake',  inputs: { milk: 3, vanilla: 1, ice_cream: 1 },            time: 3600,  xp: 40, unlockLevel: 86 },
+      { id: 'choco_shake',    inputs: { milk: 3, cocoa: 2, ice_cream: 1 },              time: 4800,  xp: 48, unlockLevel: 86 },
+      { id: 'berry_shake',    inputs: { milk: 2, strawberry: 3, ice_cream: 1 },         time: 6000,  xp: 58, unlockLevel: 88,
+        play: { stages: [{ verb: 'peek_pour' }] } },
+    ],
+  },
+  omelet_station: {
+    name: 'Omelet Station', unlockLevel: 77, cost: 47000, size: [2, 2], kit: 'kit_omelet_station', minigame: 'pan_ride', queueSlots: 3,
+    recipes: [
+      { id: 'plain_omelet',   inputs: { egg: 3, butter: 1 },                           time: 1800,  xp: 24, unlockLevel: 77 },
+      { id: 'cheese_omelet',  inputs: { egg: 3, cheese: 2 },                           time: 3000,  xp: 34, unlockLevel: 77 },
+      { id: 'garden_omelet',  inputs: { egg: 3, mushroom: 2, bell_pepper: 1 },         time: 5100,  xp: 50, unlockLevel: 80,
+        play: { stages: [{ verb: 'ride_heat' }] } },
+    ],
+  },
+  hot_dog_stand: {
+    name: 'Hot Dog Stand', unlockLevel: 75, cost: 44000, size: [2, 2], kit: 'kit_hot_dog_stand', minigame: 'rush_hour', queueSlots: 3,
+    recipes: [
+      { id: 'hot_dog',        inputs: { bread: 1, bacon: 2 },                          time: 2100,  xp: 26, unlockLevel: 75 },
+      { id: 'chili_dog',      inputs: { bread: 1, bacon: 2, chili: 2 },                 time: 3600,  xp: 38, unlockLevel: 75 },
+      { id: 'corn_dog',       inputs: { corn: 3, bacon: 2, cheese: 1 },                 time: 5400,  xp: 52, unlockLevel: 78 },
+    ],
+  },
+  smoothie_mixer: {
+    name: 'Smoothie Mixer', unlockLevel: 74, cost: 41000, size: [2, 2], kit: 'kit_smoothie_mixer', minigame: 'vortex_read', queueSlots: 3,
+    recipes: [
+      { id: 'berry_smoothie', inputs: { strawberry: 3, milk: 1 },                      time: 2400,  xp: 28, unlockLevel: 74 },
+      { id: 'mango_smoothie', inputs: { mango: 2, banana: 2 },                         time: 3300,  xp: 34, unlockLevel: 74 },
+      { id: 'green_smoothie', inputs: { mint: 2, banana: 2, honey: 1 },                time: 5100,  xp: 50, unlockLevel: 84,
+        play: { stages: [{ verb: 'read_vortex' }] } },
     ],
   },
   sushi_bar: {
@@ -592,7 +704,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'cheese_fondue',  inputs: { cheese: 2, bread: 1 },                        time: 4500,  xp: 56, unlockLevel: 76 },
       { id: 'choco_fondue',   inputs: { cocoa: 2, cream: 1, strawberry: 2 },          time: 6300,  xp: 72, unlockLevel: 76 },
-      { id: 'herb_fondue',    inputs: { cheese: 2, bell_pepper: 2, olive_oil: 1 },    time: 7200,  xp: 80, unlockLevel: 76 },
+      { id: 'herb_fondue',    inputs: { cheese: 2, bell_pepper: 2, olive_oil: 1 },    time: 7200,  xp: 80, unlockLevel: 76,
+        play: { stages: [{ verb: 'stir_figure' }] } },
     ],
   },
   preservation_station: {
@@ -779,6 +892,74 @@ export const BUILDINGS = {
     ],
   },
 
+  // The last five factories from the two wikis. The net maker deliberately feeds the lobster pool
+  // rather than the barn, so the pair reads as one chain instead of two unrelated buildings, and
+  // the pasta maker sits at 67 UPSTREAM of the level-72 pasta kitchen: it extrudes the dry shapes,
+  // the kitchen cooks dishes out of them. That ordering is why the maker cannot use fresh_pasta.
+  net_maker: {
+    name: 'Net Maker', unlockLevel: 30, cost: 7000, size: [2, 2],
+    kit: 'kit_net_maker', minigame: 'mesh_even', queueSlots: 3,
+    recipes: [
+      { id: 'fishing_net',    inputs: { cotton_fabric: 2, wool: 1 },                      time: 2400, xp: 26, unlockLevel: 30 },
+      { id: 'lobster_trap',   inputs: { driftwood: 2, cotton_fabric: 1, wiring_loom: 1 }, time: 3600, xp: 36, unlockLevel: 30 },
+      // PLAYABLE - drag, and the only verb whose moves are made illegal by the SHAPE of your
+      // earlier ones. A net has to close, and it must not cross itself.
+      { id: 'crab_trap',      inputs: { driftwood: 4, wiring_loom: 1, wool: 2 },          time: 5400, xp: 52, unlockLevel: 34,
+        play: { stages: [{ verb: 'weave_mesh' }] } },
+    ],
+  },
+  // Hay Day puts the kebab stand at 32. Here lamb does not arrive until 53, so 32 would be a
+  // factory that cannot cook anything for twenty-one levels. It sits at 54 instead, one level
+  // after its meat, in a level that had nothing but an expansion.
+  doner_stand: {
+    name: 'Doner Kebab Stand', unlockLevel: 54, cost: 32000, size: [2, 2],
+    kit: 'kit_doner_stand', minigame: 'even_portion', queueSlots: 3,
+    recipes: [
+      { id: 'doner_kebab',    inputs: { lamb_chop: 2, bread: 1 },                         time: 2400, xp: 26, unlockLevel: 54 },
+      { id: 'doner_wrap',     inputs: { lamb_chop: 2, bread: 1, tomato: 2 },              time: 3600, xp: 38, unlockLevel: 54 },
+      // PLAYABLE - release, and the only verb in the game scored on the SPREAD of your attempts
+      // rather than on how good any one of them was. Five identical portions beat four great ones.
+      { id: 'kofta_plate',    inputs: { lamb_chop: 3, chili: 2, cheese: 1 },              time: 6000, xp: 58, unlockLevel: 58,
+        play: { stages: [{ verb: 'match_portions' }] } },
+    ],
+  },
+  lobster_pool: {
+    name: 'Lobster Pool', unlockLevel: 44, cost: 20000, size: [2, 2],
+    kit: 'kit_lobster_pool', minigame: 'pot_spacing', queueSlots: 3,
+    recipes: [
+      { id: 'lobster',        inputs: { lobster_trap: 1, driftwood: 1 },                  time: 5400, xp: 52, unlockLevel: 44 },
+      { id: 'blue_crab',      inputs: { crab_trap: 1 },                                   time: 6000, xp: 58, unlockLevel: 44 },
+      // PLAYABLE - aim, and the only PACKING problem here. There is no target to hit at all; a
+      // drop is judged against every drop already on the water.
+      { id: 'prawn_tail',     inputs: { fishing_net: 1, driftwood: 2 },                   time: 7200, xp: 70, unlockLevel: 47,
+        play: { stages: [{ verb: 'set_pots' }] } },
+    ],
+  },
+  duck_salon: {
+    name: 'Duck Salon', unlockLevel: 50, cost: 24000, size: [2, 2],
+    kit: 'kit_duck_salon', minigame: 'calm_touch', queueSlots: 3,
+    recipes: [
+      { id: 'feather_duster', inputs: { feathers: 3, driftwood: 1 },                      time: 2700, xp: 28, unlockLevel: 50 },
+      { id: 'down_pillow',    inputs: { down_feather: 3, cotton_fabric: 2 },              time: 4800, xp: 48, unlockLevel: 50 },
+      // PLAYABLE - path, and the only one where moving WELL means moving slowly. Every other path
+      // verb rewards covering ground; this one punishes it.
+      { id: 'down_jacket',    inputs: { down_feather: 4, cotton_fabric: 3, wool: 2 },     time: 7800, xp: 76, unlockLevel: 54,
+        play: { stages: [{ verb: 'calm_hands' }] } },
+    ],
+  },
+  pasta_maker: {
+    name: 'Pasta Maker', unlockLevel: 67, cost: 58000, size: [2, 2],
+    kit: 'kit_pasta_maker', minigame: 'die_batching', queueSlots: 3,
+    recipes: [
+      { id: 'macaroni',       inputs: { wheat: 4, egg: 2 },                               time: 3600, xp: 38, unlockLevel: 67 },
+      { id: 'penne',          inputs: { wheat: 5, egg: 3, cheese: 2 },                    time: 5400, xp: 56, unlockLevel: 67 },
+      // PLAYABLE - route, and it survives the trap that killed work_rush: the cost lives in the
+      // TRANSITIONS, not the items, so grouping by die is provably better than first-come order.
+      { id: 'ravioli',        inputs: { wheat: 5, egg: 3, cheese: 3, olive_oil: 1 },      time: 7800, xp: 78, unlockLevel: 70,
+        play: { stages: [{ verb: 'batch_dies' }] } },
+    ],
+  },
+
   build_workshop: {
     name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
     recipes: [
@@ -806,6 +987,11 @@ export const BUILDINGS = {
       { id: 'kit_rubber_factory', inputs: { beam: 3, frame: 2, plumbing: 1 }, time: 13800, xp: 44, unlockLevel: 6, sink: true },
       { id: 'kit_candle_maker',   inputs: { frame: 2, panel: 2, glazing: 1 }, time: 10200, xp: 34, unlockLevel: 6, sink: true },
       { id: 'kit_cake_oven', inputs: { frame: 3, panel: 2, fitting: 2, glazing: 1 }, time: 9000, xp: 34, unlockLevel: 6, sink: true },
+      { id: 'kit_net_maker',    inputs: { frame: 2, panel: 2 },                  time: 7200,  xp: 26, unlockLevel: 6, sink: true },
+      { id: 'kit_doner_stand',  inputs: { beam: 2, panel: 2, fitting: 1 },       time: 8400,  xp: 30, unlockLevel: 6, sink: true },
+      { id: 'kit_lobster_pool', inputs: { beam: 3, plumbing: 2, glazing: 1 },    time: 13200, xp: 42, unlockLevel: 6, sink: true },
+      { id: 'kit_duck_salon',   inputs: { frame: 3, panel: 3, glazing: 1 },      time: 14400, xp: 46, unlockLevel: 6, sink: true },
+      { id: 'kit_pasta_maker',  inputs: { beam: 3, fitting: 3, wiring_loom: 1 }, time: 16800, xp: 54, unlockLevel: 6, sink: true },
       { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 6,  sink: true },
       { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 6,  sink: true },
       { id: 'kit_sewing_machine',   inputs: { frame: 4, fitting: 3, wiring_loom: 1 },           time: 12600, xp: 42, unlockLevel: 6,  sink: true },
@@ -818,6 +1004,12 @@ export const BUILDINGS = {
       { id: 'kit_oil_press',          inputs: { beam: 3, plumbing: 2, panel: 3 },             time: 32400, xp: 92, unlockLevel: 21, sink: true },
       { id: 'kit_tea_house',          inputs: { frame: 4, glazing: 3, shingle: 5, tile: 4 },           time: 36300, xp: 103, unlockLevel: 21, sink: true },
       { id: 'kit_sushi_bar',          inputs: { panel: 5, glazing: 3, fitting: 3 },           time: 40680, xp: 115, unlockLevel: 21, sink: true },
+      { id: 'kit_smoothie_mixer',     inputs: { panel: 5, glazing: 4, fitting: 3 },           time: 42300, xp: 120, unlockLevel: 21, sink: true },
+      { id: 'kit_hot_dog_stand',      inputs: { panel: 6, glazing: 3, fitting: 4 },           time: 43900, xp: 124, unlockLevel: 21, sink: true },
+      { id: 'kit_omelet_station',     inputs: { panel: 6, glazing: 4, fitting: 4 },           time: 45200, xp: 128, unlockLevel: 21, sink: true },
+      { id: 'kit_milkshake_bar',      inputs: { panel: 6, glazing: 5, fitting: 4 },           time: 46800, xp: 132, unlockLevel: 21, sink: true },
+      { id: 'kit_honey_extractor',    inputs: { panel: 4, glazing: 2, fitting: 3 },           time: 33600, xp: 96,  unlockLevel: 21, sink: true },
+      { id: 'kit_lure_workbench',     inputs: { panel: 3, glazing: 2, fitting: 3 },           time: 30000, xp: 88,  unlockLevel: 21, sink: true },
       { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
       { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
       { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
@@ -861,6 +1053,12 @@ export const MINIGAMES = {
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
   press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
   steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  hook_timing:     { name: 'Set the Hook',       building: 'lure_workbench',         effect: 'hookTiming',         cap: 0.25, purpose: 'Two threads, one instant. A hook set one thread at a time pulls straight out.' },
+  comb_nerve:      { name: 'Work the Frames',    building: 'honey_extractor',        effect: 'combNerve',          cap: 0.25, purpose: 'Every frame you pull is more honey and more risk. Knowing when to stop is the whole job.' },
+  peek_judge:      { name: 'Peek and Pour',      building: 'milkshake_bar',          effect: 'pourJudgement',      cap: 0.25, purpose: 'A steel tin tells you nothing until you tip it, and tipping it costs you shake.' },
+  pan_ride:        { name: 'Ride the Heat',      building: 'omelet_station',         effect: 'panControl',         cap: 0.25, purpose: 'One pan, one temperature. Cook near what it is already at and the service flies.' },
+  rush_hour:       { name: 'Work the Rush',      building: 'hot_dog_stand',          effect: 'rushComposure',      cap: 0.25, purpose: 'A lunch rush is about what you give up. Take whichever is closest to burning.' },
+  vortex_read:     { name: 'Read the Vortex',    building: 'smoothie_mixer',         effect: 'blendFineness',      cap: 0.25, purpose: 'Every jug thins at its own rate. Stop when the vortex forms, not when the clock says.' },
   knife_work:      { name: 'Knife Work',         building: 'sushi_bar',              effect: 'knifePrecision',     cap: 0.25, purpose: 'Slice clean and even. A ragged cut ruins the roll.' },
   blend_nose:      { name: 'Blend the Notes',    building: 'perfumery',              effect: 'blendHarmony',       cap: 0.3,  purpose: 'Balance top and base notes. One loud note flattens the blend.' },
   plate_toss:      { name: 'Toss the Bowl',      building: 'salad_bar',              effect: 'plateFreshness',     cap: 0.25, purpose: 'Toss without bruising. Handled well, the leaves stay crisp.' },
@@ -881,6 +1079,11 @@ export const MINIGAMES = {
   press_sheet: { name: 'Press the Sheet', building: 'paper_mill', effect: 'sheetEvenness', cap: 0.30, purpose: 'An even sheet takes ink without blotting.' },
   tap_flow: { name: 'Tap the Flow', building: 'rubber_factory', effect: 'latexPurity', cap: 0.25, purpose: 'Cleanly tapped latex sets without bubbles.' },
   wick_true: { name: 'True the Wick', building: 'candle_maker', effect: 'wickTrueness', cap: 0.30, purpose: 'A centred wick burns down evenly.' },
+  mesh_even: { name: 'Even the Mesh', building: 'net_maker', effect: 'meshEvenness', cap: 0.25, purpose: 'An even mesh holds its catch instead of letting it slip.' },
+  even_portion: { name: 'Match the Portions', building: 'doner_stand', effect: 'portionMatch', cap: 0.25, purpose: 'Portions that all weigh the same are what turns a stand into a business.' },
+  pot_spacing: { name: 'Space the Pots', building: 'lobster_pool', effect: 'potSpacing', cap: 0.30, purpose: 'Lobsters are territorial. Pots set too close come up empty.' },
+  calm_touch: { name: 'Keep Them Calm', building: 'duck_salon', effect: 'calmTouch', cap: 0.25, purpose: 'A calm duck sits still, and a duck that sits still preens well.' },
+  die_batching: { name: 'Batch the Dies', building: 'pasta_maker', effect: 'dieBatching', cap: 0.30, purpose: 'Every die change costs minutes. Doing like with like buys them back.' },
 };
 
 /**
@@ -897,7 +1100,8 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
-  'sheetEvenness', 'latexPurity', 'wickTrueness',
+  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl', 'pourJudgement', 'combNerve', 'hookTiming',
+  'meshEvenness', 'portionMatch', 'potSpacing', 'calmTouch', 'dieBatching',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1146,6 +1350,78 @@ export const VERBS = {
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
   },
+  set_hook: {
+    name: 'Snap the Hook', verbWord: 'snap', family: 'dual',
+    purpose: 'A hook set one thread at a time pulls straight back out.',
+    hint: 'Both threads must come taut in the SAME instant. Pulling one and then the other never sets it, however hard you pull.',
+    stageClass: 'stage-dual', durationMs: 15000,
+  },
+  press_luck: {
+    name: 'Work the Frames', verbWord: 'work', family: 'release',
+    purpose: 'Every frame out is more honey and a comb closer to shattering.',
+    hint: 'Hold to pull another frame, let go to bank what you have. Listen to the creak - a shattered comb loses the lot.',
+    stageClass: 'stage-gauge', durationMs: 15000,
+  },
+  peek_pour: {
+    name: 'Peek and Pour', verbWord: 'peek', family: 'balance',
+    purpose: 'A steel tin hides how full it is, and the machine fills every one at its own rate.',
+    hint: 'Tip it left to fill, right to look inside. Looking spills a fixed amount, so buy the rate with ONE glance and work out the rest.',
+    stageClass: 'stage-balance', durationMs: 14000,
+  },
+  ride_heat: {
+    name: 'Ride the Heat', verbWord: 'ride', family: 'route',
+    purpose: 'One pan holds one temperature, and it keeps whatever the last omelet left in it.',
+    hint: 'Swinging the pan costs seconds. Work through the tickets in heat order instead of the order they arrived.',
+    stageClass: 'stage-route', durationMs: 8800,
+  },
+  read_vortex: {
+    name: 'Read the Vortex', verbWord: 'read', family: 'sustain',
+    purpose: 'Every jug is a different thickness, and only the jug knows which.',
+    hint: 'Thick jugs thin SLOWLY and need longer. Watch how fast the level drops, then let go when the vortex is due.',
+    stageClass: 'stage-sustain', durationMs: 16000,
+  },
+  arc_pour: {
+    name: 'Pour the Arc', verbWord: 'arc', family: 'aim',
+    purpose: 'A long-spout pour has to be thrown, not pointed, or it lands on the table.',
+    hint: 'The tea falls as it flies, so aim ABOVE the cup. Range comes from angle and power together - two different arcs reach the same cup.',
+    stageClass: 'stage-aim', durationMs: 15000,
+  },
+  weave_mesh: {
+    name: 'Weave the Mesh', verbWord: 'weave', family: 'drag',
+    purpose: 'A net is one thread that has to come back to where it started without crossing itself.',
+    hint: 'Drag the thread peg to peg and finish where you began. A line that crosses one you already laid is refused, so leave yourself a way home.',
+    stageClass: 'stage-drag', durationMs: 20000,
+  },
+  match_portions: {
+    name: 'Match the Portions', verbWord: 'portion', family: 'release',
+    purpose: 'A kebab stand lives on every wrap weighing the same, not on any one being perfect.',
+    hint: 'Hold to shave, let go to drop a portion. You are scored on how ALIKE the five are - there is no right size, so pick one and repeat it.',
+    stageClass: 'stage-gauge', durationMs: 16000,
+  },
+  set_pots: {
+    name: 'Space the Pots', verbWord: 'drop', family: 'aim',
+    purpose: 'Lobsters will not share ground, so a pot is only worth what its neighbours leave it.',
+    hint: 'There is nothing to hit. Drop each pot so its ring clears every ring already down and stays off the rocks - the water gets tighter as you go.',
+    stageClass: 'stage-aim', durationMs: 18000,
+  },
+  calm_hands: {
+    name: 'Keep Them Calm', verbWord: 'preen', family: 'path',
+    purpose: 'A duck startles at a fast hand, and a startled duck cannot be preened at all.',
+    hint: 'Cover every patch, but SLOWLY. Each patch has its own speed limit and the tender ones are the strictest - going quickly is the only way to fail this.',
+    stageClass: 'stage-trace', durationMs: 18000,
+  },
+  batch_dies: {
+    name: 'Batch the Dies', verbWord: 'batch', family: 'route',
+    purpose: 'Swapping the die costs minutes, so the order you work the tickets in is the whole job.',
+    hint: 'Tickets can be taken in any order. Clearing every ticket for the die already fitted before you change it is worth far more than serving them as they came.',
+    stageClass: 'stage-route', durationMs: 13500,
+  },
+  stir_figure: {
+    name: 'Stir the Figure', verbWord: 'stir', family: 'path',
+    purpose: 'An even figure of eight keeps the fondue smooth instead of splitting it.',
+    hint: 'Your FIRST lap sets the shape. Every lap after is judged against that one, not against any line we drew.',
+    stageClass: 'stage-trace', durationMs: 15000,
+  },
 };
 export const QUALITY = {
   worstStageCap: 0.25,
@@ -1387,9 +1663,9 @@ export const LEVELS = {
     25: ['chili', 'expansion_4'],
     26: ['candy_machine'],
     27: ['duck'],
-    28: ['expansion_5', 'airport', 'taco_kitchen'],
+    28: ['expansion_5', 'airport', 'taco_kitchen', 'lure_workbench'],
     29: ['coffee', 'ice_cream_maker'],
-    30: ['coffee_kiosk'],
+    30: ['coffee_kiosk', 'net_maker'],
     31: ['expansion_6'],
     32: ['silo_mega_upgrade'],
     33: ['grapes', 'hat_maker'],
@@ -1398,47 +1674,47 @@ export const LEVELS = {
     36: ['golden_fields', 'islands', 'isle_palm', 'tropical_cafe'],
     37: ['expansion_8'],
     38: ['master_orders', 'donut_maker'],
-    39: ['expansion_9'],
+    39: ['expansion_9', 'honey_extractor'],
     40: ['golden_windmill', 'pine'],
     41: ['zoo_penguin'],
     42: ['zoo_flamingo', 'paper_mill'],
     43: ['isle_coral'],
-    44: ['zoo_lion', 'rubber_tree'],
+    44: ['zoo_lion', 'rubber_tree', 'lobster_pool'],
     45: ['isle_lagoon'],
     46: ['zoo_panda', 'soup_kitchen', 'rubber_factory'],
     47: ['isle_volcano'],
     48: ['zoo_giraffe'],
     49: ['town_mega_milestone'],
-    50: ['zoo_elephant', 'golden_town_statue'],
+    50: ['zoo_elephant', 'golden_town_statue', 'duck_salon'],
     // Levels 51-95. Every level carries at least one unlock: the validator refuses a
     // dead level, which is what keeps the late game from becoming a silent XP corridor.
     51: ['rice'],
-    52: ['oil_press', 'isle_frutus'],
+    52: ['isle_frutus'],
     53: ['lamb'],
-    54: ['expansion_10'],
-    55: ['olive', 'sauce_maker'],
-    56: ['tea_house', 'zoo_otter'],
+    54: ['expansion_10', 'doner_stand'],
+    55: ['olive', 'sauce_maker', 'oil_press'],
+    56: ['zoo_otter'],
     57: ['silo_titan_upgrade'],
     58: ['lavender', 'quail', 'isle_olivia', 'candle_maker'],
     59: ['expansion_11'],
     60: ['sushi_bar'],
     61: ['barn_titan_upgrade'],
-    62: ['tea_leaf', 'zoo_toucan'],
+    62: ['tea_leaf', 'zoo_toucan', 'tea_house'],
     63: ['expansion_12'],
     64: ['perfumery', 'alpaca'],
     65: ['golden_meadow'],
     66: ['bell_pepper', 'isle_fishers'],
-    67: ['expansion_13'],
+    67: ['expansion_13', 'pasta_maker'],
     68: ['salad_bar', 'zoo_koala'],
     69: ['master_orders_ii'],
     70: ['grand_fair'],
     71: ['peony', 'flower_shop'],
     72: ['pasta_kitchen', 'otter'],
     73: ['expansion_14'],
-    74: ['harvest_festival', 'isle_bonita'],
-    75: ['deep_silo', 'zoo_tiger'],
+    74: ['harvest_festival', 'isle_bonita', 'smoothie_mixer'],
+    75: ['deep_silo', 'zoo_tiger', 'hot_dog_stand'],
     76: ['fondue_pot'],
-    77: ['watermelon'],
+    77: ['watermelon', 'omelet_station'],
     78: ['expansion_15'],
     79: ['golden_barn'],
     80: ['preservation_station'],
@@ -1447,7 +1723,7 @@ export const LEVELS = {
     83: ['master_grower', 'zoo_polar'],
     84: ['mint'],
     85: ['jeweler'],
-    86: ['gilded_orders'],
+    86: ['gilded_orders', 'milkshake_bar'],
     87: ['master_rancher'],
     88: ['grand_market'],
     89: ['master_crafter'],

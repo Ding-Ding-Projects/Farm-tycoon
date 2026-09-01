@@ -65,8 +65,21 @@ export function createInput(family, host, opts = {}) {
   let keyCursorX = 0.5, keyCursorY = 0.5;
   // aim: a heading plus a power that builds while held, both committed on release.
   let aimAngle = 0, aimPower = 0, aimFired = false;
-  // dual: two independent values, one per side. Pointer picks a side by x, keys split Q/A and P/L.
+  // dual: two independent values, one per side. Keys split Q/A and P/L; a mouse picks a side by
+  // where it is; a touch screen gives each finger the side it landed on, below.
   let leftV = 0.5, rightV = 0.5;
+  // Which side each TOUCH pointer owns, keyed by pointerId.
+  //
+  // Two fingers one per half already worked under the old position rule, because each move landed
+  // in its own half and set its own value. What did NOT work is a finger crossing the midline: it
+  // silently began driving the other side, clobbering whatever the other finger was holding and
+  // freezing its own. throw_shuttles and blend_notes both move two values that can genuinely pass
+  // each other, so that is a real defect rather than a theoretical one.
+  //
+  // Mouse pointers are deliberately absent from this map. A mouse has exactly one position, so
+  // picking the side from that position is the only thing it can mean, and its behaviour is
+  // unchanged.
+  const dualSide = new Map();
   // steer: a heading you correct while a throttle is held.
   let heading = 0, throttle = 0;
   // drag: carry one thing from a source to a destination.
@@ -94,6 +107,9 @@ export function createInput(family, host, opts = {}) {
       const src = ev.target && ev.target.closest && ev.target.closest('[data-grab]');
       if (src) grabbed = Number(src.dataset.grab);
     }
+    if (family === 'dual' && ev.pointerType === 'touch') {
+      dualSide.set(ev.pointerId, p.x < 0.5 ? 'left' : 'right');
+    }
     host.focus();
     ev.preventDefault();
   });
@@ -104,7 +120,13 @@ export function createInput(family, host, opts = {}) {
     if (family === 'rate') rate = 1 - p.y;
     if (family === 'aim' && down) aimAngle = Math.atan2(p.y - 0.5, p.x - 0.5);
     if (family === 'steer') heading = (p.x - 0.5) * 2;
-    if (family === 'dual') { if (p.x < 0.5) leftV = 1 - p.y; else rightV = 1 - p.y; }
+    if (family === 'dual') {
+      const side = dualSide.get(ev.pointerId);
+      if (side === 'left') leftV = 1 - p.y;
+      else if (side === 'right') rightV = 1 - p.y;
+      else if (p.x < 0.5) leftV = 1 - p.y;      // mouse: side follows position, as before
+      else rightV = 1 - p.y;
+    }
   });
 
   on(doc, 'pointerup', (ev) => {
@@ -117,6 +139,7 @@ export function createInput(family, host, opts = {}) {
       dropOn = dst ? Number(dst.dataset.drop) : -1;
       dropped = true;
     }
+    dualSide.delete(ev.pointerId);
     down = false;
     lastHeldAt = ev.timeStamp;
   });
@@ -127,6 +150,23 @@ export function createInput(family, host, opts = {}) {
       if (!ev.repeat) taps.push({ tMs: ev.timeStamp });
       down = true;
       if (family === 'route') commit = true;
+      // Dragging by keyboard is TWO presses: the first picks up whatever is focused, the second
+      // puts it down on whatever is focused then. Before this, `grabbed` was only ever assigned
+      // from a pointerdown, so a keyboard user could not pick anything up AT ALL - and keyup's
+      // `dropOn = grabbed` then dropped each thing back onto itself. The whole drag family was
+      // unplayable without a mouse, on crafts that cannot be collected any other way, which made
+      // it a gate rather than a game. Tab moves between the pegs; Enter grabs, Enter drops.
+      if (family === 'drag' && !ev.repeat) {
+        const el = doc.activeElement;
+        const near = (attr) => (el && el.closest ? el.closest(`[${attr}]`) : null);
+        if (grabbed < 0) {
+          const src = near('data-grab');
+          if (src) grabbed = Number(src.dataset.grab);
+        } else {
+          const dst = near('data-drop');
+          if (dst) { dropOn = Number(dst.dataset.drop); dropped = true; }
+        }
+      }
       ev.preventDefault();
       return;
     }
@@ -163,7 +203,9 @@ export function createInput(family, host, opts = {}) {
       if (family === 'release') fired = true;
       if (family === 'aim') aimFired = true;
       if (family === 'steer') throttle = 0;
-      if (family === 'drag' && grabbed >= 0) { dropOn = grabbed; dropped = true; }
+      // drag's keyboard drop happens on keydown above, so that a press can mean 'pick up' or
+      // 'put down' depending on whether a thing is already in hand. Dropping here as well would
+      // fire both halves off one press and put every item straight back where it came from.
       down = false;
     }
   });

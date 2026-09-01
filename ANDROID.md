@@ -14,6 +14,18 @@ has been built, what has deliberately **not** been done, and the exact steps and
 | Keystore material added to `.gitignore` **before** any key exists | done |
 | Android launcher icons generated in code (10 PNGs, 5 densities) | done |
 | Mobile layout pass, verified at 320x720 and 375x812 | done |
+| Pinch-zoom and two-finger pan in `src/input.js` | done, and verified under emulated touch |
+| `viewport-fit=cover`, so `env(safe-area-inset-*)` reports real values | done |
+| Per-finger sides for the `dual` family, so two hands work | done, and verified |
+| `touch-action` layering so the WebView cannot cancel a verb mid-gesture | done, and verified |
+| Save on `pagehide` and `visibilitychange`, not just `beforeunload` | done, and verified |
+| Native Android project generated (`npx cap add android`) | done |
+| `webDir` staged to `www/` instead of the repository root | done, 1.8 MB instead of 639 MB |
+| One-command build, `tools/build-android.mjs` | done |
+| **Debug APK built, installed and PLAYED on an emulator** | done, with device screenshots |
+| Release signing wired into Gradle (`--release`) | done, injected not hand-edited |
+| Release task itself proven to build | done, produces an unsigned APK with no key present |
+| Release APK actually signed | **blocked: needs your keystore, see below** |
 | Native `android/` project generated | **not done** (needs the Android SDK) |
 | Release keystore created | **not done** (must be created by the repository owner) |
 | APK built | **not done** |
@@ -96,27 +108,140 @@ apps" enabled.
 - [ ] `apksigner verify --print-certs` reports the APK as signed
 - [ ] The app installs and launches
 - [ ] `chrome://inspect` shows zero console errors on boot
+- [x] **The app launches on a real Android 14 emulator with no errors.** Built as a debug APK,
+      installed with `adb install`, launched to `com.farmtycoon.game/.MainActivity`. Capacitor
+      serves every ES module over `https://localhost/src/...` and the game boots clean.
+- [x] **A real touch event plants a crop.** `adb shell input tap` on a field plot consumed a seed
+      (6/50 to 5/50) and advanced the tutorial to the growth-timer step. Screenshots captured
+      straight off the device with `adb exec-out screencap`.
 - [ ] The world renders, and pans and zooms by touch
-- [ ] Pinch-zoom and two-finger pan behave
+- [ ] Pinch-zoom and two-finger pan behave *on real glass*. These now exist and are covered by
+      `tools/verify-touch.mjs`, which drives genuine multi-pointer `PointerEvent`s through
+      `input.js`'s own listeners at a 390x844 viewport with `Emulation.setTouchEmulationEnabled`.
+      Nine checks pass, including that an extreme pinch cannot escape the zoom bounds and that a
+      two-finger touch never decays into a stray tap. Emulated touch is still not a finger, so
+      this stays an open device item: what is closed is "the code path does not exist".
 - [ ] A craft can be queued, played through its minigame, and collected
 - [ ] Each of the twelve input families is playable by touch, in particular
       `dual` (two independent values at once) and `drag` (carry and drop), which
       were designed against a mouse and a keyboard
-- [ ] The save survives a force-quit and a relaunch
+- [ ] The save survives a force-quit and a relaunch. **Measured on the desktop build, and it
+      produced a real finding worth carrying to the device.** `localStorage` is committed to disk
+      lazily: killing the process seconds after a save loses that save completely and the game
+      reloads the PREVIOUS one, while the identical kill after a settling window keeps everything.
+      Nothing is corrupted and no save is reset, so the failure mode is losing the last stretch of
+      play rather than the farm, but on a phone the OS reclaims apps routinely and that stretch is
+      exactly what a player would notice.
+
+      Mitigated by saving on `pagehide` and on `visibilitychange` to hidden, which fire when the
+      app leaves the foreground and give the browser its chance to commit. `beforeunload` alone was
+      not enough, and is documented as frequently never firing on Android at all. Both halves are
+      demonstrated by `tools/verify-persistence.mjs`, which runs across two separate app launches
+      sharing one profile rather than across a page reload, since a reload keeps the renderer and
+      its storage cache alive and proves nothing about a kill.
+
+      Still open on device, because Android's WebView commit timing is its own: confirm that a
+      real force-quit and a real swipe-away both keep the last save.
 - [ ] Layout holds at the device's real width, including the minigame modal
 - [ ] The launcher icon renders correctly at the home-screen size
 
 **A desktop browser narrowed to phone width is not evidence for any touch item above.** It still
 has a mouse, it has no on-screen keyboard, and it does not report touch points. The layout items
-were checked that way and are marked done above; the touch items were not, and are not.
+were checked that way and are marked done above.
+
+The gesture items now have a middle tier of evidence, and it is worth being exact about what it
+does and does not cover. `tools/verify-touch.mjs` runs against the real built app with CDP touch
+emulation on, so the page genuinely reports touch points and multiple `pointerId`s arrive at
+`input.js` the way they would on a phone. That is strong enough to prove the code path exists and
+behaves, and it caught two things worth having: without it there was no pinch handler at all, so
+the game was unzoomable on any device with no wheel.
+
+It is NOT a device run. It cannot show finger occlusion, palm rejection, or how any of it feels.
+WebView gesture interception has since been addressed directly rather than left to chance (see the
+struck-through `drag` item below), and the `touch-action` layering that does it is asserted as
+computed style, but only a real device proves the WebView honours it. Those stay on the list.
+
+## Shipping a release APK: the one step that is yours
+
+Everything else is one command. This part is not, deliberately.
+
+The keystore is a credential, and no agent should create or hold one. It is also the single most
+unrecoverable thing in an Android project: Android identifies an app by its signing key, so losing
+the `.jks` means never being able to publish an update to the same app again, by any route.
+
+Run this once, and keep the password somewhere safe:
+
+```
+keytool -genkeypair -v -keystore android/farm-tycoon.jks -keyalg RSA -keysize 2048 -validity 10000 -alias farmtycoon
+```
+
+Then create `android/keystore.properties` with four lines:
+
+```
+storeFile=farm-tycoon.jks
+storePassword=<the password you chose>
+keyAlias=farmtycoon
+keyPassword=<the same password, unless you set a separate key password>
+```
+
+`*.jks`, `*.keystore` and `keystore.properties` were all added to `.gitignore` before any key
+existed, so none of them can be committed by accident. Then:
+
+```
+node tools/build-android.mjs --release
+```
+
+The signing block is INJECTED into `android/app/build.gradle` by that script rather than committed
+into it, because `android/` is regenerable and gitignored, so a hand edit would vanish the next
+time anyone ran `npx cap add android`. Gradle reads the passwords out of the properties file at
+build time, so no secret ever becomes a command argument or reaches a log.
+
+What is proven and what is not: the release TASK builds, verified by running `assembleRelease` with
+no key present and getting `app-release-unsigned.apk` out, which is the documented graceful
+degradation. The signing step itself is untested, because testing it needs a key that must not be
+created here. That is a real gap and is stated rather than glossed.
+
+The permanent no-signing policy that applies to the Windows installer is explicitly overridden for
+Android only, at the owner's direction, because Android's package manager refuses to install an
+unsigned APK at all: signing is not decoration there, it is the only way an installable artifact
+exists. A self-signed certificate is also not acceptable to Play, so this produces a sideloadable
+APK and the release notes must say so plainly rather than implying store distribution.
+
+## Found by actually running it on a device
+
+Two layout defects that no desktop test could have shown, because `env(safe-area-inset-*)` is
+zero everywhere except on real device chrome:
+
+- **The HUD sat under the status bar.** `.hud-top` had a flat `height: 76px` with no top inset, so
+  the level badge and the coin counters were half hidden behind the clock. Now
+  `calc(76px + env(safe-area-inset-top))` with matching padding.
+- **The dock lost its own bottom padding on every device without a gesture bar.** The longhand
+  `padding-bottom: env(safe-area-inset-bottom, 0px)` overrides the shorthand `padding: 10px 13px`
+  outright, so a zero inset meant zero padding rather than the intended 10px. Now
+  `calc(10px + env(...))`.
 
 ## Known risks worth checking first
 
-- **`dual` needs two simultaneous touch points.** The shared input layer maps a single pointer to
-  one side by its x position, which works with a mouse and works with one finger, but a phone can
-  send two. If it feels wrong, that normaliser in `src/minigames/input.js` is where to look.
-- **`drag` uses `pointerdown` plus `closest('[data-grab]')`.** Touch drag on Android can be
-  intercepted by the WebView's own scroll handling; `touch-action` on the stage may be needed.
+- ~~**`dual` needs two simultaneous touch points.** The shared input layer maps a single pointer
+  to one side by its x position, which works with a mouse and works with one finger, but a phone
+  can send two.~~ **Done, and the guess above was wrong about why.** Two fingers sitting one per
+  half already worked: each `pointermove` landed in its own half and set its own value. The case
+  that genuinely broke is a finger CROSSING the midline, which silently began driving the other
+  side, clobbering whatever the other finger held and freezing its own. `throw_shuttles` and
+  `blend_notes` both move two values that can pass each other, so it was a real defect. Each touch
+  pointer now keeps the side it landed on; mouse pointers are deliberately excluded, since a mouse
+  has one position and that position is the only thing its side can mean.
+- ~~**`drag` uses `pointerdown` plus `closest('[data-grab]')`.** Touch drag on Android can be
+  intercepted by the WebView's own scroll handling; `touch-action` on the stage may be needed.~~
+  **Done.** It was needed, and it was worse than a drag problem: only `#world` carried
+  `touch-action`, so a finger dragging across any minigame stage would have scrolled the page or
+  started the browser's own pinch-zoom, and either one fires `pointercancel` and ENDS the run
+  rather than merely feeling wrong. Drag, path, balance and steer verbs are all "a finger dragging
+  across a stage", so that was most of the library. Three layers now, each deliberate: the
+  backdrop blocks everything so a stray drag cannot pan the farm behind it, the card keeps
+  `pan-y` because a long dialog on a phone still has to scroll, and the stage blocks everything
+  because a verb owns any gesture that starts on it. Long-press callout and tap-highlight are
+  suppressed on the stage too, since a sustain verb is a long press by definition.
 - **Dynamic `import()`** is what loads every minigame. It is verified working under Electron's
   `file://`, and Capacitor serves over `https://localhost` instead, which is a different scheme
   again. It should be fine, and it should still be checked first, because if it fails then every

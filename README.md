@@ -17,13 +17,13 @@ seeded silo, an empty barn, and six farm objects, not a static HUD reading `0`.
 `npm test` runs the content validator plus eight gameplay-logic suites — camera, core
 economy, logistics, crafting, township, research, dead-time systems, and the
 neighbours/co-op/regatta social layer — for **147 passing assertions across nine files**,
-with zero failures. The content layer, unchanged since the last handoff and re-validated by
-that same run:
+with zero failures. The content layer, re-validated by that same run:
 
-> data.js OK — 22 crops, 12 animals, 26 buildings, 128 recipes, 192 goods, 3 merge
-> chains, 39 achievements, 95 levels all with unlocks, 10 weekend events + 6
+> data.js OK - 24 crops, 12 animals, 49 buildings, 215 recipes, 279 goods, 3 merge
+> chains, 43 achievements, 95 levels all with unlocks, 10 weekend events + 6
 > mini-events + 25 fair tasks + 6 holidays, town: 16 houses + 10 community, 14 zoo
 > enclosures, 8 islands, 23 materials
+> playable share: 44/151 recipes (1 in 3.4), 46 verbs - at the 1-in-3 target
 
 All 22 world structures are placed with zero overlaps across their occupied tiles, and
 every panel id is unique. Twenty of the twenty-two are locked at level 1 — and, per the
@@ -85,6 +85,40 @@ HUD, and the guided tutorial overlay auto-started.
 </details>
 
 <details>
+<summary><strong>Screen recording, on a phone</strong></summary>
+
+**[screenshots/farm-tycoon-android.mp4](screenshots/farm-tycoon-android.mp4)** — 25 seconds, 575 KB,
+recorded off an Android 14 device with `adb shell screenrecord` from the installed debug APK.
+
+Stills are proof a surface exists; only a recording proves the thing MOVES. This one shows a fresh
+farm, wheat planted by touch, the crop growing, a harvest, and the tutorial advancing as the silo
+fills — all driven by real touch events, not by calling functions.
+
+![Three frames from the recording: wheat growing on the field plots, then a "Harvested crop!" toast with the seed counter having gone from 4/50 to 6/50 and the silo from 0 to 6, and the tutorial advancing to say the crops are stored in the silo.](screenshots/android-recording-frames.png)
+
+Two honest notes. The frame rate is low, around 5fps, because the emulator runs software rendering
+with `-gpu swiftshader_indirect`; the app itself is not this choppy. And it captures the DEVICE
+screen, never the host monitor, so nothing of whoever recorded it is in the file.
+
+**[screenshots/farm-tycoon-desktop.mp4](screenshots/farm-tycoon-desktop.mp4)** — 22 seconds, 99 KB,
+the Windows build at a full 12fps. Produced by `tools/capture-recording.mjs`, which captures the
+app's own renderer frame by frame over the DevTools protocol and drives it with real pointer events
+while it does. It records the page's pixels rather than a screen, so there is no window to
+accidentally include and no desktop behind it.
+
+It shows the loop: three fields planted through the radial menu, the crops growing, and all three
+harvested, with the seed counter running 6 to 3 and back up to 9 as each harvest returns double.
+
+![Four frames from the desktop recording: a "Planted Wheat." toast with the seed counter at 5/50, then 3/50 with three plots sown, then two "Harvested crop!" toasts with seeds back up to 7/50, and finally 9/50 with the plots empty again.](screenshots/desktop-recording-frames.png)
+
+The first attempt at this recording is worth knowing about: it used `KEYCODE_BACK` to close panels,
+the app has no back handler, so the key exited it and 25 seconds of the Android home screen were
+recorded instead. That was caught by extracting frames and looking at them rather than trusting the
+duration and file size, which were both perfectly plausible.
+
+</details>
+
+<details>
 <summary><strong>Locked structures across the unlock curve</strong></summary>
 
 Every one of the 22 world structures is present and clickable from level 1 — locked ones render
@@ -123,7 +157,8 @@ every field used to fall through to a magenta placeholder circle stamped "field"
 <details>
 <summary><strong>Dock panels: decorate, achievements, settings, reset</strong></summary>
 
-The dock carries exactly four placeless surfaces — everything else lives in the world.
+The dock carries five placeless surfaces — four in the markup plus the daily wheel, which
+`ui.js` appends at boot. Everything else lives in the world.
 
 | | |
 |---|---|
@@ -290,7 +325,8 @@ ever play its minigame, and offline progress is never penalized for skipping it.
 Systems are opened by **clicking their structure in the world** — never from the HUD or
 dock. A locked structure still exists in the world in a derelict/unbuilt state and is
 still clickable from level 1, so players can see and plan around content before they've
-unlocked it. The dock itself carries exactly four placeless surfaces — decorate,
+unlocked it. The dock itself carries five placeless surfaces — the daily wheel, appended at
+boot by `ui.js`, plus four in the markup: decorate,
 achievements, co-op/regatta, and settings — because everything else has a home in the
 world. (See "Where it disagreed with the content plan" in `design/README.md` for how this
 rule reshaped an earlier HUD dock design.)
@@ -343,7 +379,14 @@ roughly thirty other rule families in total — followed by eight gameplay-logic
 `test-township.mjs`, `test-research.mjs`, `test-deadtime.mjs`, `test-social.mjs`) that
 exercise the actual running modules: planting and harvesting, offline catch-up, save/load
 round-trips, the merge board, workshop crafting, trains/town/zoo, research, and the
-simulated-neighbours social layer. 147 assertions, all passing, as of this checkout.
+simulated-neighbours social layer, the playable-item gate and all 46 verbs. 674 assertions
+across 13 suites, all passing, as of this checkout.
+
+Three further suites run against a REAL built artifact rather than the source tree and are not
+counted in that figure, because they need an app to drive: `tools/verify-placement.mjs` (10
+checks), `tools/verify-touch.mjs` (26, run against the Android WebView over a forwarded
+devtools socket) and `tools/verify-persistence.mjs` (9, across two separate app launches so a
+force-quit is actually tested rather than a page reload).
 
 </details>
 

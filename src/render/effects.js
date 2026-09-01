@@ -2,6 +2,8 @@
 // placement bounce. Effects are particle pools with easing, pruned when done. No per-frame
 // allocation once warmed up: pooled objects are reused via free-list splicing.
 
+import * as motion from '../motion.js';
+
 const particles = []; // { kind, x, y, born, life, ...kind-specific }
 const bounces = new Map(); // objectId -> { born, life }
 
@@ -9,8 +11,17 @@ const now_ = () => (typeof performance !== 'undefined' ? performance.now() : Dat
 
 function push(p) { particles.push(p); }
 
-/** Spawn a coin burst at a world tile (screen-space x,y expected — caller resolves tile). */
+/**
+ * Spawn a coin burst at a world tile (screen-space x,y expected — caller resolves tile).
+ *
+ * Suppressed entirely under reduced motion, along with the other particle spawners below. These
+ * are the clearest case in the game for it: a burst of ten objects flying outward under gravity is
+ * pure decoration and carries no information a player would otherwise lose - the coins have
+ * already been added and the HUD counter says so. Dropping them at the SPAWNER rather than in the
+ * draw loop also means no pooled object is created in the first place.
+ */
 export function coinBurst(x, y, amount) {
+  if (motion.isReduced()) return;
   const n = Math.min(10, 4 + Math.floor(Math.log2(Math.max(1, amount || 1))));
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + Math.random() * 0.5;
@@ -24,11 +35,13 @@ export function coinBurst(x, y, amount) {
 
 /** Floating "+N XP" text. */
 export function xpFloater(x, y, amount) {
+  if (motion.isReduced()) return;
   push({ kind: 'xp', x, y, born: now_(), life: 900, amount: amount || 0 });
 }
 
 /** Harvest sparkle shower. */
 export function sparkle(x, y) {
+  if (motion.isReduced()) return;
   for (let i = 0; i < 6; i++) {
     const a = Math.random() * Math.PI * 2;
     const r = 8 + Math.random() * 14;
@@ -41,6 +54,7 @@ export function sparkle(x, y) {
 
 /** Elastic bounce applied to a newly placed object. Read via bounceScale(objectId, now). */
 export function placeBounce(objectId) {
+  if (motion.isReduced()) return;
   bounces.set(objectId, { born: now_(), life: 380 });
 }
 

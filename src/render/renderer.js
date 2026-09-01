@@ -29,6 +29,7 @@
 import { FARM } from '../data.js';
 import * as sprites from './sprites.js';
 import * as effects from './effects.js';
+import * as motion from '../motion.js';
 
 // Base tile size in px at zoom 1 (see design/handoff/SPRITE-NOTES.md §8: T = 104).
 export const TILE_BASE = 104;
@@ -349,7 +350,16 @@ const KIND_DISPATCH = {
     else sprites.drawPlaceholder(ctx, x, y, size, obj.type);
   },
   pen: (ctx, x, y, size, obj) => sprites.drawPen(ctx, x, y, size, obj.type),
-  building: (ctx, x, y, size, obj) => sprites.drawBuilding(ctx, x, y, size, obj.type, { derelict: !!obj.derelict }),
+  // `now` and `working` are what make an animated building possible at all: drawBuilding has no
+  // clock of its own, so a frame that forgets to pass them renders a permanently idle factory.
+  building: (ctx, x, y, size, obj, now) => sprites.drawBuilding(ctx, x, y, size, obj.type, {
+    // `working` stays TRUE under reduced motion; only the clock freezes. That distinction is the
+    // whole point: a state must never be signalled by motion alone, any more than by colour alone.
+    // drawBuilding already carries static working signals - the lantern is lit, the firebox is
+    // orange, and the chimney shows a four-puff plume rather than the single resting wisp an idle
+    // one gets - so a frozen factory still reads as busy from across the farm.
+    derelict: !!obj.derelict, working: !!obj.working, now: motion.phase(now),
+  }),
   structure: (ctx, x, y, size, obj) => sprites.drawStructure(ctx, obj.type, x, y, size, { derelict: !!obj.derelict }),
   forage: (ctx, x, y, size, obj) => {
     const fn = sprites.FORAGE_DRAW[obj.type];
@@ -380,6 +390,65 @@ export const DISPATCH_KINDS = Object.freeze(Object.keys(KIND_DISPATCH));
  * { id, kind, type, tx, ty, growProgress?, idleFrame?, derelict?, progress? } — the same
  * shape farm.js documents objects in (kind/type/x/y), read here as tx/ty (tile coords).
  */
+/**
+ * The placement ghost: the footprint tinted by legality, plus a translucent preview of the thing
+ * being placed.
+ *
+ * Green/red alone would fail anyone who cannot separate those two hues, so legality is ALSO
+ * carried by the outline (solid versus dashed) and by a cross drawn over a blocked footprint.
+ */
+function drawPlacementGhost(ctx, ghost, now, w, h) {
+  const { tx, ty, w: gw, h: gh, legal } = ghost;
+  const pulse = 0.5 + 0.5 * Math.sin((now ?? 0) / 260);
+
+  ctx.save();
+  for (let j = 0; j < gh; j++) {
+    for (let i = 0; i < gw; i++) {
+      const [sx, sy] = tileToScreen(tx + i, ty + j, w, h);
+      const T = TILE_BASE * camera.zoom;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - T / 2);
+      ctx.lineTo(sx + T, sy);
+      ctx.lineTo(sx, sy + T / 2);
+      ctx.lineTo(sx - T, sy);
+      ctx.closePath();
+      ctx.fillStyle = legal
+        ? `rgba(120,220,90,${0.28 + 0.16 * pulse})`
+        : `rgba(226,72,58,${0.30 + 0.16 * pulse})`;
+      ctx.fill();
+      ctx.strokeStyle = legal ? 'rgba(40,120,30,0.9)' : 'rgba(150,30,20,0.95)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash(legal ? [] : [6, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // A translucent preview of the actual object, drawn through the real sprite functions at the
+  // SAME anchor tile and the SAME scale the placed object will use. Drawing it centred on the
+  // footprint at an inflated size looked correct in code and rendered as a huge slab sliding
+  // across the meadow: a preview that does not match the result is worse than no preview.
+  const [cx, cy] = tileToScreen(tx, ty, w, h);
+  ctx.globalAlpha = 0.62;
+  const dispatch = KIND_DISPATCH[ghost.kind];
+  const preview = { kind: ghost.kind, type: ghost.type, tx, ty, working: false };
+  if (dispatch) dispatch(ctx, cx, cy, camera.zoom, preview, now);
+  else sprites.drawPlaceholder(ctx, cx, cy, camera.zoom, ghost.type);
+  ctx.globalAlpha = 1;
+
+  if (!legal) {
+    const [mx, my] = tileToScreen(tx + (gw - 1) / 2, ty + (gh - 1) / 2, w, h);
+    ctx.strokeStyle = 'rgba(150,30,20,0.95)';
+    ctx.lineWidth = 4;
+    const r = TILE_BASE * camera.zoom * 0.34;
+    ctx.beginPath();
+    ctx.moveTo(mx - r, my - r); ctx.lineTo(mx + r, my + r);
+    ctx.moveTo(mx + r, my - r); ctx.lineTo(mx - r, my + r);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export function drawFrame(now, world = {}) {
   if (!ctxRef) return;
   const ctx = ctxRef;
@@ -413,6 +482,10 @@ export function drawFrame(now, world = {}) {
     }
   }
 
+  // Placement ghost, on top of the world so it is never hidden behind what it might replace,
+  // but under the golden-hour wash so it still sits in the same light as everything else.
+  if (world.ghost) drawPlacementGhost(ctx, world.ghost, now, w, h);
+
   // world-space particle effects (coin bursts, XP floaters, sparkles)
   effects.tickAndDraw(ctx, now ?? 0);
 
@@ -430,7 +503,10 @@ export function drawFrame(now, world = {}) {
  * bare clamp used to be the last word on where the camera could go, permanently.
  */
 export function tickCamera(dt) {
-  const t = Math.min(1, (dt ?? 1 / 60) * EASE);
+  // motion.ease() returns 1 under prefers-reduced-motion, which turns the glide into a snap. The
+  // player still arrives exactly where they asked to; they just do not travel there. A camera that
+  // eases is one of the largest sustained movements in the game and no stylesheet can reach it.
+  const t = motion.ease(Math.min(1, (dt ?? 1 / 60) * EASE));
   camera.x += (cameraTarget.x - camera.x) * t;
   camera.y += (cameraTarget.y - camera.y) * t;
   cameraTarget.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cameraTarget.zoom));

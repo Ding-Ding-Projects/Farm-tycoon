@@ -51,7 +51,10 @@ const storage = (() => {
  *
  *   // --- expansion systems ---
  *   workshop: { queue: [{recipeId, readyAt}], kits: {kitId: qty} },
- *   minigames: { results, played, best },
+ *   minigames: { results, played, best, explained },
+ *     explained: set once the game has told the player that some recipes are made by hand.
+ *     Deliberately NOT initialised anywhere - an absent field reads as false, which is exactly
+ *     right for a save written before this existed, so it needs no SAVE_VERSION bump.
  *   neighbours: { roster: [{id, first, last, farm, level, profile}], seed },
  *   coop: { points, perksUnlocked, dailyTasks, tasksRefreshedAt, requests, ownRequestCooldownUntil },
  *   regatta: { seasonId, endsAt, board, points, rivals, league, seasonsWon, placementClaimed },
@@ -84,19 +87,25 @@ export let state = null;
 /**
  * A fresh new game starts with NEW_GAME.fields pre-placed empty field plots inside the
  * start zone, matching the actual Hay Day opening state, so there is immediately something
- * to plant on. Placed as a simple row well below the fixed structures row (barn/silo/order
- * board all sit around startZone.y+0..1 per STRUCTURES) so a Phase B structures layer using
- * those documented positions never collides with the starting fields.
+ * to plant on. Placed well below the fixed structures row (barn/silo/order board all sit
+ * around startZone.y+0..1 per STRUCTURES) so the structures layer never collides with them.
+ *
+ * They are laid out as a BLOCK, not a row. Six plots in a straight line is fine on a square
+ * grid and wrong on this one: the world is isometric, so a 1x6 run renders as a single long
+ * diagonal strip and the soil plots merge into what reads as a wooden boardwalk laid across
+ * the meadow. It is the first thing a new player sees, and it does not look like a farm. A
+ * 3x2 block reads as a field patch immediately, which is what it is.
  */
 function makeStartingFields() {
   const objects = [];
+  const COLS = 3;
   for (let i = 0; i < NEW_GAME.fields; i++) {
     objects.push({
       id: `field_${i + 1}`,
       kind: 'field',
       type: 'field',
-      x: FARM.startZone.x + 1 + i,
-      y: FARM.startZone.y + 3,
+      x: FARM.startZone.x + 1 + (i % COLS),
+      y: FARM.startZone.y + 3 + Math.floor(i / COLS),
       cropId: null,
       plantedAt: null,
       readyAt: null,

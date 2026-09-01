@@ -28,10 +28,13 @@ import * as newspaper from './newspaper.js';
 import * as collections from './collections.js';
 import * as neighbours from './neighbours.js';
 import * as decorate from './decorate.js';
+import * as bakebook from './bakebook.js';
+import * as panelsearch from './panelsearch.js';
 import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
 import * as workshop from './workshop.js';
 import * as minigames from './minigames.js';
+import * as placement from './placement.js';
 import {
   CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
   ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
@@ -110,6 +113,24 @@ function findDockButton(panelId) {
   return Array.from(el.dock.children || []).find((b) => b?.dataset?.panel === panelId) || null;
 }
 
+/**
+ * Short form for a HUD counter: 1,234 stays as it is, 999,549 becomes 999.5k.
+ *
+ * Measured on a real phone rather than guessed at. On a 412px screen with six-digit coins the
+ * four counter pills came to 414px and the barn pill's right edge landed at 461px, so 49px of it
+ * was simply off the side of the display. A million coins is ordinary mid-game play, not an edge
+ * case, and no amount of shrinking four pills makes a seven-digit number fit beside three others.
+ *
+ * Exact values below 100,000, because that is the range where a player is actually counting.
+ */
+function compactCount(n) {
+  const v = Math.floor(Number(n) || 0);
+  if (Math.abs(v) < 100000) return v.toLocaleString();
+  if (Math.abs(v) < 1000000) return `${(v / 1000).toFixed(1)}k`;
+  if (Math.abs(v) < 1000000000) return `${(v / 1000000).toFixed(2)}M`;
+  return `${(v / 1000000000).toFixed(2)}B`;
+}
+
 export function updateHud() {
   if (!state || !el.coinsValue) return;
   syncDockVisibility();
@@ -125,8 +146,8 @@ export function updateHud() {
   if (key === lastHud) return;
   lastHud = key;
 
-  el.coinsValue.textContent = Math.floor(state.coins).toLocaleString();
-  el.diamondsValue.textContent = Math.floor(state.diamonds).toLocaleString();
+  el.coinsValue.textContent = compactCount(state.coins);
+  el.diamondsValue.textContent = compactCount(state.diamonds);
   el.siloValue.textContent = `${siloUsed}/${state.silo.capacity}`;
   el.barnValue.textContent = `${barnUsed}/${state.barn.capacity}`;
   el.levelNumber.textContent = String(level);
@@ -228,7 +249,7 @@ const PANEL_TITLES = {
   workshop: 'Building Workshop', museum: 'Museum', lab: 'Laboratory', expeditions: 'Expedition Camp',
   town: 'Town', zoo: 'Zoo', newspaper: 'Newspaper', collections: 'Collections', photo: 'Photo Mode',
   building: 'Building', pen: 'Animal Pen', decorate: 'Decorate', achievements: 'Achievements',
-  coop: 'Co-op & Regatta', settings: 'Settings', wheel: 'Daily Wheel',
+  coop: 'Co-op & Regatta', settings: 'Settings', wheel: 'Daily Wheel', bakebook: 'Bake Book',
 };
 
 let openPanelId = null;
@@ -292,8 +313,20 @@ function renderComingSoon(container, name) {
   container.appendChild(p);
 }
 
+/**
+ * A standalone hint line under a panel heading.
+ *
+ * Always a BLOCK. It used to be a span, which was invisible for as long as every panel appended
+ * exactly one - and the moment two went in the game ran them together into a single line:
+ * "Energy: 99/100Tap a generator to spawn items." Four panels were doing it (merge, lab,
+ * expeditions, coop) plus the Bake Book. A span cannot take the vertical margin the class already
+ * asks for, so the fix belongs here rather than at five call sites.
+ *
+ * The inline uses of .minigame-hint are raw <span> in card template strings, not this function, so
+ * they are untouched.
+ */
 function hintEl(text) {
-  const s = document.createElement('span');
+  const s = document.createElement('p');
   s.className = 'minigame-hint';
   s.textContent = text;
   return s;
@@ -711,6 +744,14 @@ function renderMine(container) {
 // Merge Meadow (merge.js) — a 7x9 tap-to-merge board (select, then merge/move/claim).
 // ---------------------------------------------------------------------------
 let mergeSelected = null;
+// Which cell the keyboard is on. Separate from the SELECTION: on a merge board you move around
+// looking before you pick anything up, exactly as a pointer does, and collapsing the two would
+// mean every arrow key press picked something up.
+let mergeFocus = 0;
+// Set just before a board action rebuilds the panel, so focus can be put back on the cell that
+// was acted on. Never set on open: a panel that grabs focus the moment it appears is a panel that
+// fights the user.
+let mergeRefocus = false;
 
 function renderMerge(container) {
   merge.initBoard();
@@ -723,6 +764,13 @@ function renderMerge(container) {
   grid.style.display = 'grid';
   grid.style.gridTemplateColumns = `repeat(${MERGE.board.cols}, 1fr)`;
   grid.style.gap = '3px';
+  grid.setAttribute('role', 'grid');
+  grid.setAttribute('aria-label', `Merge board, ${MERGE.board.rows} rows by ${MERGE.board.cols} columns`);
+  grid.setAttribute('aria-rowcount', String(MERGE.board.rows));
+  grid.setAttribute('aria-colcount', String(MERGE.board.cols));
+
+  const cols = MERGE.board.cols;
+  const cellButtons = [];
 
   const m = state.merge;
   m.cells.forEach((cell, i) => {
@@ -732,42 +780,73 @@ function renderMerge(container) {
     cellBtn.style.minWidth = '0';
     cellBtn.style.padding = '2px';
     cellBtn.style.fontSize = '16px';
-    if (i === mergeSelected) cellBtn.style.outline = '3px solid #f0b52e';
+    // Selection is a CLASS, not an inline outline. Inline styles beat the stylesheet, so an
+    // inline outline here would have swallowed the focus ring on the one cell where knowing both
+    // matters most: the cell you have picked up and are still standing on.
+    if (i === mergeSelected) cellBtn.classList.add('picked-up');
 
+    const row = Math.floor(i / cols) + 1;
+    const col = (i % cols) + 1;
+    cellBtn.setAttribute('role', 'gridcell');
+    cellBtn.setAttribute('aria-rowindex', String(row));
+    cellBtn.setAttribute('aria-colindex', String(col));
+    // Roving tabindex: the board is 63 buttons, and making every one a tab stop would mean
+    // twenty-odd presses just to get PAST the merge panel. One stop in, then arrow keys.
+    cellBtn.tabIndex = i === mergeFocus ? 0 : -1;
+    // The selection was an outline and nothing else, so a screen reader could not tell which cell
+    // was picked up - on a board whose entire mechanic is "pick this up, put it on that one".
+    cellBtn.setAttribute('aria-pressed', i === mergeSelected ? 'true' : 'false');
+
+    // Every cell says where it is and what is on it. Before this, the 57 empty cells of a fresh
+    // board had no accessible name at all: a screen reader read out "button" fifty-seven times,
+    // with no way to tell them apart or know where on the board you were.
+    let what;
     if (!cell) {
       cellBtn.textContent = '';
+      what = 'empty';
     } else if (cell.generator) {
       const gen = MERGE.generators[cell.generator];
       cellBtn.textContent = '📦';
+      what = `${gen?.name || cell.generator}, a generator`;
       cellBtn.title = gen?.name || cell.generator;
     } else {
       const chain = MERGE.chains[cell.chain];
       const tierName = chain?.tiers?.[cell.tier] || `Tier ${cell.tier + 1}`;
+      const of = chain?.tiers?.length ? ` of ${chain.tiers.length}` : '';
       cellBtn.textContent = String(cell.tier + 1);
+      what = `${chain?.name || cell.chain}, ${tierName}, tier ${cell.tier + 1}${of}`;
       cellBtn.title = `${chain?.name || cell.chain} — ${tierName}`;
     }
+    cellBtn.setAttribute('aria-label',
+      `Row ${row}, column ${col}, ${what}${i === mergeSelected ? ', picked up' : ''}`);
 
     cellBtn.addEventListener('click', () => {
+      // Record the acted-on cell HERE rather than leaning on the focus event. Focusing an element
+      // that is already focused fires nothing, so a focus-maintained variable is only correct when
+      // focus actually moved - and after a rebuild it often has not. Measured: focus came back on
+      // a cell three rows from the one that was clicked. The cell that was acted on is known right
+      // here, with no ordering to reason about.
+      mergeFocus = i;
       if (!cell) {
         if (mergeSelected !== null) {
           const ok = merge.moveItem(mergeSelected, i);
           mergeSelected = null;
-          if (ok) refreshPanel();
+          if (ok) (mergeRefocus = true, refreshPanel());
         }
         return;
       }
       if (cell.generator) {
         const placed = merge.spawnFrom(i);
-        if (placed) { audio.place(); refreshPanel(); }
+        if (placed) { audio.place(); (mergeRefocus = true, refreshPanel()); }
         else { audio.error(); toast('Not enough energy, or the board is full.', 'error'); }
         return;
       }
-      if (mergeSelected === null) { mergeSelected = i; refreshPanel(); return; }
-      if (mergeSelected === i) { mergeSelected = null; refreshPanel(); return; }
+      if (mergeSelected === null) { mergeSelected = i; (mergeRefocus = true, refreshPanel()); return; }
+      if (mergeSelected === i) { mergeSelected = null; (mergeRefocus = true, refreshPanel()); return; }
       if (merge.canMerge(mergeSelected, i)) {
         const result = merge.merge(mergeSelected, i);
         mergeSelected = null;
-        if (result) { audio.merge(); toast('Merged!', 'success'); refreshPanel(); }
+        if (result) { audio.merge(); toast('Merged!', 'success'); (mergeRefocus = true, refreshPanel()); }
         return;
       }
       if (merge.claimableReward(i)) {
@@ -775,15 +854,53 @@ function renderMerge(container) {
         mergeSelected = null;
         audio.coin();
         toast('Claimed!', 'success');
-        refreshPanel();
+        (mergeRefocus = true, refreshPanel());
         return;
       }
       mergeSelected = i; // switch the selection to this cell instead
-      refreshPanel();
+      (mergeRefocus = true, refreshPanel());
     });
+    cellBtn.addEventListener('focus', () => { mergeFocus = i; });
+    cellButtons.push(cellBtn);
     grid.appendChild(cellBtn);
   });
+
+  // Arrow keys walk the board, Home and End jump to the ends of a row. Without this the only way
+  // across a 7x9 board is Tab, one cell at a time, in reading order - which is not navigation, it
+  // is endurance, and it makes the two-dimensional layout meaningless to anyone not using a mouse.
+  grid.addEventListener('keydown', (ev) => {
+    const rows = MERGE.board.rows;
+    const from = mergeFocus;
+    let to = from;
+    if (ev.key === 'ArrowRight') to = from + 1;
+    else if (ev.key === 'ArrowLeft') to = from - 1;
+    else if (ev.key === 'ArrowDown') to = from + cols;
+    else if (ev.key === 'ArrowUp') to = from - cols;
+    else if (ev.key === 'Home') to = Math.floor(from / cols) * cols;
+    else if (ev.key === 'End') to = Math.floor(from / cols) * cols + cols - 1;
+    else return;
+    if (to < 0 || to >= rows * cols) return;
+    // Horizontal moves must also stay on their own ROW. Checking only the board bounds let
+    // ArrowRight off the last column land on the first column of the next row - measured, and the
+    // opposite of what the comment above it claimed. On a board where position is the whole game,
+    // an edge has to feel like an edge.
+    const horizontal = ev.key === 'ArrowRight' || ev.key === 'ArrowLeft';
+    if (horizontal && Math.floor(to / cols) !== Math.floor(from / cols)) return;
+    ev.preventDefault();
+    mergeFocus = to;
+    cellButtons[to]?.focus();
+  });
+
   container.appendChild(grid);
+
+  // The panel rebuilds itself on every move, which destroys the focused button along with the rest
+  // of the DOM and drops focus back to the document. Putting it back is what makes keyboard play
+  // continuous instead of dumping the user at the top of the panel after every single merge.
+  // Only ever after an action taken ON the board, so opening the panel does not grab focus.
+  if (mergeRefocus) {
+    mergeRefocus = false;
+    cellButtons[Math.min(mergeFocus, cellButtons.length - 1)]?.focus();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1611,6 +1728,45 @@ function playLabel(entry) {
 }
 
 /**
+ * Say ONCE, the first time a craft is waiting to be played, that some things are made by hand.
+ *
+ * This is the one rule in the game that contradicts what a farming game has trained everyone to
+ * expect: a timer finishes and the thing is yours. Here, for roughly one recipe in three, the
+ * timer only gets you as far as being ABLE to make it, and there is no other way to collect it.
+ *
+ * Nothing was telling anybody that. The recipe card carries a 🎮 and the queue says "Ready to
+ * make", which is enough to work out once you already know the rule and not enough to teach it -
+ * and the tutorial ends at the order board, twelve steps and several levels before the first
+ * playable recipe (cookie, at the bakery, level 8) can possibly come up.
+ *
+ * The three things it has to say are the three a player would otherwise worry about: it will not
+ * spoil, you are not trapped with it, and there is a gentler setting if you want one.
+ *
+ * The flag lives on state.minigames, which every save already has, and its ABSENCE reads as
+ * "not explained yet" - so this needs no migration and an older save gets the explanation too,
+ * which is right, because that player has never seen it either.
+ */
+function explainTheGateOnce() {
+  if (!state.minigames || state.minigames.explained) return;
+  state.minigames.explained = true;
+  save();
+  openModal(`
+    <h3>🎮 This one is made by hand</h3>
+    <p>Most things finish on their own. Some — about one recipe in three — need you to
+       <strong>make them yourself</strong> once the prep is done. It is the only way to collect them,
+       and how well you do decides the quality, the XP and sometimes an extra one.</p>
+    <p><strong>It will wait.</strong> Nothing spoils and nothing expires, so you can come back to it
+       whenever you like. Anything finished behind it in the queue can still be collected.</p>
+    <p><strong>You are not stuck with it.</strong> <em>Throw it out</em> frees the slot and returns
+       half the ingredients.</p>
+    <p><strong>It cannot be failed</strong>, only done well or less well. If you would rather it were
+       gentler, <em>Assist mode</em> in Settings gives longer stages and wider margins.</p>
+    <div class="minigame-actions">
+      <button class="btn" data-close>Got it</button>
+    </div>`);
+}
+
+/**
  * Open one stage of a playable craft. The shell is imported HERE, lazily, so neither it nor any
  * verb is on the boot path — the game loads exactly as fast as it did before this feature.
  */
@@ -1659,6 +1815,7 @@ function renderQueue(container, entries, recipeOf, collectFn) {
     if (ready && needsPlay(entry)) {
       // A PLAYABLE craft: the prep timer is done, but the item only exists once its game has
       // been played through. Nothing expires while it waits here.
+      explainTheGateOnce();
       card.appendChild(button(playLabel(entry), () => openStagePlayer(entry)));
       // The release valve. A playable craft can only be collected by playing it, so without a
       // way out a player who does not fancy three cakes would hold three slots for ever.
@@ -1736,43 +1893,29 @@ function renderBuildingQueue(container, buildingId) {
   container.appendChild(grid);
 }
 
-/** Does a candidate w×h footprint at (x,y) overlap any of the always-present STRUCTURES? */
-function overlapsAnyStructure(x, y, w, h) {
-  for (const def of Object.values(STRUCTURES)) {
-    const [sw, sh] = def.size;
-    const overlaps = x < def.pos.x + sw && x + w > def.pos.x && y < def.pos.y + sh && y + h > def.pos.y;
-    if (overlaps) return true;
-  }
-  return false;
-}
-
 /**
- * Scan the start zone for the first free w×h tile — free of other placed objects (via
- * farm.canPlace) AND of the always-present STRUCTURES footprints, which farm.js has no
- * reason to know about (they're world-layer chrome, not state.farm.objects).
+ * Hand a freshly crafted or bought building to the placement ghost so the PLAYER picks the tile.
+ *
+ * This used to call findFreeTile() and drop the building on the first fitting tile it scanned,
+ * front to back, with no say from anyone. Two things were wrong with that: you could not put a
+ * bakery where you wanted it, and once the scan found nothing you got "No free space" with no way
+ * to rearrange what was already down. The ghost fixes both, and input.js finishes the gesture.
+ *
+ * The panel closes first, because the world is what the player now needs to see.
  */
-function findFreeTile(w, h) {
-  for (let y = FARM.startZone.y; y < FARM.startZone.y + FARM.startZone.h - h + 1; y++) {
-    for (let x = FARM.startZone.x; x < FARM.startZone.x + FARM.startZone.w - w + 1; x++) {
-      if (farm.canPlace(x, y, w, h) && !overlapsAnyStructure(x, y, w, h)) return [x, y];
-    }
-  }
-  return null;
-}
-
-/** Place a freshly crafted/coin-bought building or pen at the first free start-zone tile. */
 function buildAt(kind, id, def, onPlaced) {
-  const [w, h] = def.size || [2, 2];
-  const spot = findFreeTile(w, h);
-  if (!spot) { audio.error(); toast('No free space for that right now.', 'error'); return; }
-  const obj = farm.place(kind, id, spot[0], spot[1]);
-  if (!obj) { audio.error(); toast("Can't build that right now.", 'error'); return; }
-  onPlaced && onPlaced();
-  audio.place();
-  toast(`Built ${def.name}!`, 'success');
-  tutorial.emit(`placed:${id}`);
-  save();
-  refreshPanel();
+  closePanel();
+  placement.begin(kind, id, {
+    label: def.name,
+    onPlaced: () => {
+      onPlaced && onPlaced();
+      audio.place();
+      toast(`Built ${def.name}!`, 'success');
+      tutorial.emit(`placed:${id}`);
+      save();
+    },
+  });
+  toast(`Drag ${def.name} where you want it, then tap to place. Esc cancels.`, 'info');
 }
 
 /**
@@ -1965,6 +2108,69 @@ function renderAchievements(container) {
     grid.appendChild(card);
   }
   container.appendChild(grid);
+
+  const bookSum = bakebook.summary();
+  container.appendChild(row('')).appendChild(button(
+    `Bake Book \u2014 ${bookSum.mastered}/${bookSum.total} mastered`,
+    () => openPanel('bakebook'),
+  ));
+}
+
+/**
+ * The Bake Book. Every playable recipe and the best tier you have ever reached on it.
+ *
+ * It opens from Achievements rather than from the dock, because the dock is contractually four
+ * buttons - the four things with no place in the world - and a fifth would break the contract
+ * test as well as the rule behind it. A record of what you have made sits naturally beside a
+ * record of what you have done.
+ *
+ * The list is derived in bakebook.js and only rendered here, so what "mastered" means is decided
+ * in exactly one place.
+ */
+function renderBakeBook(container) {
+  const sum = bakebook.summary();
+  const tiers = sum.perTier.map((t) => `${t.label} ${t.count}`).join(' \u00b7 ');
+  container.appendChild(hintEl(
+    sum.complete
+      ? `Every one of the ${sum.total} playable recipes at Masterpiece. The book is finished.`
+      : `${sum.mastered}/${sum.total} at Masterpiece \u00b7 ${sum.played} played, ${sum.unplayed} never tried \u00b7 ${tiers}`,
+    true,
+  ));
+
+  // Skill is per VERB while quality is recorded per RECIPE, so a player stuck at Plain on four
+  // recipes usually has one verb they have not got the hang of - which is invisible on any single
+  // recipe card. Only verbs actually attempted are worth naming; never having tried something is
+  // not the same as being bad at it.
+  const weakest = bakebook.verbStanding().filter((v) => v.played > 0 && v.mastered < v.played);
+  if (weakest.length) {
+    container.appendChild(hintEl(
+      'Still to master: ' + weakest.slice(0, 4).map((v) => `${v.name} (${v.mastered}/${v.played})`).join(', '),
+    ));
+  }
+
+  // ONE grid, not a chapter per building. bakebook.byBuilding() exists and is tested, but almost
+  // every factory has exactly one playable recipe, so grouping put a heading above 42 of the 44
+  // cards and turned a scannable page into a very long scroll. The building name goes on the card
+  // instead, which is the same information in a quarter of the height.
+  const grid = slotGrid();
+  for (const e of bakebook.entries()) {
+    const card = document.createElement('div');
+    // An unplayed recipe looks locked but is NOT a failure, and the copy says which it is: a book
+    // that renders "never tried" and "tried and did badly" the same way tells the player they
+    // failed at something they have not attempted.
+    card.className = `build-card${e.bestIndex === undefined ? ' locked' : ''}`;
+    const badge = e.mastered ? '\u2b50' : e.bestIndex === undefined ? '\u2b1c' : '\u2705';
+    const verbs = e.stages.map((st) => st.name).join(' \u2192 ');
+    const stand = e.bestIndex === undefined
+      ? 'never played'
+      : `best: ${e.bestTier ? e.bestTier.label : e.bestIndex}`;
+    card.innerHTML = `<span class="icon">${badge}</span><strong>${itemName(e.recipeId)}</strong>
+      <span class="minigame-hint">${e.buildingName} \u00b7 lv ${e.unlockLevel}</span>
+      <span class="minigame-hint">${verbs}</span>
+      <span>${stand}</span>`;
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
 }
 
 function renderDecorate(container) {
@@ -2010,12 +2216,20 @@ function renderPanelContent(panelId, ctx = null) {
     case 'wheel': renderWheel(container); break;
     case 'settings': renderSettings(container); break;
     case 'achievements': renderAchievements(container); break;
+    case 'bakebook': renderBakeBook(container); break;
     case 'decorate': renderDecorate(container); break;
     default: {
       const struct = STRUCTURES[ctx];
       renderComingSoon(container, struct?.name || PANEL_TITLES[panelId] || panelId);
     }
   }
+
+  // One line, every panel, including ones nobody has written yet. Attaching the search here rather
+  // than inside each render function is the whole design: twenty-nine copies of a filter would be
+  // twenty-nine chances to diverge, and the thirtieth panel would ship without one because its
+  // author did not know to add it. panelsearch decides for itself whether there is enough on
+  // screen to be worth searching, so a two-card panel is not given a box that finds nothing.
+  panelsearch.attach(container);
 }
 
 // ---------------------------------------------------------------------------
@@ -2062,6 +2276,7 @@ export function init() {
     wheelBtn.className = 'dock-btn';
     if (wheelBtn.dataset) wheelBtn.dataset.panel = 'wheel';
     wheelBtn.title = 'Daily Wheel';
+    wheelBtn.setAttribute('aria-label', 'Daily wheel');   // the only text is an emoji; a title alone is not a name
     wheelBtn.textContent = '🎡';
     el.dock.appendChild(wheelBtn);
   }

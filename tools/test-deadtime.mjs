@@ -207,9 +207,11 @@ test('decorate.move is undoable and redoable to the exact prior layout', () => {
 
   decorate.enter();
   decorate.select(field.id, false);
-  const moved = decorate.move(0, 1); // move down a row — clear of the sibling field row
+  // Up, not down: the starting plots are a 3x2 block, so the row below the first field is its
+  // own sibling and a downward move is a legitimate collision refusal rather than a bug.
+  const moved = decorate.move(0, -1);
   assert.equal(moved, true, 'a move into open, unlocked land must succeed');
-  assert.deepEqual({ x: field.x, y: field.y }, { x: before.x, y: before.y + 1 });
+  assert.deepEqual({ x: field.x, y: field.y }, { x: before.x, y: before.y - 1 });
 
   const undone = decorate.undo();
   assert.equal(undone, true);
@@ -217,7 +219,7 @@ test('decorate.move is undoable and redoable to the exact prior layout', () => {
 
   const redone = decorate.redo();
   assert.equal(redone, true);
-  assert.deepEqual({ x: field.x, y: field.y }, { x: before.x, y: before.y + 1 }, 'redo must reapply the exact move');
+  assert.deepEqual({ x: field.x, y: field.y }, { x: before.x, y: before.y - 1 }, 'redo must reapply the exact move');
 });
 
 test('decorate.move refuses a collision and leaves the layout untouched (nothing pushed to history)', () => {

@@ -21,15 +21,17 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       (`grep -r "/\* Phase B \*/" src/` returns nothing)
 - [x] Game boots in a browser with zero console errors; `window.__farmDebug` exposes real,
       mutating state (not a static HUD)
-- [x] `npm test` passes: content validator + eight gameplay-logic suites, 147 assertions
-      across nine files, 0 failures
+- [x] `npm test` passes: content validator + twelve gameplay-logic suites, 592 assertions
+      across 13 files, 0 failures. Three further suites drive a real built artifact and are not
+      in that count: `verify-placement.mjs` (10), `verify-touch.mjs` (26, against the Android
+      WebView) and `verify-persistence.mjs` (9, across two app launches)
 - [x] Save format round-trips: `SAVE_VERSION` 3, with migrations from both prior shapes
       (`1→2` for `merge`/`trains`/`airport`, `2→3` for `town`/`zoo`/`market`)
 - [x] All 22 world structures placed with zero overlaps across their occupied tiles; every
       panel id unique
 - [x] Twenty of twenty-two structures locked at level 1, still present/clickable (derelict-
       but-visible rule) — confirmed against `LEVELS.unlocks`
-- [x] Dock reduced to exactly four placeless surfaces: decorate, achievements, co-op/regatta,
+- [x] Dock reduced to placeless surfaces only: decorate, achievements, co-op/regatta,
       settings — every other system opens from its world structure
 - [x] Camera pan + clamp (`src/render/renderer.js`) — was flagged as the single most urgent
       gap in an earlier handoff; now implemented and covered by `tools/test-camera.mjs`
@@ -47,7 +49,7 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 - [x] Two design fonts vendored locally (27 faces / 947 KiB via `tools/vendor-fonts.mjs`),
       used by both the game and the GitHub Pages site — zero CDN requests
 - [x] Real application icon generated in pure code (`tools/make-icon.mjs`), no downloaded art
-- [ ] HUD direction alternatives B/C/D (`design/HUD-B-*`, `HUD-C-*`, `HUD-D-*`) and the
+- [x] HUD direction alternatives B/C/D (`design/HUD-B-*`, `HUD-C-*`, `HUD-D-*`) and the
       interactive prototype remain reference-only by design — direction A shipped, the others
       were never meant to ship alongside it
 
@@ -80,35 +82,198 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       discardable for half its inputs back
 - [x] Verified in the packaged Windows app, including that dynamic `import()` resolves over
       `file://` - without which every playable craft would be unreachable once installed
-- [ ] The remaining wiki factories. 35 of roughly 67 exist; Township and Hay Day between them
-      still have about 32 absent
-- [ ] **The playable share is 1 in 7.5, and the design target is 1 in 3.** 15 of 112 eligible
-      recipes are playable; reaching the target needs 23 more, each wanting a verb that is a
-      genuinely new mechanic rather than a re-skin. `npm test` prints the real figure on every
-      run so the gap cannot drift out of sight
-- [ ] Per-family audio, a Bake Book from `state.minigames.best`, Masterpiece achievements
+- [x] **The wiki factory roster is complete.** All five that were missing have landed: net maker
+      (30), lobster pool (44), duck salon (50), doner kebab stand (54) and pasta maker (67). The
+      doner stand is at 54 rather than the wiki level 32 because lamb does not arrive here until
+      53, and a factory that cannot cook anything for twenty-one levels is not an unlock. Net
+      maker feeds the lobster pool, and the pasta maker sits UPSTREAM of the level-72 pasta
+      kitchen: it extrudes the dry shapes, the kitchen cooks dishes out of them.
+- [x] **The playable share reached its 1-in-3 design target.** 44 of 151 recipes are playable
+      across 46 verbs in 12 input families. `npm test` prints the real figure on every run, so
+      the ratio cannot drift out of sight in either direction
+- [x] **Three verbs were designed, measured and CUT rather than shipped thin**, and their reasons are
+      recorded in `src/minigames/registry.js` so nobody rebuilds them: `work_rush`, because with
+      uniform item value and a capped number of actions triage is mathematically irrelevant, and
+      `steady_spindle`, because a saturating actuator makes high-gain reaction beat anticipation
+      on an inverted pendulum. A third, `test_set`, was cut earlier for the same class of reason.
+      A fourth was cut before a line of it was written: a pasta extruder whose output lagged the
+      crank is a re-skin of `jar_fill`, which already owns input dead time
+- [x] **Phase 6 integration is complete.** Per-family audio and the Masterpiece achievements
+      already existed and were already wired - `audio.js` carries a distinct hit sound for all
+      twelve input families, and `minigames.js` increments `masterpiecesMade`, which both
+      achievements read. The Bake Book was the one genuinely missing piece and now ships in
+      `src/bakebook.js`: every playable recipe, the best tier reached on each, and which VERBS
+      are still unmastered, since skill is per verb while quality is recorded per recipe. It opens
+      from Achievements rather than the dock, which is contractually four buttons.
 
 ## Android
 
 - [x] Capacitor declared, config written, npm scripts, keystore lines in `.gitignore`
 - [x] Launcher icons generated in code across five densities, verified by PNG signature
 - [x] Mobile layout pass: the minigame modal was clipped on a 320px phone and is not now
-- [ ] Android SDK on the build machine (needs Google's licences accepted by the owner)
-- [ ] Release keystore, created by the owner and never by an agent or CI
-- [ ] A built APK, and any device testing at all. See `ANDROID.md`
+- [x] Android SDK, JDK 21 and a Pixel 6 / Android 14 emulator installed user-scoped, with the
+      owner's explicit authorisation for Google's SDK licence
+- [x] **A debug APK built, installed and PLAYED on an emulator.** `tools/build-android.mjs` is
+      one command; `tools/build-web.mjs` stages 1.8 MB instead of the 639 MB the original
+      `webDir: "."` would have shipped
+- [x] Pinch-zoom and two-finger pan, without which the game could not zoom at all on a phone
+- [x] A gated craft queued, its minigame played by real touch, and the goods collected
+- [x] 26 touch checks run against the REAL Android WebView over a forwarded devtools socket
+- [ ] Release keystore, created by the owner and never by an agent or CI. The Gradle signing
+      config is already wired and injected by the build script; only the key is missing
+- [ ] A signed release APK, and testing on real hardware. Emulated touch proves the code path,
+      not finger occlusion, palm rejection or feel. See `ANDROID.md`
 
 ## Open items
 
-- [ ] **Screenshots and recordings.** None exist in the README or on the GitHub Pages site
-      yet. A capture pass is required before either surface can show the real running game.
-- [ ] **`tea_house` and `oil_press` unlock-inert gap.** Both buildings still open several
-      levels before their first usable recipe (6-level and 3-level gaps respectively). Small,
-      real, and not covered by any validator guard. See `HANDOFF.md` → "Audit findings" #5.
-- [ ] **Multi-hop Building Workshop arbitrage, unverified.** The single-hop margin check
-      passes (0 of 128 non-sink recipes underwater), but the full raw-material → component →
-      kit chain was not re-simulated end to end, so the original "craft components at a loss,
-      sell the kit for ~9,800" scenario specifically was not re-run. See `HANDOFF.md` →
-      "Audit findings" #6.
-- [ ] Regatta league reward tables, Township community buildings past level 70, and
-      per-expansion cost numbers were sourced from wiki text/images and never independently
-      re-derived.
+- [x] **Every control is at least 44x44.** A sweep of all 25 panels found 33 below it, and every
+      single one was in the panel search bar added earlier this session - the rest of the game was
+      already clean. Fixed there; the sweep now returns zero.
+
+- [ ] **White button text sits at 1.5 to 2.6 against its own fill, where AA wants 4.5.** Measured
+      against the real gradients rather than guessed, worst stop per variant: default green
+      **1.77**, gold **1.47**, gem **1.89**, danger **2.57**. The `quiet` variant is fine at
+      **7.08** once its translucent fill is composited against the panel behind it - the first
+      measurement said 1.19 because it compared against the overlay rather than the result.
+
+      NOT fixed here, deliberately, because unlike everything else in this sweep it is not a
+      defect with one obvious repair - it is the art direction. Two options and they pull opposite
+      ways:
+
+      - **Darken the fills** until white passes. Greens are luminous, so this needs roughly
+        `#3E7A19` or darker throughout, which turns a candy-bright button into a forest-green one.
+      - **Switch the label to the dark outline brown** and LIGHTEN the fills. Measured at
+        `#7AC93F` this gives **7.06**, and it makes buttons brighter rather than duller, so it
+        preserves the palette better - but every button in the game changes from white text to
+        dark.
+
+      Both change the look the design brief asked for, so the choice belongs to the owner. The
+      numbers are here so it is a decision rather than a rediscovery.
+
+
+- [x] **Reduced motion reaches the canvas, not just the stylesheet.** `styles.css` had honoured
+      `prefers-reduced-motion` from early on with a blanket rule flattening every CSS animation
+      and transition, which made it look handled. It was not: the world is a canvas, so the
+      machinery on every working factory, the coin bursts, the XP floaters, the sparkles and the
+      camera easing are drawn frame by frame in JavaScript where no stylesheet can reach. Only the
+      minigame shell read the preference, and only for itself.
+
+      `src/motion.js` is now the one answer for the whole game, with a `matchMedia` listener so
+      turning the setting on mid-session takes effect immediately rather than at the next reload -
+      which is exactly when somebody reaches for it. Particles are suppressed at the SPAWNER, the
+      camera snaps instead of gliding, and building animation freezes at one instant.
+
+      Nothing loses information: `working` stays true and only the clock stops, so a busy factory
+      keeps its lit lantern, orange firebox and four-puff plume against an idle one's single wisp.
+      That is asserted, not assumed - forcing `working` false at `drawBuilding` turns the guard red.
+
+
+- [x] **Visible focus, everywhere.** The whole game had FOUR focus rules and three of them were on
+      the panel search, added days after everything else - so every dock button, card, menu item
+      and all 63 merge cells relied on whatever ring the browser draws by default. On an interface
+      already outlined in near-black at 3px, that default lands on top of a border it cannot be
+      told apart from. Interactive chrome now gets a two-ring `:focus-visible` indicator (pale
+      inside, dark outside) so one of the two has contrast on cream, brown, green or the world
+      behind the HUD. Verified with a real Tab press, since programmatic focus never sets
+      `:focus-visible`.
+
+- [x] **Merge selection and keyboard focus are no longer the same visual.** Selection was an inline
+      `style.outline`, and an inline style beats the stylesheet - so it would have swallowed the
+      focus ring on the one cell where knowing both matters most: the one you have picked up and
+      are still standing on. Selection is now a class with a filled amber cast; focus is the ring.
+
+- [x] **Hints stopped running into each other.** `hintEl` returned a `<span>`, which was invisible
+      while every panel appended exactly one and produced "Energy: 99/100Tap a generator..." the
+      moment two went in. Four panels were doing it. Fixed in the helper rather than at five call
+      sites; the inline uses of the class are raw spans in card templates and are untouched.
+
+- [x] **Dock buttons have names, and the docs stopped claiming there are four of them.** Their only
+      text is an emoji, so without a label a reader announces "star button". Five documents said
+      the dock carries "exactly four" buttons - true of `index.html`, false of the running game,
+      which appends a fifth for the daily wheel at boot. The guard asserts every button has a name
+      and deliberately does NOT assert the count, since pinning it would move the same drift into
+      the test suite.
+
+
+- [x] **Merge Meadow is playable without a mouse or a screen.** A sweep of all 28 panels for
+      controls with no accessible name found one offender and it was severe: 57 of the merge
+      board's 63 cells had no name at all, so a screen reader read "button" fifty-seven times with
+      no way to tell them apart or know where on the board you were - on a system whose entire
+      mechanic is which cell a thing is in. The selection was an outline and nothing else, and all
+      63 cells were tab stops.
+
+      Every cell now names its position and contents, the picked-up cell carries `aria-pressed`,
+      the board is one tab stop with arrow-key navigation, and focus returns to the cell that was
+      acted on so keyboard play is continuous across the panel rebuild. The other 27 panels were
+      clean.
+
+
+- [x] **The gate now explains itself, once.** Nothing told a player that roughly one recipe in
+      three can ONLY be collected by making it by hand - the card carries a 🎮 and the queue says
+      "Ready to make", which is enough to work out if you already know the rule and not enough to
+      teach it. The tutorial ends at the order board, several levels before the first playable
+      recipe (cookie, bakery, level 8) can come up. A one-time note now fires the first time a
+      craft is waiting to be played, covering the three things a player would otherwise worry
+      about: it will not spoil, they are not stuck with it, and Assist mode exists.
+
+      The flag lives on `state.minigames` and is never initialised, so its absence reads as
+      "not explained yet" - no SAVE_VERSION bump, and an existing save gets the explanation too,
+      which is right, because that player has never seen it either.
+
+
+- [x] **Screenshots and recordings.** Both recordings are committed and linked from the
+      README: `screenshots/farm-tycoon-android.mp4` from the emulator and
+      `screenshots/farm-tycoon-desktop.mp4` from the Windows build, the latter captured from the
+      app's own renderer over the DevTools protocol rather than from a screen. The GitHub Pages
+      site still does not carry them.
+- [x] **`tea_house` and `oil_press` unlock-inert gap, fixed and guarded.** Both opened before
+      the crop they exist to process: the oil press three levels before olives, the tea house six
+      before tea leaves. The recipes were right and the BUILDINGS were early, so both moved to
+      meet their first usable recipe (oil press 52 → 55, tea house 56 → 62) rather than dragging
+      the crops forward. `validate-data.mjs` now refuses any building whose earliest recipe
+      outranks its own unlock level; reintroducing the oil press defect turns it red with the
+      exact original numbers.
+- [x] **Multi-hop Building Workshop arbitrage, closed and proven.** `tools/test-economy.mjs`
+      expands all 46 kits to their raw leaves, following the CHEAPEST producing recipe at each
+      step so an exploit cannot hide behind an expensive sibling. The best kit margin in the game
+      is `kit_paper_mill` at **-35 coins** (raw 555, sells 520); nothing is profitable even when
+      every input is bought at the market's 1.4x. The original ~9,800 scenario is re-run by name.
+      Nothing is underwater on direct inputs or on fully expanded raw inputs either.
+- [x] **Every panel has a search field now, from one wiring line.** `src/panelsearch.js` is
+      attached at the end of `renderPanelContent`, so it filters the cards a panel actually
+      rendered rather than the data behind them - which means every panel gets it, including ones
+      nobody has written yet, and there is one implementation to keep correct instead of
+      twenty-nine. Plain text is the default and matches literally; a `.*` toggle switches to a
+      real regular expression with a token palette anchored beside the field, a case toggle, live
+      validation and a running count. A half-typed pattern matches everything rather than nothing,
+      because a person mid-keystroke has not made a mistake yet.
+
+      It appears on any panel holding six or more cards, which is a RULE rather than a per-panel
+      judgement: below six the whole list is on screen and there is nothing to find. Verified live
+      across 22 panels - 11 above the threshold have it, 11 below do not.
+
+- [x] **The dead tail is gone; the spread is still wide and that is fine.** 23 recipes earned
+      under 0.010 coins per second of queue time - syrup turned 76 coins of sugar into 78 over a
+      full hour, which selling the sugar beat. Each was lifted by the SMALLEST amount clearing both
+      that floor and the project own documented 1.6x output-over-inputs rule, iterated to a fixed
+      point because butter and cheese and sugar are inputs to other recipes and lifting one lifts
+      its consumers. The worst margin in the game went from 0.0006 to 0.010 per second.
+
+      `tools/test-economy.mjs` now FAILS below 0.008 rather than reporting it, so the tail cannot
+      grow back. The remaining 11x spread between median and best is untouched on purpose: where a
+      recipe sits between decent and excellent is a design opinion, and a guard on that would be a
+      guard on taste. No migration was needed - prices are read from data.js and never written into
+      a save, so existing games picked up the new values on load.
+
+- [x] **The hand-transcribed tables are now checked for coherence, though NOT against the wikis.**
+      `tools/test-tables.mjs` covers the regatta placement and league ladders, the community
+      buildings and the expansion costs. It deliberately proves shape rather than value: a
+      hand-typed table goes wrong by a slipped digit, and a slipped digit does not look like
+      anything until you ask whether the curve is smooth. All eight checks were watched failing on
+      the exact slips they exist to catch.
+
+      Stated plainly because it matters: this does not verify the numbers against their sources,
+      and re-deriving them from the wikis would be the wrong target anyway - those describe a
+      different game and several figures have deliberately diverged since (the doner kebab stand
+      is at 54 here, not the wiki's 32, because lamb does not arrive until 53). If exact wiki
+      agreement is ever wanted, it is a separate job with a different tool.

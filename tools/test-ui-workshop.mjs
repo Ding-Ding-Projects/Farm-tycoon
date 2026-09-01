@@ -56,6 +56,16 @@ function fakeElement(tag) {
         node.className = node.className.split(/\s+/).filter((c) => c && !cls.includes(c)).join(' ');
       },
     },
+    // Attributes. Absent until now, which silently made every accessibility attribute
+    // untestable: renderMerge setting aria-label on a cell threw "setAttribute is not a function"
+    // rather than being checked, so nothing about names, roles or pressed state could be
+    // exercised here at all.
+    attributes: {},
+    setAttribute(name, value) { node.attributes[name] = String(value); },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(node.attributes, name) ? node.attributes[name] : null; },
+    hasAttribute(name) { return Object.prototype.hasOwnProperty.call(node.attributes, name); },
+    removeAttribute(name) { delete node.attributes[name]; },
+    focus() {},
     appendChild(child) { node.children.push(child); child.parentNode = node; return child; },
     addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
     removeEventListener(type, fn) {
@@ -135,7 +145,24 @@ globalThis.CustomEvent = globalThis.CustomEvent || class CustomEvent {
 const state = await import('../src/state.js');
 const workshop = await import('../src/workshop.js');
 const ui = await import('../src/ui.js');
-const { BUILDINGS } = await import('../src/data.js');
+const { BUILDINGS, FARM } = await import('../src/data.js');
+const placement = await import('../src/placement.js');
+
+/**
+ * Finish a placement the way input.js does: the Build button now only opens the ghost, so a
+ * test that stops at the click is testing half a gesture.
+ */
+function dropGhostSomewhereLegal() {
+  const g = placement.ghost();
+  if (!g) return { ok: false, reason: 'no ghost' };
+  const z = FARM.startZone;
+  for (let y = z.y; y <= z.y + z.h - g.h; y++) {
+    for (let x = z.x; x <= z.x + z.w - g.w; x++) {
+      if (placement.isLegal(x, y, g.w, g.h)) { placement.hover(x, y); return placement.confirm(); }
+    }
+  }
+  return { ok: false, reason: 'nowhere legal' };
+}
 
 state.resetGame();
 ui.init();
@@ -225,6 +252,16 @@ test('holding the kit places the building and consumes exactly one, on top of th
   assert.equal(buildBtn.disabled, false);
   buildBtn.click();
 
+  // Build now opens the placement ghost rather than dropping the building on the first free
+  // tile. Nothing may be spent until the player actually chooses where it goes: a ghost that
+  // charged on open would bill someone for a building they then cancelled.
+  assert.equal(placement.isActive(), true, 'Build should open the placement ghost');
+  assert.equal(s.coins, 10000, 'opening the ghost must not charge anything yet');
+  assert.equal(s.barn.items.kit_dairy, 2, 'opening the ghost must not consume the kit yet');
+
+  const res = dropGhostSomewhereLegal();
+  assert.equal(res.ok, true, 'the ghost should place on a legal start-zone tile');
+
   assert.equal(s.coins, 10000 - BUILDINGS.dairy.cost, 'the coin cost is still charged, kit or no kit');
   assert.equal(s.barn.items.kit_dairy, 1, 'exactly one kit is consumed, never the whole stack');
   assert.equal(s.farm.objects.filter((o) => o.type === 'dairy').length, 1);
@@ -239,6 +276,10 @@ test('a failed placement (insufficient coins) never touches the kit it would hav
   const buildBtn = buildButtonOn(findCard('Dairy'));
   assert.equal(buildBtn.disabled, false, 'the kit is held, so only the coin cost can refuse this');
   buildBtn.click();
+  const res = dropGhostSomewhereLegal();
+  assert.equal(res.ok, false, 'no coins means the placement itself must refuse');
+  assert.equal(res.reason, 'refused', 'refused (cannot afford), not blocked (bad tile)');
+  placement.cancel();
 
   assert.equal(s.barn.items.kit_dairy, 1, 'a failed placement must never consume the kit');
   assert.equal(s.farm.objects.some((o) => o.type === 'dairy'), false);

@@ -77,6 +77,16 @@ function fakeElement(tag) {
         node.className = node.className.split(/\s+/).filter((c) => c && !cls.includes(c)).join(' ');
       },
     },
+    // Attributes. Absent until now, which silently made every accessibility attribute
+    // untestable: renderMerge setting aria-label on a cell threw "setAttribute is not a function"
+    // rather than being checked, so nothing about names, roles or pressed state could be
+    // exercised here at all.
+    attributes: {},
+    setAttribute(name, value) { node.attributes[name] = String(value); },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(node.attributes, name) ? node.attributes[name] : null; },
+    hasAttribute(name) { return Object.prototype.hasOwnProperty.call(node.attributes, name); },
+    removeAttribute(name) { delete node.attributes[name]; },
+    focus() {},
     appendChild(child) { node.children.push(child); child.parentNode = node; return child; },
     addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
     removeEventListener(type, fn) {
@@ -977,6 +987,82 @@ test("main.js's throttled tickAllSystems() correctly advances regatta rival scor
   }
   const totalPoints = s.regatta.rivals.reduce((sum, r) => sum + r.points, 0);
   assert.ok(totalPoints > 0, 'rival scores must have moved in the background over 3 simulated hours of throttled loop ticks, with no panel ever opened');
+});
+
+// ---------------------------------------------------------------------------------------
+// The merge board's keyboard and screen-reader contract.
+//
+// Found by sweeping every panel for controls with no accessible name: the merge board had 57 of
+// them out of 63. Every cell was a bare <button> whose empty ones carried no text, no title and no
+// label, so a screen reader read "button" fifty-seven times with no way to tell one from another
+// or know where on the board you were - on a system whose entire mechanic is which cell a thing is
+// in. The selection was an outline and nothing else, so there was no way to tell what you had
+// picked up either, and all 63 cells were tab stops, meaning twenty-odd presses just to get PAST
+// the panel.
+//
+// Source checks rather than a rendered sweep, because the fake DOM in this file does not model
+// focus. What matters is that the attributes are still being set at all.
+// ---------------------------------------------------------------------------------------
+{
+  const merge = uiSource.slice(uiSource.indexOf('function renderMerge'), uiSource.indexOf('function renderMerge') + 9000);
+
+  test('every merge cell says where it is and what is on it', () => {
+    assert.match(merge, /cellBtn\.setAttribute\('aria-label',/,
+      'each cell needs an accessible name - an empty one has no text to fall back on');
+    assert.match(merge, /Row \$\{row\}, column \$\{col\}/,
+      'the name must carry the position: on a merge board, WHERE a thing is is the game');
+    assert.match(merge, /what = 'empty'/, 'an empty cell must still name itself as empty');
+  });
+
+  test('the picked-up cell is announced, not just outlined', () => {
+    assert.match(merge, /cellBtn\.setAttribute\('aria-pressed'/,
+      'selection was an outline and nothing else, which no screen reader can report');
+  });
+
+  test('the board is one tab stop with arrow keys, not sixty-three tab stops', () => {
+    assert.match(merge, /cellBtn\.tabIndex = i === mergeFocus \? 0 : -1;/,
+      'roving tabindex: one way in, then arrows');
+    assert.match(merge, /grid\.addEventListener\('keydown'/, 'and the arrows have to be handled');
+    // The bug this caught on the way in: bounds-checking only the whole board let ArrowRight off
+    // the last column wrap onto the next row, which the comment beside it claimed it did not.
+    assert.match(merge, /horizontal && Math\.floor\(to \/ cols\) !== Math\.floor\(from \/ cols\)/,
+      'a horizontal move must stay on its row - checking only the board ends lets it wrap');
+  });
+
+  test('the cell that was acted on is the one focus comes back to', () => {
+    // Deliberately NOT read from a focus event: focusing an already-focused element fires nothing,
+    // so a focus-maintained index is only right when focus actually moved. Measured before this
+    // was fixed, focus returned three rows away from the cell that was clicked.
+    assert.match(merge, /^\s*mergeFocus = i;/m,
+      'the click handler must record its own cell rather than inferring it from a focus event');
+  });
+}
+
+// ---------------------------------------------------------------------------------------
+// Dock buttons have names, whatever the count is.
+//
+// Every dock button's only text is an EMOJI, so without a label a screen reader announces "star
+// button" and "gear button". They all carried a `title`, which some readers use and some ignore
+// and touch never surfaces at all, so it is not a name you can rely on.
+//
+// The COUNT is deliberately not asserted. Five separate documents claimed the dock had "exactly
+// four" buttons, which was true of index.html and false of the running game - ui.js appends a
+// fifth for the daily wheel at boot, on purpose. Pinning the number here would just move that
+// drift into the test suite. What must hold is that every button, however many there are and
+// wherever it was created, can be identified.
+// ---------------------------------------------------------------------------------------
+test('every dock button has an accessible name, not just an emoji and a title', () => {
+  const markup = readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const dockButtons = markup.match(/<button[^>]*class="dock-btn"[^>]*>/g) || [];
+  assert.ok(dockButtons.length > 0, 'expected dock buttons in index.html');
+  for (const btn of dockButtons) {
+    assert.match(btn, /aria-label="[^"]+"/,
+      `a dock button has no aria-label, so its name is an emoji: ${btn}`);
+  }
+  // The one ui.js creates at runtime has to be labelled in code, and is easy to miss precisely
+  // because it is not in the markup with its siblings.
+  assert.match(uiSource, /wheelBtn\.setAttribute\('aria-label'/,
+    'the daily wheel button is built in ui.js and needs its label there');
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

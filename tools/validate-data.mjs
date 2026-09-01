@@ -58,7 +58,8 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
     'fondue_pot', 'preservation_station', 'jeweler', 'yogurt_maker', 'cake_oven',
     'ice_cream_maker', 'soup_kitchen', 'flower_shop', 'sauce_maker',
     'sandwich_bar', 'taco_kitchen', 'hat_maker', 'donut_maker',
-    'paper_mill', 'rubber_factory', 'candle_maker'];
+    'paper_mill', 'rubber_factory', 'candle_maker', 'smoothie_mixer', 'hot_dog_stand', 'omelet_station', 'milkshake_bar', 'honey_extractor', 'lure_workbench',
+    'net_maker', 'doner_stand', 'lobster_pool', 'duck_salon', 'pasta_maker'];
   const COIN_ONLY = ['feed_mill', 'bakery', 'build_workshop'];
   for (const bid of MUST_HAVE_KIT) {
     if (!d.BUILDINGS[bid]) errors.push(`kit inventory names unknown building '${bid}'`);
@@ -70,6 +71,30 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   for (const bid of Object.keys(d.BUILDINGS))
     if (!MUST_HAVE_KIT.includes(bid) && !COIN_ONLY.includes(bid))
       errors.push(`building ${bid} is in neither the kit list nor the coin-only list - classify it`);
+}
+
+// A building must not unlock before the first thing it can actually make.
+//
+// The recipe-versus-inputs rule below already stops a recipe being offered before its ingredients
+// exist. Nothing stopped the BUILDING arriving first, which is a different and quieter failure:
+// the shop offers it, the player pays for it, and it sits on the farm doing nothing until a crop
+// several levels away turns up. Measured when this was written, the oil press opened three levels
+// before olives and the tea house six before tea leaves.
+//
+// The fix is always to move the building, never to drag the crop forward - a crop's level is part
+// of its own balance and has other consumers.
+{
+  for (const [bid, b] of Object.entries(d.BUILDINGS)) {
+    if (!b.recipes || !b.recipes.length) continue;
+    const first = Math.min(...b.recipes.map((r) => r.unlockLevel || 0));
+    const opens = b.unlockLevel || 0;
+    if (first > opens) {
+      errors.push(
+        `building ${bid}: opens at level ${opens} but its earliest recipe is level ${first} - `
+        + `${first - opens} levels of owning a factory that cannot make anything`
+      );
+    }
+  }
 }
 
 // Per-factory minigames. The hand-written list matters more than the rules: a rule alone

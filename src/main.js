@@ -8,6 +8,7 @@
 //   window.__farmDebug = { timeSkip(ms), state, give(itemId, qty) }
 
 import * as state from './state.js';
+import * as motion from './motion.js';
 import * as renderer from './render/renderer.js';
 import * as ui from './ui.js';
 import * as input from './input.js';
@@ -21,6 +22,7 @@ import * as trains from './trains.js';
 import * as zoo from './zoo.js';
 import * as extras from './extras.js';
 import * as foraging from './foraging.js';
+import * as placement from './placement.js';
 import * as lab from './lab.js';
 import * as helicopter from './helicopter.js';
 import * as newspaper from './newspaper.js';
@@ -79,6 +81,9 @@ function buildWorld() {
       const entry = s.production.find((p) => p.objectId === obj.id);
       objects.push({
         id: obj.id, kind: 'building', type: obj.type, tx: obj.x, ty: obj.y,
+        // Working means STILL COOKING, not merely "has a queue entry": a finished craft waiting
+        // to be collected should look finished, so its chimney stops and its windows cool off.
+        working: !!entry && entry.readyAt > now,
         progress: entry ? Math.max(0, Math.min(1, 1 - (entry.readyAt - now) / 60000)) : undefined,
       });
     } else if (obj.kind === 'decoration' || obj.kind === 'pond' || obj.kind === 'mine') {
@@ -109,7 +114,10 @@ function buildWorld() {
     objects.push({ id: node.id, kind: 'forage', type: node.type, tx: node.x, ty: node.y, progress });
   }
 
-  return { objects };
+  // While the ghost is up, show the tile grid: that is the one moment the player is thinking in
+  // tiles rather than in scenery, and it is exactly what CLAUDE.md reserves the grid for.
+  const ghost = placement.ghost();
+  return { objects, ghost, showGrid: !!ghost };
 }
 
 /** Run every timer/tick module's tick(now), defensively — Phase B stubs are safe no-ops. */
@@ -218,10 +226,15 @@ function boot() {
   const startCenterY = FARM.startZone.y + FARM.startZone.h / 2;
   const level = s?.level ?? 1;
   const unlockedStructures = Object.values(STRUCTURES).filter((d) => level >= d.unlockLevel);
-  const focusPoints = [
-    ...(s?.farm?.objects ?? []).map((o) => ({ x: o.x, y: o.y })),
-    ...unlockedStructures.map((d) => ({ x: d.pos.x + d.size[0] / 2, y: d.pos.y + d.size[1] / 2 })),
-  ];
+  // Prefer what the PLAYER owns. Averaging their plots together with every unlocked structure
+  // drags the opening camera off toward the scenery: on a fresh save it framed the lake and the
+  // truck bay while the six starting fields sat half off the top-left corner, which is the one
+  // thing the tutorial immediately asks the player to use. Structures are the fallback for a
+  // save that somehow owns nothing, not an equal vote.
+  const ownedPoints = (s?.farm?.objects ?? []).map((o) => ({ x: o.x, y: o.y }));
+  const focusPoints = ownedPoints.length
+    ? ownedPoints
+    : unlockedStructures.map((d) => ({ x: d.pos.x + d.size[0] / 2, y: d.pos.y + d.size[1] / 2 }));
   const focusX = focusPoints.length
     ? focusPoints.reduce((sum, p) => sum + p.x, 0) / focusPoints.length
     : startCenterX;
@@ -235,6 +248,7 @@ function boot() {
   renderer.cameraTarget.y = renderer.camera.y;
   renderer.cameraTarget.zoom = renderer.camera.zoom;
 
+  motion.init();   // must run before the first frame, so nothing animates once and then stops
   ui.init();
   input.init(canvas);
   tutorial.init();
@@ -244,7 +258,26 @@ function boot() {
 
   if (bootStatus) bootStatus.textContent = '';
 
-  window.addEventListener('beforeunload', () => state.save());
+  // Save on every route out of the app, not just beforeunload.
+  //
+  // beforeunload is the desktop event and it is genuinely unreliable on mobile: Android
+  // frequently backgrounds or kills an app without ever firing it, which on the Android target
+  // means the last stretch of play is simply gone. visibilitychange (to hidden) and pagehide are
+  // the events the platform actually guarantees, and they fire at the moment the app leaves the
+  // foreground, which is precisely when the OS may decide to reclaim it.
+  //
+  // This matters more than it looks, and it was measured rather than assumed. localStorage is
+  // committed to disk lazily: force-quitting the app seconds after a save loses that save
+  // entirely and the game reloads the PREVIOUS one, while the same force-quit after a settling
+  // window keeps everything. Saving on the way out is what gives the browser the chance to
+  // commit before the process dies. See tools/verify-persistence.mjs, which demonstrates both
+  // outcomes.
+  const saveOnExit = () => { try { state.save(); } catch { /* never let a save break teardown */ } };
+  window.addEventListener('beforeunload', saveOnExit);
+  window.addEventListener('pagehide', saveOnExit);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveOnExit();
+  });
 
   running = true;
   lastAutosave = now;

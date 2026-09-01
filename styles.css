@@ -86,9 +86,16 @@ a:hover { color: var(--color-primary); }
 
 /* ---------- HUD: slim rail (D graft) ---------- */
 .hud-top {
-  position: fixed; top: 0; left: 0; right: 0; height: 76px;
+  position: fixed; top: 0; left: 0; right: 0;
+  /* Grow by whatever the device reserves at the top, and pad the content down past it. On a
+     phone the status bar sits over this strip, and a flat 76px put the level badge and the coin
+     counters half underneath the clock. Found by running the real APK on a device, which is the
+     only place safe-area insets are anything but zero. */
+  height: calc(76px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  box-sizing: border-box;
   display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
-  padding: 0 var(--sp-5); background: var(--rail-bg);
+  padding-left: var(--sp-5); padding-right: var(--sp-5); background: var(--rail-bg);
   border-bottom: 3px solid rgba(240, 181, 46, 0.5);
   pointer-events: none;
 }
@@ -111,7 +118,18 @@ a:hover { color: var(--color-primary); }
 }
 .level-badge .progress-ring { display: none; }   /* the ring is the background now */
 
-.hud-counters { display: flex; gap: var(--sp-2); align-items: center; }
+/* min-width:0 so the row may actually shrink inside its flex parent, which a flex item will not
+   do by default. Belt and braces alongside compactCount() in ui.js: the short form keeps the
+   numbers narrow, and this keeps the row from pushing itself off a narrow screen even so. */
+.hud-counters {
+  display: flex; gap: var(--sp-2); align-items: center;
+  /* The ROW may shrink; the pills inside it may not. Letting the pills shrink was measured on a
+     real phone squashing the coin pill to 88px around 91px of content, so "999.5k" rendered as
+     "999.5" with the unit chopped off - a worse bug than the overflow it was meant to fix, and
+     invisible to any check that only asks whether the row fits. */
+  min-width: 0; flex-shrink: 1;
+}
+.hud-counters > * { flex-shrink: 0; }
 .pill-counter {
   display: flex; align-items: center; gap: var(--sp-2);
   background: var(--pill-bg); border: 3px solid var(--color-wood-dark);
@@ -182,8 +200,11 @@ a:hover { color: var(--color-primary); }
   background: var(--wood-bg);
   border: 4px solid var(--color-outline); border-radius: 20px;
   box-shadow: 0 7px 0 rgba(58, 37, 16, 0.55), var(--shadow-soft);
-  /* Keep the dock clear of a phone's home indicator / gesture bar. */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Keep the dock clear of a phone's home indicator / gesture bar, WITHOUT throwing away its own
+     padding on every device that has no such bar. The longhand overrides the shorthand's 10px
+     outright, so the previous version silently left the dock with zero bottom padding on desktop
+     and on any phone reporting a zero inset. */
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
 .dock-btn {
   width: 60px; height: 60px; cursor: pointer; border-radius: 15px;
@@ -235,11 +256,24 @@ a:hover { color: var(--color-primary); }
 }
 .order-card { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .shop-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; aspect-ratio: 1; justify-content: center; }
-.build-card { display: flex; flex-direction: column; gap: 9px; min-width: 150px; text-align: left; }
+/* min-width was a flat 150px, which is wider than a grid track gets on a phone: the tracks
+   computed to 144.5px and every card still drew at 150, so the grid scrolled sideways by a few
+   pixels no matter what the track sizing said. A card cannot be allowed to overrule the column it
+   sits in. 150px stays as the PREFERRED width via flex-basis, so nothing changes on a wide panel;
+   it just stops being a floor the layout cannot go under. */
+.build-card { display: flex; flex-direction: column; gap: 9px; min-width: 0; flex: 1 1 150px; text-align: left; }
 .build-card.locked { filter: saturate(0.55); opacity: 0.85; }
 .build-card.locked .btn { pointer-events: none; }
 .card-row { display: flex; gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-2); }
-.slot-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--sp-3); }
+/* auto-fill with an explicit minimum, NOT a fixed count of 1fr columns.
+   `repeat(6, 1fr)` reads as "six equal columns that share the width", and it is not: 1fr means
+   minmax(AUTO, 1fr), and that auto floor is the column's min-content. The cards' min-content is
+   about 150px, so six columns demanded 960px inside a 727px sheet and every panel using this
+   class scrolled sideways with its last column cut in half - achievements included, since long
+   before the Bake Book arrived. Measured, not inferred: getComputedStyle reported
+   `150px 150px 150px 150px 150px 150px` against a 727px container.
+   Letting the browser choose the count fits the space it actually has. */
+.slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-3); }
 .slot-empty {                                   /* NEW — dashed empty/locked slot */
   display: grid; place-items: center; border-radius: var(--radius-card);
   background: rgba(122, 74, 24, 0.07); border: 3px dashed rgba(122, 74, 24, 0.32);
@@ -337,6 +371,13 @@ a:hover { color: var(--color-primary); }
   min-width: min(380px, calc(100vw - 32px));
   max-width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 32px); overflow-y: auto;
+  /* The card scrolls when it is taller than the screen, so it must keep vertical panning even
+     though the backdrop behind it blocks all touch. Three layers, each deliberate:
+       backdrop   none    a drag that misses the card must not pan the farm behind it
+       card       pan-y   a long dialog on a phone still has to be scrollable
+       game-stage none    a verb owns every gesture that starts on it, and wins here by being
+                          the innermost element the finger actually landed on */
+  touch-action: pan-y;
   animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes modal-pop { from { transform: scale(0.86); opacity: 0; } }
@@ -383,7 +424,29 @@ a:hover { color: var(--color-primary); }
 .game-stage:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
 
 /* the well every stage sits in — the only thing the stages share */
-.game-stage { position: relative; padding: 14px; margin-bottom: var(--sp-4); border-radius: 18px; border: 4px solid var(--color-wood-dark); background: linear-gradient(#f0e2c8, #e2cfa8); }
+.game-stage {
+  position: relative; padding: 14px; margin-bottom: var(--sp-4);
+  border-radius: 18px; border: 4px solid var(--color-wood-dark);
+  background: linear-gradient(#f0e2c8, #e2cfa8);
+  /* Every one of these exists to stop the browser stealing a gesture mid-verb, which on a touch
+     device fires pointercancel and ends the run rather than merely feeling bad.
+       touch-action: none      the WebView would otherwise scroll the page, or start its own
+                               pinch-zoom, the moment a finger drags across a stage - and drag,
+                               path, balance and steer verbs are ALL a finger dragging across a
+                               stage, so this is most of the library.
+       user-select             a drag would begin selecting the stage's own text.
+       -webkit-touch-callout   a long press raises the system callout menu, and a sustain verb is
+                               a long press by definition.
+       -webkit-tap-highlight   removes the grey flash Android paints over a tapped element. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* The modal itself must not scroll or zoom under the stage either. The backdrop is fixed and
+   full-screen, so a drag that misses the stage would otherwise pan the page behind it. */
+.modal-backdrop { touch-action: none; }
 
 /* tap targets — one live target at a time, N rounds */
 .stage-targets { background: linear-gradient(#e8d4b0, #d8bd92); }
@@ -567,6 +630,126 @@ a:hover { color: var(--color-primary); }
 .stage-pads .pad.lit { background: #fffdf6 !important; box-shadow: 0 0 18px rgba(255, 235, 170, 0.95); }
 .stage-pads .status { display: block; margin-top: 11px; text-align: center; font-weight: 800; font-size: 12px; color: #6d3f14; }
 
+/* drag, closed-loop flavour — the thread may never cross a line already laid. */
+.stage-weave { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); height: auto; overflow: visible; }
+.stage-weave .weave-board { position: relative; height: 190px; border-radius: 14px; background: linear-gradient(#e6f0e4, #cfe0cc); border: 4px solid var(--color-outline); }
+.stage-weave .weave-board svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage-weave .weave-thread { stroke: var(--color-primary-deep); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.stage-weave .weave-thread.closed { stroke: #2f7f4f; stroke-width: 2.4; }
+.stage-weave .weave-peg { position: absolute; width: 26px; height: 26px; padding: 0; margin: -13px 0 0 -13px; cursor: pointer; border-radius: 50%; background: rgba(255, 250, 234, 0.95); border: 3px solid var(--color-outline); }
+.stage-weave .weave-peg.threaded { background: var(--color-primary); }
+.stage-weave .weave-peg.current { box-shadow: 0 0 0 4px rgba(255, 250, 234, 0.9); transform: scale(1.15); }
+/* Blocked is never colour alone: the peg also loses its outline weight and shrinks. */
+.stage-weave .weave-peg.blocked { opacity: 0.4; border-style: dashed; border-width: 2px; transform: scale(0.82); }
+.stage-weave .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* release, spread flavour — no target size, only how alike the five are. */
+/* align-items and height are restated because the host ALSO carries .stage-gauge, whose
+   align-items: flex-end shrank every slot to 6px wide, and a rule that does not mention a
+   property cannot win it however far down the file it sits. Measured, not assumed. */
+.stage-portions { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+.stage-portions .portion-row { display: flex; align-items: flex-end; gap: var(--sp-2); height: 130px; }
+.stage-portions .portion { position: relative; flex: 1; height: 100%; border-radius: 10px 10px 6px 6px; background: rgba(58, 37, 16, 0.1); border: 3px solid var(--color-outline); overflow: hidden; }
+/* The ceiling this cut can reach, drawn as a line across the slot so the row visibly falls away. */
+.stage-portions .portion::before { content: ''; position: absolute; left: 0; right: 0; bottom: calc(var(--yield, 1) * 100%); height: 3px; background: repeating-linear-gradient(90deg, rgba(58, 37, 16, 0.55) 0 5px, transparent 5px 9px); }
+.stage-portions .portion i { position: absolute; left: 0; right: 0; bottom: 0; display: block; background: linear-gradient(#e0894a, #c2622c); border-top: 3px solid var(--color-outline); }
+.stage-portions .portion.now { box-shadow: inset 0 0 0 3px rgba(255, 250, 234, 0.9); }
+.stage-portions .portion.done { opacity: 0.85; }
+.stage-portions .gauge { height: 16px; border-radius: var(--radius-pill); background: rgba(58, 37, 16, 0.16); border: 3px solid var(--color-outline); overflow: hidden; }
+.stage-portions .gauge i { display: block; height: 100%; background: var(--color-primary); }
+.stage-portions .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* aim, packing flavour — no target at all; every drop is judged against the ones already down. */
+.stage-pool { display: flex; flex-direction: column; gap: var(--sp-3); align-items: center; height: auto; }
+.stage-pool .pool { width: 100%; max-height: 200px; border-radius: 50%; }
+.stage-pool .pool-water { fill: #bcd9e8; stroke: var(--color-outline); stroke-width: 0.05; }
+.stage-pool .pool-rock { fill: #8d8577; stroke: var(--color-outline); stroke-width: 0.03; }
+.stage-pool .pool-territory { fill: rgba(47, 127, 79, 0.18); stroke: rgba(47, 127, 79, 0.6); stroke-width: 0.012; }
+.stage-pool .pool-pot { fill: var(--color-primary); stroke: var(--color-outline); stroke-width: 0.025; }
+.stage-pool .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* path, restraint flavour — travel freely, arrive slowly. */
+.stage-calm { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+/* SQUARE on purpose, not for looks. The model measures the hand in screen WIDTHS per second and
+   its patches are circles in a unit square, so a board that is wider than it is tall makes the
+   same speed limit feel stricter vertically than horizontally - and it made the patches near the
+   bottom overflow the board entirely, because their size comes from the width and their position
+   from the height. */
+.stage-calm .calm-board { position: relative; width: 100%; max-width: 260px; margin: 0 auto; aspect-ratio: 1 / 1; border-radius: 14px; background: linear-gradient(#f6ead3, #e6d3ad); border: 4px solid var(--color-outline); touch-action: none; }
+.stage-calm .calm-patch { position: absolute; border-radius: 50%; border: 3px solid var(--color-outline); background: rgba(255, 250, 234, 0.6); }
+/* Tender patches are marked by their border too, not only by being a different shade. */
+.stage-calm .calm-patch.tender { border-style: double; border-width: 5px; }
+.stage-calm .calm-patch i { position: absolute; inset: 3px; display: block; border-radius: 50%; background: var(--color-primary); }
+.stage-calm .calm-patch.here { box-shadow: 0 0 0 4px rgba(255, 250, 234, 0.9); }
+.stage-calm .calm-patch.done { border-color: #2f7f4f; }
+.stage-calm .calm-meter { height: 16px; border-radius: var(--radius-pill); background: rgba(58, 37, 16, 0.16); border: 3px solid var(--color-outline); overflow: hidden; }
+.stage-calm .calm-meter i { display: block; height: 100%; background: var(--color-primary); }
+.stage-calm .calm-meter.over i { background: repeating-linear-gradient(45deg, #c2622c 0 6px, #8f3f18 6px 12px); }
+.stage-calm .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* route, changeover flavour — the cost is in the swaps, not in the tickets. */
+/* Same trap from the other direction: the host also carries .stage-route, which is a fixed
+   116px tall with overflow hidden, and this stage needs 169px - so the die lanes were cut in
+   half with nothing to say why. */
+.stage-dies { display: flex; flex-direction: column; gap: var(--sp-3); height: auto; overflow: visible; }
+.stage-dies .ticket-rack { display: flex; flex-wrap: wrap; gap: 6px; }
+.stage-dies .ticket { padding: 5px 7px; border-radius: 7px; border: 3px solid var(--color-outline); font-weight: 800; font-size: 11px; color: #4a2f12; }
+.stage-dies .ticket.die-0 { background: #f0c96a; }
+.stage-dies .ticket.die-1 { background: #a8cfe0; }
+.stage-dies .ticket.die-2 { background: #d5a8e0; }
+/* Done is struck through as well as faded, so the state does not rest on colour or opacity. */
+.stage-dies .ticket.filled { opacity: 0.4; text-decoration: line-through; }
+.stage-dies .die-lanes { display: flex; gap: var(--sp-2); }
+.stage-dies .die-lane { flex: 1; padding: 12px 6px; cursor: pointer; border-radius: 12px; background: rgba(255, 250, 234, 0.9); border: 4px solid var(--color-outline); font-weight: 800; font-size: 12px; color: #4a2f12; }
+/* Which die is on is said in words too - the lane carries "fitted" and its remaining count. */
+.stage-dies .die-lane.fitted { background: var(--color-primary); box-shadow: 0 0 0 3px rgba(255, 250, 234, 0.85); }
+.stage-dies .die-lane.fitted::after { content: ' (on)'; }
+.stage-dies .die-lane::before { content: attr(data-left) ' left'; display: block; font-size: 10px; font-weight: 700; opacity: 0.75; }
+.stage-dies .die-lane.empty { opacity: 0.45; text-decoration: line-through; }
+.stage-dies .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* ---------- Panel search ----------
+   Attached to every panel with enough in it to be worth searching. The bar wraps rather than
+   scrolls, because on a phone the field and its three toggles do not fit on one line and a
+   sideways-scrolling search box is a search box nobody finds the end of. */
+/* Every control here is at least 44x44. A sweep of all 25 panels for anything under that found
+   33 offenders and every single one was in this bar - the rest of the game was already clean, so
+   the search I added was the only thing that had ever fallen short. */
+.panel-search-wrap { margin: 0 0 var(--sp-3); }
+.panel-search { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.panel-search-input {
+  flex: 1 1 160px; min-width: 0; min-height: 44px; padding: 11px 12px; font: inherit; font-size: 14px; font-weight: 700;
+  color: var(--color-ink); background: rgba(255, 250, 234, 0.95); border: 3px solid var(--color-outline);
+  border-radius: var(--radius-pill);
+}
+.panel-search-input::placeholder { color: var(--color-ink-soft); font-weight: 700; }
+.panel-search-toggle {
+  flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 6px 10px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 800; color: var(--color-ink);
+  background: rgba(255, 250, 234, 0.9); border: 3px solid var(--color-outline); border-radius: 12px;
+}
+/* On-state is not colour alone: the border thickens and the weight changes, so it survives a
+   contrast theme and a colour-blind reader. */
+.panel-search-toggle.on { background: var(--color-primary); border-width: 4px; }
+.panel-search-toggle:focus-visible, .panel-search-input:focus-visible {
+  outline: 3px solid var(--color-primary-deep); outline-offset: 2px;
+}
+.panel-search-count { flex: 0 0 auto; font-size: 12px; font-weight: 800; color: var(--color-ink-soft); }
+/* An unfinished pattern is a normal state, not an error state, so it is marked rather than alarmed:
+   the field is outlined and the count line says what is wrong in words. */
+.panel-search.invalid .panel-search-input { border-color: #c2622c; }
+.panel-search.invalid .panel-search-count { color: #a8481c; }
+
+.panel-search-palette { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-2); }
+.panel-search-palette .token {
+  min-width: 44px; min-height: 44px; padding: 4px 8px; cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 700;
+  color: var(--color-ink); background: rgba(255, 250, 234, 0.9);
+  border: 3px solid var(--color-outline); border-radius: 10px;
+}
+.panel-search-palette .token:focus-visible { outline: 3px solid var(--color-primary-deep); outline-offset: 2px; }
+.panel-search-empty { margin: var(--sp-3) 0 0; }
+
 /* ---------- Buttons ---------- */
 .btn {
   font-family: var(--font-display); font-weight: 800; font-size: 16px; cursor: pointer;
@@ -590,6 +773,54 @@ a:hover { color: var(--color-primary); }
 .btn:disabled, .btn.disabled {
   background: rgba(122, 74, 24, 0.14); border-color: rgba(122, 74, 24, 0.24);
   color: #8a7f68; text-shadow: none; box-shadow: none; cursor: default; transform: none; filter: none;
+}
+
+/* ---------- Visible focus, everywhere ----------
+   Before this the whole game had FOUR focus rules, three of them on the panel search added days
+   after everything else - so every dock button, every card, every menu item and all 63 merge cells
+   relied on whatever ring the browser draws by default. On a game that restyles every control this
+   heavily that is a bet rather than a decision: the default ring is a thin dark line, and most of
+   this interface is already outlined in near-black at 3px, so it lands on top of a border it
+   cannot be told apart from.
+
+   Two rings on purpose. The pale one is what shows on the dark green and brown controls; the dark
+   one shows on the cream surfaces. Both are drawn OUTSIDE the element with an offset so they never
+   sit on top of the element's own border, which is what makes the default so easy to miss here.
+
+   :focus-visible rather than :focus, so a mouse click does not leave a ring behind - the whole
+   reason the browser distinguishes them. */
+.btn:focus-visible,
+.dock-btn:focus-visible,
+.radial-menu button:focus-visible,
+.sheet-content button:focus-visible,
+.sheet-content [tabindex]:focus-visible,
+[role='gridcell']:focus-visible {
+  outline: 3px solid var(--color-cream);
+  outline-offset: 3px;
+  /* A second, darker ring immediately outside the pale one, so whichever surface the control is
+     sitting on, one of the two has contrast against it. Cheaper and more reliable than trying to
+     pick a single colour that works on cream, brown, green and the world behind the HUD. */
+  box-shadow: 0 0 0 6px rgba(58, 37, 16, 0.85);
+}
+
+/* Cards and rows that are focusable but sit ON cream already: the pale ring would vanish, so the
+   order is reversed - dark first, pale outside it. */
+.build-card:focus-visible,
+.order-card:focus-visible,
+.shop-slot:focus-visible {
+  outline: 3px solid var(--color-outline);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(255, 250, 234, 0.9);
+}
+
+/* The merge board's SELECTION is a different thing from focus and must not look like it: focus is
+   where the keyboard is, selection is what you have picked up, and on this board you move around
+   while holding something. Selection is a filled amber cast plus a ring; focus is the ring above.
+   Both can be on the same cell at once and still be told apart. */
+[role='gridcell'].picked-up {
+  outline: 3px solid #f0b52e;
+  outline-offset: 0;
+  background-image: linear-gradient(rgba(240, 181, 46, 0.55), rgba(240, 181, 46, 0.55));
 }
 
 /* ---------- Progress bars ---------- */
@@ -639,13 +870,57 @@ a:hover { color: var(--color-primary); }
 /* ---------- 1024×640 floor ---------- */
 @media (max-width: 1100px), (max-height: 700px) {
   :root { --hit-dock: 58px; --hit-dock-primary: 68px; --radius-panel: 18px; }
-  .hud-top { height: 64px; padding: 0 var(--sp-3); }
+  /* Longhand padding, NOT the shorthand. The shorthand here used to reset padding-top to 0 and
+     height to a flat 64px, which quietly undid the safe-area handling above on every screen
+     narrower than 1100px - that is to say, on every phone, which is the only place the inset is
+     ever non-zero. Exactly the same class of bug as the dock's padding-bottom. */
+  .hud-top {
+    height: calc(64px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: var(--sp-3); padding-right: var(--sp-3);
+  }
   .level-badge { width: 52px; height: 52px; font-size: 20px; }
   .pill-counter { font-size: 17px; padding: 6px 14px 6px 8px; }
   .meter-chip .bar { width: 72px; }
   .dock-btn { width: var(--hit-dock); height: var(--hit-dock); }
   .sheet-panel { max-height: 76vh; padding: 26px var(--sp-4) var(--sp-5); }
-  .slot-grid { grid-template-columns: repeat(4, 1fr); }
+  /* Same reasoning as the base rule: a fixed four columns cannot shrink past their min-content
+     either, it just took a narrower sheet to notice. */
+  .slot-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 }
 
 [hidden] { display: none !important; }
+
+/* .stage-aim also hosts arc_pour, whose table and cup are an SVG rather than the round dish
+   cast_ingot uses. Both share the flex row above; only these two elements are new. */
+.stage-aim svg { flex: 1; min-width: 0; height: 120px; }
+.stage-aim .table { stroke: var(--color-outline); stroke-width: 2; }
+.stage-aim .cup { fill: var(--color-accent, #7fd4f0); stroke: var(--color-outline); stroke-width: 1.5; rx: 1.5; }
+
+/* ---------- phone widths, LAST on purpose ----------
+   These have to come after the 1100px block above, not before it. Both queries match on a 412px
+   phone, neither is more specific than the other, so source order alone decides - and with this
+   block earlier the 1100px rule silently won, leaving .pill-counter at 17px while the gap change
+   beside it applied, because that block happens not to set the gap. Measured on the device:
+   font 17px and padding 6px 14px, exactly the values this block was supposed to have replaced.
+   Third time this HUD has been bitten by two rules both matching. */
+@media (max-width: 420px) {
+  /* Sized from measurement rather than taste. On a 412px phone the four pills came to 386px, plus
+     24px of gaps, a 42px level badge and 24px of bar padding: 476px total, overflowing by 64.
+     Shrinking the pills themselves was tried first and was worse - they clipped their own text, so
+     "999.5k" rendered as "999.5", which a row-fits check cannot see. Reducing type, padding and
+     gap keeps every pill whole. */
+  .hud-top { padding-left: var(--sp-2); padding-right: var(--sp-2); }
+  .hud-counters { gap: 4px; }
+  .pill-counter { font-size: 14px; padding: 5px 9px 5px 6px; }
+}
+
+/* The 320px floor needs a second step, and the numbers say why. At 320px the level badge takes
+   40px and the bar padding 16px, so four pills and three gaps share 264px. At the 420px sizing
+   above they wanted 327px, overflowing by 67. This buys that back and no more: the type is small
+   here because the alternative is a counter you cannot read at all. */
+@media (max-width: 360px) {
+  .hud-top { padding-left: 3px; padding-right: 3px; }
+  .hud-counters { gap: 2px; }
+  .pill-counter { font-size: 11px; padding: 4px 5px 4px 3px; }
+}

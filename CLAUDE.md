@@ -13,8 +13,8 @@ remaining textual "Phase B" mentions in `main.js`, `state.js`, `ui.js`, and
 world for whoever picks this up next (full detail and verification evidence in
 `HANDOFF.md`):
 
-- `src/data.js` is **complete, final content** (validated by `npm test`): 22 crops,
-  12 animals, 26 buildings / 128 recipes, 192 goods, 23 construction materials in four
+- `src/data.js` is **complete, final content** (validated by `npm test`): 24 crops,
+  12 animals, 49 buildings / 215 recipes, 279 goods, 23 construction materials in four
   purpose-scoped sets, Merge Meadow, full event system (weekend/mini/Farm Fair/holidays),
   Township layer (town, trains, airport, zoo, islands, market), the expansion subsystems
   (workshop kits, per-factory minigames, mine depths, artifacts + museum, expeditions,
@@ -36,7 +36,9 @@ world for whoever picks this up next (full detail and verification evidence in
 - **Systems open from world objects, never the HUD or dock.** `STRUCTURES` gives each a
   footprint and position; `input.js` resolves a pick to a structure id. Locked ones are
   derelict but still clickable from level 1. The dock keeps only what has no place in the
-  world: settings, achievements, co-op/regatta, and decorating mode. Verified: exactly four
+  world: settings, achievements, co-op/regatta, decorating mode and the daily wheel. Four are
+  in `index.html`; the wheel is appended by `ui.js` at boot, the same way the co-op button ships
+  hidden in markup and is unhidden on unlock. Verified: five
   dock buttons in `index.html`, 22 structures with zero placement overlaps.
 - `design/` holds the checked-in visual overhaul: four HUD directions, the screen board, a
   reference renderer, and `handoff/SPRITE-NOTES.md`. **It is now integrated**, not just a
@@ -92,8 +94,10 @@ world for whoever picks this up next (full detail and verification evidence in
 | `src/render/renderer.js` | camera, iso tile math, frame drawing, DPR scaling |
 | `src/render/sprites.js` | ALL vector art draw functions (no image assets, ever) |
 | `src/render/effects.js` | particles: coin bursts, XP floaters, sparkles |
+| `src/motion.js` | the one reduced-motion answer for the whole game (canvas included) |
 | `src/ui.js` | all DOM: HUD, dock, sheet panels, radial menu, toasts, modals |
-| `src/input.js` | pointer handling: pick/pan/zoom/drag-plant/placement ghost |
+| `src/input.js` | pointer handling: pick/pan/pinch-zoom/drag-plant, drives the placement ghost |
+| `src/placement.js` | the placement ghost: choosing WHERE a building goes, and moving placed ones |
 | `src/audio.js` | WebAudio-synthesized SFX (no audio files) |
 | `src/tutorial.js` | guided-intro step machine |
 | `src/workshop.js` | Building Workshop: materials → components → kits → placeable buildings |

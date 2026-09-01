@@ -467,7 +467,8 @@ export const BUILDINGS = {
   sewing_machine: {
     name: 'Sewing Machine', unlockLevel: 20, cost: 2800, size: [2, 2], kit: 'kit_sewing_machine', minigame: 'stitch_line', queueSlots: 3,
     recipes: [
-      { id: 'cotton_shirt', inputs: { cotton_fabric: 2 },            time: 3600, xp: 10, unlockLevel: 20 },
+      { id: 'cotton_shirt', inputs: { cotton_fabric: 2 },            time: 3600, xp: 10, unlockLevel: 20,
+        play: { stages: [{ verb: 'match_seam' }] } },
       { id: 'wooly_hat',    inputs: { wool: 1, cotton_fabric: 1 },   time: 4500, xp: 11, unlockLevel: 20 },
       { id: 'blue_hat',     inputs: { wool: 1, cotton_fabric: 1, indigo: 1 }, time: 7200, xp: 15, unlockLevel: 21 },
     ],
@@ -1138,6 +1139,12 @@ export const VERBS = {
     purpose: 'Pulled through, taffy turns pale and light.',
     hint: 'Stretch your hands apart, then fold back together. Keep an even rhythm - snatching at it does not aerate.',
     stageClass: 'stage-dual', durationMs: 14000,
+  },
+  match_seam: {
+    name: 'Match the Seam', verbWord: 'match', family: 'route',
+    purpose: 'A seam that carries through holds the garment together.',
+    hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
+    stageClass: 'stage-route', durationMs: 14000,
   },
 };
 export const QUALITY = {

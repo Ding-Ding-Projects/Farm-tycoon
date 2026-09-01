@@ -282,6 +282,10 @@ const OPTIMAL = {
       return snap.want === 'apart' ? { left: 1, right: 0 } : { left: 0.5, right: 0.5 };
     };
   },
+
+  // Chained rule: the seam continues the piece BEFORE it. Routing by the falling piece - the
+  // instinct sort_chillies teaches - scores 0.14 to 0.57 here, which is the point.
+  match_seam: () => (snap) => ({ lane: snap.needs === null ? 0 : snap.needs, commit: true }),
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

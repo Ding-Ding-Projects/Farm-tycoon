@@ -43,6 +43,7 @@ export const VERB_LOADERS = {
   wind_press: () => import('./verbs/wind_press.js'),
   jar_fill: () => import('./verbs/jar_fill.js'),
   pull_taffy: () => import('./verbs/pull_taffy.js'),
+  match_seam: () => import('./verbs/match_seam.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

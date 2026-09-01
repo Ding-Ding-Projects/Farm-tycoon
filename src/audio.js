@@ -98,3 +98,55 @@ export function merge() { tone([600, 1000], { duration: 0.12, type: 'sine', gain
 export function fishSplash() { tone([300, 180], { duration: 0.14, type: 'sine', gain: 0.1 }); }
 /** Achievement / milestone unlocked. */
 export function achievementUnlocked() { chord([523, 659, 784, 1047], { duration: 0.25, type: 'triangle', gain: 0.08 }); }
+
+// ---------------------------------------------------------------------------
+// Minigame feedback, one voice per INPUT FAMILY.
+//
+// Per family rather than per verb, deliberately. Fourteen verbs would mean fourteen sounds to
+// invent and tell apart, and a player cannot learn that many; a family is the thing their hand is
+// actually doing, so the ear and the hand agree. Two verbs in one family sound alike because they
+// ARE alike to play, which is information rather than laziness.
+//
+// Every one is short and quiet. These fire on almost every successful beat of a game, so anything
+// long or loud becomes unbearable inside ten seconds.
+// ---------------------------------------------------------------------------
+
+const FAMILY_HIT = {
+  path:     () => tone(720, { duration: 0.045, type: 'sine', gain: 0.07 }),
+  rhythm:   () => tone([560, 840], { duration: 0.06, type: 'triangle', gain: 0.11 }),
+  sustain:  () => tone(430, { duration: 0.05, type: 'sine', gain: 0.06 }),
+  balance:  () => tone(520, { duration: 0.05, type: 'sine', gain: 0.06 }),
+  route:    () => tone([680, 900], { duration: 0.07, type: 'square', gain: 0.08 }),
+  sequence: () => tone([620, 880], { duration: 0.07, type: 'triangle', gain: 0.1 }),
+  release:  () => tone([900, 500], { duration: 0.09, type: 'sine', gain: 0.1 }),
+  rate:     () => tone(600, { duration: 0.05, type: 'sine', gain: 0.06 }),
+  aim:      () => tone([980, 420], { duration: 0.1, type: 'triangle', gain: 0.1 }),
+  dual:     () => chord([520, 780], { duration: 0.06, type: 'sine', gain: 0.06 }),
+  steer:    () => tone(360, { duration: 0.05, type: 'sine', gain: 0.05 }),
+  drag:     () => tone([420, 700], { duration: 0.08, type: 'triangle', gain: 0.09 }),
+};
+
+/** One beat of a minigame went well. Unknown families stay silent rather than guessing. */
+export function minigameHit(family) {
+  const fn = FAMILY_HIT[family];
+  if (fn) fn();
+}
+
+/** One beat went badly. Same shape for every family: low, brief, and never a buzzer. */
+export function minigameMiss() {
+  tone(180, { duration: 0.07, type: 'sine', gain: 0.06 });
+}
+
+/** A stage of a chain committed, with more still to play. */
+export function stageDone() { tone([660, 880], { duration: 0.12, type: 'sine', gain: 0.12 }); }
+
+/**
+ * A craft finished. The flourish scales with the tier, so the ear learns the difference between
+ * a Plain result and a Masterpiece without reading the label.
+ */
+export function craftFinished(tierId) {
+  if (tierId === 'master') { chord([523, 659, 784, 1047], { duration: 0.3, type: 'sine', gain: 0.1 }); return; }
+  if (tierId === 'fine') { chord([523, 659, 784], { duration: 0.22, type: 'sine', gain: 0.09 }); return; }
+  if (tierId === 'good') { chord([523, 659], { duration: 0.18, type: 'sine', gain: 0.08 }); return; }
+  tone([440, 520], { duration: 0.14, type: 'sine', gain: 0.07 });
+}

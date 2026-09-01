@@ -1540,6 +1540,12 @@ export const ACHIEVEMENTS = [
   { id: 'pilot',          name: 'Pilot',              desc: 'Send 150 helicopter flights',    stat: 'helicopterFlights',    target: 150,    diamonds: 12 },
   { id: 'stationmaster',  name: 'Stationmaster',      desc: 'Send 80 trains',                 stat: 'trainsCompleted',      target: 80,     diamonds: 14 },
   { id: 'zookeeper',      name: 'Zookeeper',          desc: 'Collect 400 zoo souvenirs',      stat: 'zooSouvenirs',         target: 400,    diamonds: 22 },
+  // Playable crafts. These key off lifetime stats written in minigames.finalize, so they can only
+  // be earned by actually playing a game through - not by owning a factory or queueing a recipe.
+  { id: 'first_playable', name: 'Hands On', desc: 'Make a playable item yourself', stat: 'playablesMade', target: 1, diamonds: 2 },
+  { id: 'playable_25', name: 'Practised Hand', desc: 'Make 25 playable items', stat: 'playablesMade', target: 25, diamonds: 5 },
+  { id: 'first_master', name: 'Masterpiece', desc: 'Finish a craft at Masterpiece quality', stat: 'masterpiecesMade', target: 1, diamonds: 4 },
+  { id: 'master_10', name: 'Perfectionist', desc: 'Finish 10 crafts at Masterpiece quality', stat: 'masterpiecesMade', target: 10, diamonds: 10 },
 ];
 
 /**

@@ -140,6 +140,10 @@ export function finalize(entry) {
   const prevBest = state.minigames.best[entry.recipeId];
   if (prevBest === undefined || tierIndex > prevBest) state.minigames.best[entry.recipeId] = tierIndex;
 
+  // Lifetime stats, so achievements can key off real play rather than off a flag somebody sets.
+  economy.trackStat('playablesMade', 1);
+  if (tier && tier.id === 'master') economy.trackStat('masterpiecesMade', 1);
+
   if (tier && tier.grantsEffect) {
     const game = forBuilding(entry.objectId);
     if (game) {

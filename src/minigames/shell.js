@@ -10,6 +10,7 @@
 import { state, save } from '../state.js';
 import * as minigames from '../minigames.js';
 import { VERBS } from '../data.js';
+import * as audio from '../audio.js';
 import { createInput } from './input.js';
 import { loadVerb } from './registry.js';
 
@@ -104,6 +105,14 @@ export async function playStage(host, entry, { onClose } = {}) {
 
   let raf = 0;
   let last = 0;
+  // Audio is driven off progress() and score(), never off a verb's own fields, so the shell needs
+  // to know nothing about any particular game. Progress is quantised into sixteenths: a beat fires
+  // at most sixteen times a stage, which is frequent enough to feel responsive and infrequent
+  // enough not to become a drone. Whether that beat sounds like a hit or a miss is decided by
+  // whether the score moved across it, which is true for every verb by construction.
+  const BEATS = 16;
+  let lastBeat = -1;
+  let scoreAtBeat = 0;
   let torn = false;
   let settled = null;
 
@@ -151,13 +160,26 @@ export async function playStage(host, entry, { onClose } = {}) {
 
       model.step(dt, input.read(dt));
       view.render(model.snapshot());
-      scoreBadge.textContent = `${Math.round(model.score() * 100)}%`;
+      const now01 = model.score();
+      scoreBadge.textContent = `${Math.round(now01 * 100)}%`;
+
+      const beat = Math.floor(model.progress() * BEATS);
+      if (beat > lastBeat) {
+        if (lastBeat >= 0) {
+          if (now01 > scoreAtBeat + 1e-6) audio.minigameHit(meta.family);
+          else audio.minigameMiss();
+        }
+        lastBeat = beat;
+        scoreAtBeat = now01;
+      }
 
       if (model.done()) {
         // COMMIT FIRST, then render anything. The score is in the save before a result screen
         // exists, so a reload at this instant resumes at the next stage rather than replaying.
         const result = minigames.commitStage(entry, model.score());
         save();
+        if (result && result.done) audio.craftFinished(result.tier);
+        else audio.stageDone();
         finish({ committed: true, abandoned: false, result });
         return;
       }

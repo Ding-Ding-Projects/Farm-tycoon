@@ -1709,8 +1709,16 @@ function renderBuildingQueue(container, buildingId) {
     const short = missingInputs(recipe);
     const card = document.createElement('div');
     card.className = `build-card${locked ? ' locked' : ''}`;
+    // The Bake Book, put where a player is already looking rather than in a panel of its own:
+    // your best result for this recipe, on the card you queue it from. state.minigames.best was
+    // being written by finalize() and read by nothing at all until this line.
+    const bestIdx = recipe.play ? state.minigames.best[recipe.id] : undefined;
+    const bestTier = bestIdx === undefined ? null : QUALITY.tiers[bestIdx];
+    const bookLine = recipe.play
+      ? `<span class="minigame-hint">🎮 ${bestTier ? `Best: ${bestTier.label}` : 'Not yet made by hand'}</span>`
+      : '';
     card.innerHTML = `<span class="icon">${itemIcon(recipe.id)}</span><strong>${itemName(recipe.id)}</strong>
-      <span class="minigame-hint">${inputsLine(recipe)}</span>`;
+      <span class="minigame-hint">${inputsLine(recipe)}</span>${bookLine}`;
     card.appendChild(button('Queue', () => {
       const ok = typeof production.enqueue === 'function' && production.enqueue(buildingId, recipe.id);
       if (ok) {

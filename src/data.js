@@ -473,7 +473,8 @@ export const BUILDINGS = {
       { id: 'carrot_juice', inputs: { carrot: 3 },                 time: 1200, xp: 5, unlockLevel: 15 },
       { id: 'tomato_juice', inputs: { tomato: 2 },                 time: 2400, xp: 7, unlockLevel: 15 },
       { id: 'smoothie',     inputs: { strawberry: 2, milk: 1 },    time: 3600, xp: 10, unlockLevel: 15 },
-      { id: 'grape_juice',  inputs: { grapes: 2 },                 time: 5400, xp: 14, unlockLevel: 33 },
+      { id: 'grape_juice',  inputs: { grapes: 2 },                 time: 5400, xp: 14, unlockLevel: 33,
+        play: { stages: [{ verb: 'split_press' }] } },
     ],
   },
   jam_maker: {
@@ -488,7 +489,8 @@ export const BUILDINGS = {
     name: 'Coffee Kiosk', unlockLevel: 30, cost: 6500, size: [2, 2], kit: 'kit_coffee_kiosk', minigame: 'shot_timing', queueSlots: 3,
     recipes: [
       { id: 'espresso',     inputs: { coffee: 2 },              time: 3600, xp: 10, unlockLevel: 30 },
-      { id: 'latte',        inputs: { coffee: 2, milk: 1 },     time: 4500, xp: 12, unlockLevel: 30 },
+      { id: 'latte',        inputs: { coffee: 2, milk: 1 },     time: 4500, xp: 12, unlockLevel: 30,
+        play: { stages: [{ verb: 'draw_steam' }] } },
       { id: 'honey_coffee', inputs: { coffee: 2, honey: 1 },    time: 6300, xp: 15, unlockLevel: 30 },
     ],
   },
@@ -1061,6 +1063,18 @@ export const VERBS = {
     purpose: 'Balanced notes carry; a heavy one just shouts.',
     hint: 'The two notes share one bottle - raising the top lowers the base. Q/A and P/L.',
     stageClass: 'stage-dual', durationMs: 13000,
+  },
+  split_press: {
+    name: 'Split the Press', verbWord: 'split', family: 'route',
+    purpose: 'One pressing, three bottles, and they do not want the same amount.',
+    hint: 'Hold a bottle to pour into it. The pressing is fixed, so a generous pour shorts another.',
+    stageClass: 'stage-split', durationMs: 14000,
+  },
+  draw_steam: {
+    name: 'Draw the Steam', verbWord: 'draw', family: 'sustain',
+    purpose: 'Steamed without scalding, the milk stays sweet.',
+    hint: 'Hold it in the band - but come off whenever it scalds, then build back.',
+    stageClass: 'stage-gauge', durationMs: 14000,
   },
 };
 export const QUALITY = {

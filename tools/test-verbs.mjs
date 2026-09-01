@@ -185,6 +185,31 @@ const OPTIMAL = {
 
   // Zero-sum: only the ratio counts, so hand it the target share directly.
   blend_notes: () => (snap) => ({ left: snap.target, right: 1 - snap.target }),
+
+  split_press: () => (snap) => {
+    // Allocation: pour into whichever bottle is furthest below its share.
+    let worst = 0;
+    let gap = -Infinity;
+    for (let i = 0; i < snap.bottles; i++) {
+      const d = snap.targets[i] - snap.filled[i];
+      if (d > gap) { gap = d; worst = i; }
+    }
+    return gap > 0 ? { lane: worst, commit: false } : { lane: -1, commit: false };
+  },
+
+  draw_steam: () => {
+    // Come off on the WARNING, not on the burst - reacting once it has started is already too
+    // late, which is the whole reason the burst is telegraphed. Between bursts, use hysteresis
+    // rather than seeking the centre: bang-bang control oscillates across the band and spends
+    // most of its time outside it.
+    let rising = true;
+    return (snap) => {
+      if (snap.scalding || snap.warning) { rising = true; return { held: false, heldMs: 0 }; }
+      if (rising && snap.pressure >= snap.bandHigh - 0.01) rising = false;
+      if (!rising && snap.pressure <= snap.bandLow + 0.01) rising = true;
+      return { held: rising, heldMs: 16 };
+    };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

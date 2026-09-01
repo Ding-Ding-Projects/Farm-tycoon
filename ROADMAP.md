@@ -126,6 +126,31 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 
 ## Open items
 
+- [x] **Every control is at least 44x44.** A sweep of all 25 panels found 33 below it, and every
+      single one was in the panel search bar added earlier this session - the rest of the game was
+      already clean. Fixed there; the sweep now returns zero.
+
+- [ ] **White button text sits at 1.5 to 2.6 against its own fill, where AA wants 4.5.** Measured
+      against the real gradients rather than guessed, worst stop per variant: default green
+      **1.77**, gold **1.47**, gem **1.89**, danger **2.57**. The `quiet` variant is fine at
+      **7.08** once its translucent fill is composited against the panel behind it - the first
+      measurement said 1.19 because it compared against the overlay rather than the result.
+
+      NOT fixed here, deliberately, because unlike everything else in this sweep it is not a
+      defect with one obvious repair - it is the art direction. Two options and they pull opposite
+      ways:
+
+      - **Darken the fills** until white passes. Greens are luminous, so this needs roughly
+        `#3E7A19` or darker throughout, which turns a candy-bright button into a forest-green one.
+      - **Switch the label to the dark outline brown** and LIGHTEN the fills. Measured at
+        `#7AC93F` this gives **7.06**, and it makes buttons brighter rather than duller, so it
+        preserves the palette better - but every button in the game changes from white text to
+        dark.
+
+      Both change the look the design brief asked for, so the choice belongs to the owner. The
+      numbers are here so it is a decision rather than a rediscovery.
+
+
 - [x] **Reduced motion reaches the canvas, not just the stylesheet.** `styles.css` had honoured
       `prefers-reduced-motion` from early on with a blanket rule flattening every CSS animation
       and transition, which made it look handled. It was not: the world is a canvas, so the

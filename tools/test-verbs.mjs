@@ -291,6 +291,16 @@ const OPTIMAL = {
   // Ballistic, so the optimal play SOLVES the arc rather than pointing at the cup: 45 degrees is
   // the max-range angle, which makes power = sqrt(distance / k). Aiming flat at the cup the way
   // cast_ingot teaches scores 0.000 to 0.418 against this driver's 1.000.
+  // Deduction, not timing. The thickness is never shown, so the optimal play watches how fast
+  // the jug thins for a moment, solves for it, and releases on that. A fixed hold that ignores
+  // the jug scores 0.007 to 0.671 against this driver's 0.99.
+  read_vortex: () => (snap) => {
+    if (snap.heldMs < 1200) return { held: true };     // observe first
+    const dropped = 1 - snap.level;
+    if (dropped <= 0) return { held: true };
+    const thickness = (snap.dropBase * snap.heldMs) / dropped;
+    return { held: snap.heldMs < thickness * snap.readyPerThickness };
+  },
   arc_pour: () => {
     let power = 0;
     return (snap) => {

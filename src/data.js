@@ -273,10 +273,15 @@ export const GOODS = {
   plain_yogurt:     { icon: '🥛', name: 'Plain Yogurt',         sellPrice: 1350 },
   berry_yogurt:     { icon: '🫐', name: 'Berry Yogurt',         sellPrice: 2000 },
   mint_yogurt:      { icon: '🍃', name: 'Mint Yogurt',          sellPrice: 4310 },
+  // smoothie_mixer
+  berry_smoothie:   { icon: '🥤', name: 'Berry Smoothie',       sellPrice: 1180 },
+  mango_smoothie:   { icon: '🥭', name: 'Mango Smoothie',       sellPrice: 1540 },
+  green_smoothie:   { icon: '🥬', name: 'Green Smoothie',       sellPrice: 2260 },
   // sinks for the new animal products, added to existing buildings
   lamb_skewer:      { icon: '🍢', name: 'Lamb Skewer',          sellPrice: 820 },
   alpaca_scarf:     { icon: '🧣', name: 'Alpaca Scarf',         sellPrice: 420 },
   // kits for the ten buildings above
+  kit_smoothie_mixer:       { icon: '🥤', name: 'Smoothie Mixer Kit',    sellPrice: 760 },
   kit_oil_press:            { icon: '🫒', name: 'Oil Press Kit',          sellPrice: 500 },
   kit_tea_house:            { icon: '🍵', name: 'Tea House Kit',          sellPrice: 730 },
   kit_sushi_bar:            { icon: '🍣', name: 'Sushi Bar Kit',          sellPrice: 720 },
@@ -552,6 +557,15 @@ export const BUILDINGS = {
         play: { stages: [{ verb: 'arc_pour' }] } },
     ],
   },
+  smoothie_mixer: {
+    name: 'Smoothie Mixer', unlockLevel: 74, cost: 41000, size: [2, 2], kit: 'kit_smoothie_mixer', minigame: 'vortex_read', queueSlots: 3,
+    recipes: [
+      { id: 'berry_smoothie', inputs: { strawberry: 3, milk: 1 },                      time: 2400,  xp: 28, unlockLevel: 74 },
+      { id: 'mango_smoothie', inputs: { mango: 2, banana: 2 },                         time: 3300,  xp: 34, unlockLevel: 74 },
+      { id: 'green_smoothie', inputs: { mint: 2, banana: 2, honey: 1 },                time: 5100,  xp: 50, unlockLevel: 84,
+        play: { stages: [{ verb: 'read_vortex' }] } },
+    ],
+  },
   sushi_bar: {
     name: 'Sushi Bar', unlockLevel: 60, cost: 36000, size: [2, 2], kit: 'kit_sushi_bar', minigame: 'knife_work', queueSlots: 3,
     recipes: [
@@ -820,6 +834,7 @@ export const BUILDINGS = {
       { id: 'kit_oil_press',          inputs: { beam: 3, plumbing: 2, panel: 3 },             time: 32400, xp: 92, unlockLevel: 21, sink: true },
       { id: 'kit_tea_house',          inputs: { frame: 4, glazing: 3, shingle: 5, tile: 4 },           time: 36300, xp: 103, unlockLevel: 21, sink: true },
       { id: 'kit_sushi_bar',          inputs: { panel: 5, glazing: 3, fitting: 3 },           time: 40680, xp: 115, unlockLevel: 21, sink: true },
+      { id: 'kit_smoothie_mixer',     inputs: { panel: 5, glazing: 4, fitting: 3 },           time: 42300, xp: 120, unlockLevel: 21, sink: true },
       { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
       { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
       { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
@@ -863,6 +878,7 @@ export const MINIGAMES = {
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
   press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
   steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  vortex_read:     { name: 'Read the Vortex',    building: 'smoothie_mixer',         effect: 'blendFineness',      cap: 0.25, purpose: 'Every jug thins at its own rate. Stop when the vortex forms, not when the clock says.' },
   knife_work:      { name: 'Knife Work',         building: 'sushi_bar',              effect: 'knifePrecision',     cap: 0.25, purpose: 'Slice clean and even. A ragged cut ruins the roll.' },
   blend_nose:      { name: 'Blend the Notes',    building: 'perfumery',              effect: 'blendHarmony',       cap: 0.3,  purpose: 'Balance top and base notes. One loud note flattens the blend.' },
   plate_toss:      { name: 'Toss the Bowl',      building: 'salad_bar',              effect: 'plateFreshness',     cap: 0.25, purpose: 'Toss without bruising. Handled well, the leaves stay crisp.' },
@@ -899,7 +915,7 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
-  'sheetEvenness', 'latexPurity', 'wickTrueness',
+  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1147,6 +1163,12 @@ export const VERBS = {
     purpose: 'A seam that carries through holds the garment together.',
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
+  },
+  read_vortex: {
+    name: 'Read the Vortex', verbWord: 'read', family: 'sustain',
+    purpose: 'Every jug is a different thickness, and only the jug knows which.',
+    hint: 'Thick jugs thin SLOWLY and need longer. Watch how fast the level drops, then let go when the vortex is due.',
+    stageClass: 'stage-sustain', durationMs: 16000,
   },
   arc_pour: {
     name: 'Pour the Arc', verbWord: 'arc', family: 'aim',
@@ -1449,7 +1471,7 @@ export const LEVELS = {
     71: ['peony', 'flower_shop'],
     72: ['pasta_kitchen', 'otter'],
     73: ['expansion_14'],
-    74: ['harvest_festival', 'isle_bonita'],
+    74: ['harvest_festival', 'isle_bonita', 'smoothie_mixer'],
     75: ['deep_silo', 'zoo_tiger'],
     76: ['fondue_pot'],
     77: ['watermelon'],

@@ -29,6 +29,23 @@ export const TILE_BASE = 104;
 // oy ratio that clears the 76px HUD rail at 800px viewport height (§8).
 const OY_RATIO = 0.2375;
 
+/**
+ * Height (CSS px) of the fixed top HUD rail (styles.css `.hud-top`). A tile positioned above
+ * this line on screen is behind opaque chrome — technically inside the canvas, but not
+ * actually visible to the player. Uses the wider of the two declared heights (76px normal,
+ * 64px under the narrow-viewport media query in styles.css).
+ *
+ * Deliberately NOT folded into clampCamera()'s bounds-protection math below. That math answers
+ * a different question — "does the visible viewport show tile-space the farm doesn't have" —
+ * and the canvas still legitimately owns every pixel under the HUD; shrinking the protected
+ * region there would let the clamp show real void (content past `bounds`) precisely where a
+ * human reviewer can't see it happening, which is a worse failure mode than the one this fix
+ * exists to close. HUD_INSET_PX answers the separate question "is this particular tile
+ * actually visible", which is what callers (and this module's tests) should check a specific
+ * tile's tileToScreen() result against, rather than hard-coding the 76 again.
+ */
+export const HUD_INSET_PX = 76;
+
 export const camera = { x: 0, y: 0, zoom: 1 }; // zoom clamped [0.5, 2.5], eased toward targets
 // Pan/zoom targets that input.js writes to; tickCamera eases camera.{x,y,zoom} toward these.
 export const cameraTarget = { x: 0, y: 0, zoom: 1 };
@@ -141,35 +158,78 @@ export function worldBounds(unlockedExpansionIds = [], structures = []) {
  * `bounds` defaults to worldBounds() with nothing unlocked (start zone only) so this is safe
  * to call with just a viewport size; pass the real bounds from worldBounds(unlocked, structs)
  * once the caller knows the unlocked set.
+ *
+ * THE NORTH/SOUTH SPLIT IS NOT SYMMETRIC, and treating it as if it were is a defect this
+ * function used to have. tileToScreen puts the camera's OWN target tile at
+ * `oy = viewportH * OY_RATIO` — near the TOP of the screen, since OY_RATIO = 0.2375 — so only
+ * a sliver of the viewport sits north of the target and most of it sits south. Averaging the
+ * two into one symmetric half-extent (as this function used to, via `half = (dx+dy)/2`)
+ * overstates how close the camera can get to the north edge of `bounds` (so panning could
+ * never bring anything planted north of the camera target — e.g. the starting fields, planted
+ * at FARM.startZone.y + 3, north of the start zone's own centre — into view) and understates
+ * how close it can get to the south/east edge (so panning that way could reveal empty void
+ * beyond `bounds`). Both directions are derived exactly below from tileToScreen's own algebra,
+ * not approximated.
  */
 export function clampCamera(viewportW = 1280, viewportH = 800, bounds = worldBounds()) {
   const T = TILE_BASE * camera.zoom;
-  // Half-extent of the screen-space viewport, converted to tile-space (tx-ty) / (tx+ty) axes.
-  const dx = (viewportW / 2) / T;       // half-range of (tx - ty) visible
-  const dy = (viewportH / 2) / (T / 2); // half-range of (tx + ty) visible
-  // The diamond-shaped visible region's bounding box on the tx and ty axes individually is
-  // exactly (dx + dy) / 2 in both directions (tx = ((tx-ty)+(tx+ty))/2, and symmetrically ty).
-  const half = (dx + dy) / 2;
+  // Half-range of (tx - ty) visible: symmetric, because tileToScreen centres the camera
+  // target horizontally (ox = viewportW/2 - ...).
+  const dx = (viewportW / 2) / T;
+
+  // Range of (tx + ty) visible north vs. south of the camera target (see tileToScreen: sy=0 is
+  // `oy` tile-rows north of the target's row, sy=viewportH is `viewportH-oy` rows south of it).
+  // Deliberately based on the FULL raw canvas (sy=0..viewportH), not shrunk by HUD_INSET_PX —
+  // see that constant's comment for why the HUD stays out of this specific calculation.
+  const northSpan = (viewportH * OY_RATIO) / (T / 2);       // (tx+ty) visible north of target
+  const southSpan = (viewportH * (1 - OY_RATIO)) / (T / 2); // (tx+ty) visible south of target
+
+  // tx and ty share the same pair of offsets from camera.x/camera.y: tileToScreen's (a,b) axes
+  // mix tx and ty symmetrically (tx=(a+b)/2, ty=(b-a)/2), so a rectangular a/b viewport maps to
+  // tx and ty ranges that are each [camera - halfNorth, camera + halfSouth].
+  const halfNorth = (dx + northSpan) / 2;
+  const halfSouth = (dx + southSpan) / 2;
 
   const worldW = bounds.maxX - bounds.minX;
   const worldH = bounds.maxY - bounds.minY;
 
-  if (worldW <= half * 2) {
-    camera.x = (bounds.minX + bounds.maxX) / 2;
+  // When `bounds` is small enough to fit entirely inside the visible span either way, there is
+  // a whole RANGE of camera positions that show all of it (not just one exact centre) — the
+  // feasible range is [bounds.maxX - halfSouth, bounds.minX + halfNorth], and its midpoint is
+  // offset from the plain bounds-centre by (halfNorth - halfSouth) / 2. Since halfSouth is
+  // always the bigger of the two (most of the viewport sits south of the camera target),
+  // that offset always shifts the picked position NORTH of plain centre — the same direction
+  // the fix above needed, and for the same reason: plain centring puts the camera-target row
+  // further south on screen than the asymmetric projection can afford to spare, so content
+  // north of centre (again: the starting fields) can end up hidden even when the whole bounds
+  // box would technically "fit".
+  if (worldW <= halfNorth + halfSouth) {
+    camera.x = (bounds.minX + bounds.maxX) / 2 + (halfNorth - halfSouth) / 2;
   } else {
-    camera.x = Math.min(Math.max(camera.x, bounds.minX + half), bounds.maxX - half);
+    camera.x = Math.min(Math.max(camera.x, bounds.minX + halfNorth), bounds.maxX - halfSouth);
   }
 
-  if (worldH <= half * 2) {
-    camera.y = (bounds.minY + bounds.maxY) / 2;
+  if (worldH <= halfNorth + halfSouth) {
+    camera.y = (bounds.minY + bounds.maxY) / 2 + (halfNorth - halfSouth) / 2;
   } else {
-    camera.y = Math.min(Math.max(camera.y, bounds.minY + half), bounds.maxY - half);
+    camera.y = Math.min(Math.max(camera.y, bounds.minY + halfNorth), bounds.maxY - halfSouth);
   }
 
   return camera;
 }
 
-/** Centre the camera on a tile, then clamp. Used by input.js when teleporting to a structure. */
+/**
+ * Point the camera at a tile, then clamp. Used by input.js when teleporting to a structure,
+ * and by main.js on boot to look at the start zone.
+ *
+ * "Point at" is deliberate, not "centre": camera.x/camera.y is the tile tileToScreen renders
+ * at (viewportW/2, viewportH*OY_RATIO) — horizontally centred but, because OY_RATIO = 0.2375,
+ * placed near the TOP of the screen rather than the middle (design/handoff/SPRITE-NOTES.md §8
+ * — this keeps the target tile itself clear of the 76px HUD rail). So focusTile(tx, ty) does
+ * NOT put (tx, ty) in the visual middle of the viewport; it puts it just below the HUD, with
+ * most of the viewport opening up south of it. clampCamera() then pulls that point back inside
+ * `bounds` if the raw target would show void or hide content behind the HUD.
+ */
 export function focusTile(tx, ty, viewportW = 1280, viewportH = 800, bounds = worldBounds()) {
   camera.x = tx;
   camera.y = ty;

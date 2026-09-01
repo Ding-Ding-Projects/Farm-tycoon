@@ -625,132 +625,559 @@ export function drawPen(ctx, x, y, size = 2, penType) {
 }
 
 // ---------------------------------------------------------------------------------------
-// Buildings — production recipe buildings. One shared shape generator, keyed by category.
+// Buildings - production buildings.
+//
+// This used to be one box + gable roof + one of five accents, keyed only by roof colour, so
+// forty-odd factories all read as the same hut in different paint. Three things changed:
+//
+//   1. FORM. Each building picks a roof form (gable/hip/flat/domed/sawtooth/pagoda/barrel/
+//      kiosk/tower), which changes the silhouette rather than the palette. Silhouette is what
+//      you actually recognise at farm zoom, where the roof is twelve pixels tall.
+//   2. FURNITURE. Chimneys, silos, awnings, barrels, crates, vents, pipes, lanterns and
+//      planters hang off the shell, so a smelter reads as industrial and a tea house does not.
+//   3. WORK. drawBuilding now takes { working, now } and animates only while a craft is
+//      actually running: smoke rises and fades, wheels and blades turn, churns bob, pots
+//      bubble, forge sparks fly, and the windows warm up. Idle buildings are still, which is
+//      the point - "is this factory busy?" becomes readable from across the farm without
+//      opening a panel.
+//
+// Everything is drawn from code. No image assets, ever (CLAUDE.md).
 // ---------------------------------------------------------------------------------------
 
 const BUILDING_CONFIG = {
-  feed_mill:   { roof: PALETTE.roofAlt, accent: 'blades' },
-  bakery:      { roof: PALETTE.roof, accent: 'smoke' },
-  dairy:       { roof: '#4a8fd4', accent: 'churn' },
-  sugar_mill:  { roof: PALETTE.roofAlt, accent: 'blades' },
-  popcorn_pot: { roof: PALETTE.roof, accent: 'pot' },
-  grill:       { roof: PALETTE.roofDark, accent: 'smoke' },
-  ice_cream_maker: { roof: PALETTE.trimLight, accent: 'churn' },
-  soup_kitchen: { roof: PALETTE.roof, accent: 'pot' },
-  flower_shop: { roof: PALETTE.roofAlt, accent: 'blades' },
-  sauce_maker: { roof: PALETTE.roofDark, accent: 'pot' },
-  sandwich_bar: { roof: PALETTE.roof, accent: 'pot' },
-  taco_kitchen: { roof: PALETTE.roofDark, accent: 'smoke' },
-  hat_maker: { roof: PALETTE.roofAlt, accent: 'wheel' },
-  donut_maker: { roof: PALETTE.trimLight, accent: 'churn' },
-  paper_mill: { roof: PALETTE.roofDark, accent: 'wheel' },
-  rubber_factory: { roof: PALETTE.roof, accent: 'smoke' },
-  candle_maker: { roof: PALETTE.roofAlt, accent: 'pot' },
-  cake_oven: { roof: PALETTE.roofAlt, accent: 'smoke' },
-  pie_oven:    { roof: PALETTE.roof, accent: 'smoke' },
-  loom:        { roof: '#9a6fd0', accent: 'wheel' },
-  sewing_machine: { roof: '#e05548', accent: 'wheel' },
-  juice_press: { roof: '#f0862e', accent: 'pot' },
-  jam_maker:   { roof: '#c9382e', accent: 'pot' },
-  coffee_kiosk: { roof: '#6a3a20', accent: 'smoke' },
-  candy_machine: { roof: '#f48ab0', accent: 'wheel' },
-  tropical_cafe: { roof: '#4f9c26', accent: 'smoke' },
-  smelter:     { roof: '#5a5a5a', accent: 'smoke' },
-  oil_press:   { roof: '#7a8f3a', accent: 'pot' },
-  tea_house:   { roof: '#7fae4a', accent: 'smoke' },
-  sushi_bar:   { roof: '#4a8fd4', accent: 'pot' },
-  perfumery:   { roof: '#9a6fd0', accent: 'pot' },
-  salad_bar:   { roof: '#5fae2e', accent: 'pot' },
-  pasta_kitchen: { roof: '#f0b52e', accent: 'smoke' },
-  fondue_pot:  { roof: '#e05548', accent: 'pot' },
-  preservation_station: { roof: '#4a8fd4', accent: 'pot' },
-  jeweler:     { roof: '#9a6fd0', accent: 'wheel' },
-  yogurt_maker: { roof: '#fffaea', accent: 'churn' },
-  build_workshop: { roof: PALETTE.roofDark, accent: 'wheel' },
+  // grain + baking
+  feed_mill:   { roof: PALETTE.roofAlt, form: 'gable',    accent: 'blades', extras: ['silo'] },
+  bakery:      { roof: PALETTE.roof,    form: 'gable',    accent: 'smoke',  extras: ['chimney', 'awning'], sign: '#f2c94c' },
+  cake_oven:   { roof: PALETTE.roofAlt, form: 'domed',    accent: 'smoke',  extras: ['chimney', 'awning'], sign: '#f48ab0' },
+  pie_oven:    { roof: PALETTE.roof,    form: 'domed',    accent: 'smoke',  extras: ['chimney'] },
+  sugar_mill:  { roof: PALETTE.roofAlt, form: 'gable',    accent: 'blades', extras: ['silo', 'crates'] },
+  pasta_kitchen: { roof: '#f0b52e',     form: 'hip',      accent: 'steam',  extras: ['awning'] },
+  donut_maker: { roof: PALETTE.trimLight, form: 'kiosk',  accent: 'churn',  extras: ['awning', 'lantern'], sign: '#f48ab0' },
+
+  // dairy + cold
+  dairy:       { roof: '#4a8fd4',       form: 'gable',    accent: 'churn',  extras: ['silo', 'planter'] },
+  ice_cream_maker: { roof: PALETTE.trimLight, form: 'kiosk', accent: 'churn', extras: ['awning'], sign: '#7fd4f0' },
+  yogurt_maker: { roof: '#fffaea',      form: 'barrel',   accent: 'churn',  extras: ['crates'] },
+  milkshake_bar: { roof: '#f48ab0',     form: 'kiosk',    accent: 'churn',  extras: ['awning', 'lantern'] },
+
+  // hot food
+  grill:       { roof: PALETTE.roofDark, form: 'flat',    accent: 'sparks', extras: ['chimney', 'vents'] },
+  soup_kitchen: { roof: PALETTE.roof,   form: 'hip',      accent: 'pot',    extras: ['chimney', 'barrels'] },
+  sandwich_bar: { roof: PALETTE.roof,   form: 'kiosk',    accent: 'pot',    extras: ['awning'] },
+  taco_kitchen: { roof: PALETTE.roofDark, form: 'kiosk',  accent: 'sparks', extras: ['awning', 'lantern'], sign: '#f0862e' },
+  salad_bar:   { roof: '#5fae2e',       form: 'kiosk',    accent: 'pot',    extras: ['awning', 'planter'] },
+  sushi_bar:   { roof: '#4a8fd4',       form: 'pagoda',   accent: 'pot',    extras: ['lantern'] },
+  fondue_pot:  { roof: '#e05548',       form: 'barrel',   accent: 'pot',    extras: ['chimney'] },
+  popcorn_pot: { roof: PALETTE.roof,    form: 'kiosk',    accent: 'pot',    extras: ['awning'] },
+  hot_dog_stand: { roof: '#e05548',     form: 'kiosk',    accent: 'steam',  extras: ['awning'] },
+  omelet_station: { roof: '#f0b52e',    form: 'kiosk',    accent: 'sparks', extras: ['awning'] },
+
+  // drinks
+  coffee_kiosk: { roof: '#6a3a20',      form: 'kiosk',    accent: 'steam',  extras: ['awning', 'lantern'], sign: '#c08a4e' },
+  tea_house:   { roof: '#7fae4a',       form: 'pagoda',   accent: 'steam',  extras: ['lantern', 'planter'] },
+  juice_press: { roof: '#f0862e',       form: 'barrel',   accent: 'wheel',  extras: ['barrels', 'crates'] },
+  tropical_cafe: { roof: '#4f9c26',     form: 'pagoda',   accent: 'steam',  extras: ['awning', 'planter'] },
+  smoothie_mixer: { roof: '#f48ab0',    form: 'kiosk',    accent: 'churn',  extras: ['awning'] },
+
+  // preserves + pressing
+  jam_maker:   { roof: '#c9382e',       form: 'barrel',   accent: 'pot',    extras: ['crates'] },
+  preservation_station: { roof: '#4a8fd4', form: 'barrel', accent: 'pot',   extras: ['barrels', 'crates'] },
+  oil_press:   { roof: '#7a8f3a',       form: 'gable',    accent: 'wheel',  extras: ['barrels', 'pipes'] },
+  sauce_maker: { roof: PALETTE.roofDark, form: 'barrel',  accent: 'pot',    extras: ['barrels'] },
+
+  // craft + textile
+  loom:        { roof: '#9a6fd0',       form: 'sawtooth', accent: 'wheel',  extras: ['crates'] },
+  sewing_machine: { roof: '#e05548',    form: 'sawtooth', accent: 'wheel',  extras: ['crates'] },
+  hat_maker:   { roof: PALETTE.roofAlt, form: 'hip',      accent: 'wheel',  extras: ['awning'], sign: '#9a6fd0' },
+  candle_maker: { roof: PALETTE.roofAlt, form: 'gable',   accent: 'drips',  extras: ['chimney'] },
+  perfumery:   { roof: '#9a6fd0',       form: 'tower',    accent: 'drips',  extras: ['planter'] },
+  jeweler:     { roof: '#9a6fd0',       form: 'tower',    accent: 'gear',   extras: ['lantern'], sign: '#f0b52e' },
+  flower_shop: { roof: PALETTE.roofAlt, form: 'kiosk',    accent: 'blades', extras: ['awning', 'planter'] },
+  candy_machine: { roof: '#f48ab0',     form: 'flat',     accent: 'gear',   extras: ['pipes', 'vents'] },
+
+  // heavy industry
+  smelter:     { roof: '#5a5a5a',       form: 'tower',    accent: 'sparks', extras: ['chimney', 'pipes', 'vents'] },
+  rubber_factory: { roof: PALETTE.roof, form: 'sawtooth', accent: 'smoke',  extras: ['chimney', 'pipes'] },
+  paper_mill:  { roof: PALETTE.roofDark, form: 'sawtooth', accent: 'wheel', extras: ['pipes', 'crates'] },
+  build_workshop: { roof: PALETTE.roofDark, form: 'flat', accent: 'gear',   extras: ['crates', 'vents'] },
 };
 
-/** Any production building: box + gable roof + doorway + one category accent. */
+const FALLBACK_CFG = { roof: PALETTE.roof, form: 'gable', accent: 'smoke', extras: [] };
+
+/** Deterministic 0..1 from a string, so a building without a config still looks consistent. */
+function strHash(s) {
+  let h = 2166136261;
+  const str = String(s);
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 1000) / 1000;
+}
+
+/**
+ * The roof. `form` decides the silhouette; everything else is shared.
+ *
+ * A derelict roof sags (SPRITE-NOTES §6) whatever its form, so the sag is applied here once
+ * rather than being re-derived per form and drifting between them.
+ */
+function drawRoofForm(ctx, x, yy, BW, BH, T, form, color, derelict, size) {
+  const sag = derelict ? 0.18 : 0;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+
+  if (form === 'flat') {
+    ctx.moveTo(x - BW * 0.60, yy - BH * (0.66 - sag * 0.3));
+    ctx.lineTo(x + BW * 0.60, yy - BH * (0.66 - sag * 0.3));
+    ctx.lineTo(x + BW * 0.56, yy - BH * 0.14);
+    ctx.lineTo(x - BW * 0.56, yy - BH * 0.14);
+  } else if (form === 'hip') {
+    ctx.moveTo(x - BW * 0.58, yy - BH * 0.12);
+    ctx.lineTo(x - BW * 0.30, yy - BH * (0.80 - sag));
+    ctx.lineTo(x + BW * 0.30, yy - BH * (0.80 - sag));
+    ctx.lineTo(x + BW * 0.58, yy - BH * 0.12);
+  } else if (form === 'domed') {
+    ctx.moveTo(x - BW * 0.56, yy - BH * 0.12);
+    ctx.quadraticCurveTo(x, yy - BH * (1.34 - sag * 1.4), x + BW * 0.56, yy - BH * 0.12);
+  } else if (form === 'barrel') {
+    ctx.moveTo(x - BW * 0.56, yy - BH * 0.12);
+    ctx.quadraticCurveTo(x - BW * 0.30, yy - BH * (0.98 - sag), x, yy - BH * (0.98 - sag));
+    ctx.quadraticCurveTo(x + BW * 0.30, yy - BH * (0.98 - sag), x + BW * 0.56, yy - BH * 0.12);
+  } else if (form === 'sawtooth') {
+    // Factory north-light roof: three steep teeth. Reads as "industrial" instantly.
+    ctx.moveTo(x - BW * 0.58, yy - BH * 0.12);
+    for (let i = 0; i < 3; i++) {
+      const x0 = x - BW * 0.58 + (BW * 1.16 * i) / 3;
+      const x1 = x - BW * 0.58 + (BW * 1.16 * (i + 1)) / 3;
+      ctx.lineTo(x0, yy - BH * (0.78 - sag));
+      ctx.lineTo(x1, yy - BH * (0.30 - sag * 0.4));
+    }
+    ctx.lineTo(x + BW * 0.58, yy - BH * 0.12);
+  } else if (form === 'pagoda') {
+    // Upswept eaves with a flick at each end.
+    ctx.moveTo(x - BW * 0.66, yy - BH * 0.04);
+    ctx.quadraticCurveTo(x - BW * 0.34, yy - BH * (0.56 - sag), x, yy - BH * (0.60 - sag));
+    ctx.quadraticCurveTo(x + BW * 0.34, yy - BH * (0.56 - sag), x + BW * 0.66, yy - BH * 0.04);
+    ctx.quadraticCurveTo(x + BW * 0.30, yy - BH * (0.26 - sag), x, yy - BH * (0.28 - sag));
+    ctx.quadraticCurveTo(x - BW * 0.30, yy - BH * (0.26 - sag), x - BW * 0.66, yy - BH * 0.04);
+  } else if (form === 'kiosk') {
+    // Shallow shop canopy - wide, low, welcoming.
+    ctx.moveTo(x - BW * 0.66, yy - BH * 0.16);
+    ctx.lineTo(x - BW * 0.44, yy - BH * (0.62 - sag));
+    ctx.lineTo(x + BW * 0.44, yy - BH * (0.62 - sag));
+    ctx.lineTo(x + BW * 0.66, yy - BH * 0.16);
+  } else if (form === 'tower') {
+    ctx.moveTo(x - BW * 0.56, yy - BH * 0.12);
+    ctx.lineTo(x - BW * 0.10, yy - BH * (1.06 - sag));
+    ctx.lineTo(x + BW * 0.10, yy - BH * (1.06 - sag));
+    ctx.lineTo(x + BW * 0.56, yy - BH * 0.12);
+  } else { // gable
+    ctx.moveTo(x - BW * 0.58, yy - BH * 0.12);
+    ctx.lineTo(x - BW * 0.20, yy - BH * (0.78 - sag));
+    ctx.lineTo(x + BW * 0.20, yy - BH * (0.78 - sag));
+    ctx.lineTo(x + BW * 0.58, yy - BH * 0.12);
+  }
+
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.trimLight;
+  ctx.lineWidth = 3.6 * size;
+  ctx.stroke();
+  outline(ctx, T);
+
+  // The pagoda's upper tier is a second pass, so drawRoofForm's main path stays one shape.
+  if (form === 'pagoda' && !derelict) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x - BW * 0.42, yy - BH * 0.52);
+    ctx.quadraticCurveTo(x - BW * 0.18, yy - BH * 1.02, x, yy - BH * 1.06);
+    ctx.quadraticCurveTo(x + BW * 0.18, yy - BH * 1.02, x + BW * 0.42, yy - BH * 0.52);
+    ctx.quadraticCurveTo(x + BW * 0.18, yy - BH * 0.72, x, yy - BH * 0.74);
+    ctx.quadraticCurveTo(x - BW * 0.18, yy - BH * 0.72, x - BW * 0.42, yy - BH * 0.52);
+    ctx.closePath();
+    ctx.fill();
+    outline(ctx, T);
+  }
+}
+
+/** Bolt-on furniture. Purely silhouette work: these are what stop factories reading alike. */
+function drawExtras(ctx, x, yy, BW, BH, T, extras, cfg, derelict, size, t, working) {
+  const has = (k) => extras.includes(k);
+
+  if (has('silo')) {
+    const sx = x - BW * 0.52, sh = BH * 1.5;
+    ctx.fillStyle = derelict ? PALETTE.derelictWall : PALETTE.silo;
+    ctx.beginPath();
+    ctx.roundRect(sx - T * 0.09, yy - sh * 0.62, T * 0.18, sh * 0.94, T * 0.05);
+    ctx.fill(); outline(ctx, T, 0.7);
+    ctx.fillStyle = derelict ? PALETTE.derelictRoof : cfg.roof;
+    ctx.beginPath();
+    ctx.ellipse(sx, yy - sh * 0.62, T * 0.095, T * 0.05, 0, Math.PI, 0);
+    ctx.fill(); outline(ctx, T, 0.7);
+  }
+
+  if (has('chimney')) {
+    ctx.fillStyle = derelict ? PALETTE.derelictWall : PALETTE.woodDark;
+    ctx.beginPath();
+    ctx.roundRect(x + BW * 0.26, yy - BH * 1.06, T * 0.085, T * 0.24, T * 0.015);
+    ctx.fill(); outline(ctx, T, 0.6);
+    ctx.fillStyle = derelict ? PALETTE.derelictRoof : PALETTE.wood;
+    ctx.fillRect(x + BW * 0.245, yy - BH * 1.10, T * 0.115, T * 0.035);
+  }
+
+  if (has('awning') && !derelict) {
+    // Striped shop awning. The stripes are what make it read as a shop rather than a ledge.
+    const ax = x - BW * 0.56, aw = BW * 1.12, ay = yy - BH * 0.04, ah = T * 0.075;
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = i % 2 ? PALETTE.trimLight : (cfg.sign || cfg.roof);
+      ctx.beginPath();
+      ctx.moveTo(ax + (aw * i) / 6, ay);
+      ctx.lineTo(ax + (aw * (i + 1)) / 6, ay);
+      ctx.lineTo(ax + (aw * (i + 1)) / 6, ay + ah);
+      ctx.lineTo(ax + (aw * i) / 6, ay + ah);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = PALETTE.outline;
+    ctx.lineWidth = outlineWidth(T) * 0.55;
+    ctx.strokeRect(ax, ay, aw, ah);
+  }
+
+  if (has('barrels')) {
+    for (let i = 0; i < 2; i++) {
+      const bx = x + BW * (0.46 + i * 0.16), by = yy + BH * 0.36;
+      ctx.fillStyle = derelict ? PALETTE.derelictWall : PALETTE.wood;
+      ctx.beginPath(); ctx.roundRect(bx - T * 0.055, by - T * 0.10, T * 0.11, T * 0.15, T * 0.025);
+      ctx.fill(); outline(ctx, T, 0.55);
+      ctx.strokeStyle = PALETTE.woodDark; ctx.lineWidth = 1.6 * size;
+      ctx.beginPath();
+      ctx.moveTo(bx - T * 0.055, by - T * 0.045);
+      ctx.lineTo(bx + T * 0.055, by - T * 0.045);
+      ctx.stroke();
+    }
+  }
+
+  if (has('crates')) {
+    const cx = x - BW * 0.52, cy = yy + BH * 0.38;
+    ctx.fillStyle = derelict ? PALETTE.derelictWall : PALETTE.woodLight;
+    ctx.beginPath(); ctx.roundRect(cx - T * 0.07, cy - T * 0.10, T * 0.14, T * 0.13, T * 0.015);
+    ctx.fill(); outline(ctx, T, 0.55);
+    ctx.strokeStyle = PALETTE.woodDark; ctx.lineWidth = 1.6 * size;
+    ctx.beginPath();
+    ctx.moveTo(cx - T * 0.07, cy - T * 0.035); ctx.lineTo(cx + T * 0.07, cy - T * 0.035);
+    ctx.moveTo(cx, cy - T * 0.10); ctx.lineTo(cx, cy + T * 0.03);
+    ctx.stroke();
+  }
+
+  if (has('pipes')) {
+    ctx.strokeStyle = derelict ? PALETTE.derelictWall : '#8a8f96';
+    ctx.lineWidth = T * 0.045;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - BW * 0.42, yy + BH * 0.30);
+    ctx.lineTo(x - BW * 0.42, yy - BH * 0.02);
+    ctx.lineTo(x - BW * 0.18, yy - BH * 0.02);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  if (has('vents')) {
+    ctx.fillStyle = derelict ? PALETTE.derelictWall : '#8a8f96';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(x - BW * 0.12 + i * T * 0.08, yy - BH * 0.30, T * 0.026, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  if (has('lantern') && !derelict) {
+    // Lit only while working - a dark lantern on an idle shop is a real signal, not decoration.
+    const lx = x + BW * 0.44, ly = yy - BH * 0.10;
+    ctx.fillStyle = working
+      ? 'rgba(255,214,120,' + (0.55 + 0.35 * Math.sin(t * 3)).toFixed(3) + ')'
+      : 'rgba(120,110,90,0.5)';
+    ctx.beginPath(); ctx.arc(lx, ly, T * 0.045, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = PALETTE.outline;
+    ctx.lineWidth = outlineWidth(T) * 0.45;
+    ctx.stroke();
+  }
+
+  if (has('planter') && !derelict) {
+    const px = x - BW * 0.34, py = yy + BH * 0.40;
+    ctx.fillStyle = PALETTE.wood;
+    ctx.beginPath(); ctx.roundRect(px - T * 0.07, py - T * 0.04, T * 0.14, T * 0.06, T * 0.012);
+    ctx.fill(); outline(ctx, T, 0.5);
+    ctx.fillStyle = PALETTE.grassDark;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(px - T * 0.04 + i * T * 0.04, py - T * 0.055, T * 0.026, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = PALETTE.flowerPink;
+    ctx.beginPath(); ctx.arc(px, py - T * 0.075, T * 0.014, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+/**
+ * The working accent. `t` is seconds; when the building is idle every motion is frozen, which
+ * is the whole point - a still farm means nothing is cooking.
+ */
+function drawAccent(ctx, x, yy, BW, BH, T, accent, cfg, size, t, working) {
+  const spin = working ? t : 0;
+
+  if (accent === 'smoke' || accent === 'steam') {
+    const warm = accent === 'steam';
+    const ox = x + BW * 0.30;
+    const oy = yy - BH * (warm ? 0.62 : 1.10);
+    if (!working) {
+      // A single thin resting wisp, so the chimney does not look broken.
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.beginPath(); ctx.arc(ox, oy - T * 0.03, T * 0.032, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    for (let i = 0; i < 4; i++) {
+      const life = (t * 0.55 + i * 0.25) % 1;             // 0..1 rise
+      const rise = life * T * 0.42;
+      const grow = 0.030 + life * 0.055;
+      const fade = (1 - life) * (warm ? 0.55 : 0.62);
+      ctx.fillStyle = warm
+        ? 'rgba(255,250,238,' + fade.toFixed(3) + ')'
+        : 'rgba(255,255,255,' + fade.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(ox + Math.sin(life * 4 + i) * T * 0.035, oy - rise, T * grow, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  if (accent === 'blades') {
+    ctx.save();
+    ctx.translate(x, yy - BH * 0.86);
+    ctx.rotate(spin * 1.6);
+    ctx.strokeStyle = PALETTE.trimLight;
+    ctx.lineWidth = 4 * size;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI / 2) * i;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * T * 0.16, Math.sin(a) * T * 0.16);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+    ctx.fillStyle = PALETTE.wood;
+    ctx.beginPath(); ctx.arc(0, 0, T * 0.030, 0, Math.PI * 2); ctx.fill();
+    outline(ctx, T, 0.5);
+    ctx.restore();
+    return;
+  }
+
+  if (accent === 'wheel') {
+    ctx.save();
+    ctx.translate(x + BW * 0.40, yy + BH * 0.06);
+    ctx.rotate(spin * 1.1);
+    ctx.fillStyle = PALETTE.wood;
+    ctx.beginPath(); ctx.arc(0, 0, T * 0.115, 0, Math.PI * 2); ctx.fill();
+    outline(ctx, T, 0.6);
+    ctx.strokeStyle = PALETTE.woodDark; ctx.lineWidth = 2.4 * size;
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * T * 0.10, Math.sin(a) * T * 0.10);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (accent === 'gear') {
+    // Two counter-rotating gears - the clearest "machine is running" read there is.
+    const drawGear = (gx, gy, r, dir, teeth) => {
+      ctx.save();
+      ctx.translate(gx, gy);
+      ctx.rotate(spin * dir * 1.3);
+      ctx.fillStyle = '#8a8f96';
+      ctx.beginPath();
+      for (let i = 0; i < teeth * 2; i++) {
+        const a = (Math.PI / teeth) * i;
+        const rr = i % 2 ? r : r * 1.28;
+        ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.closePath(); ctx.fill(); outline(ctx, T, 0.5);
+      ctx.fillStyle = PALETTE.wall;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    };
+    drawGear(x + BW * 0.34, yy - BH * 0.10, T * 0.075, 1, 8);
+    drawGear(x + BW * 0.50, yy + BH * 0.06, T * 0.055, -1, 7);
+    return;
+  }
+
+  if (accent === 'churn') {
+    const bob = working ? Math.sin(t * 5) * T * 0.028 : 0;
+    ctx.fillStyle = PALETTE.siloDark;
+    ctx.beginPath();
+    ctx.roundRect(x + BW * 0.30, yy - BH * 0.06, T * 0.13, T * 0.18, T * 0.025);
+    ctx.fill(); outline(ctx, T, 0.6);
+    ctx.strokeStyle = PALETTE.wood;
+    ctx.lineWidth = 4 * size;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x + BW * 0.365, yy - BH * 0.06 + bob);
+    ctx.lineTo(x + BW * 0.365, yy - BH * 0.30 + bob);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    return;
+  }
+
+  if (accent === 'pot') {
+    ctx.fillStyle = '#5a5a5a';
+    ctx.beginPath();
+    ctx.roundRect(x + BW * 0.26, yy - BH * 0.02, T * 0.17, T * 0.13, T * 0.03);
+    ctx.fill(); outline(ctx, T, 0.6);
+    if (working) {
+      // Bubbles break the surface and pop; the lid lifts on the beat.
+      const lid = Math.sin(t * 6) * T * 0.012;
+      ctx.fillStyle = PALETTE.trimLight;
+      ctx.beginPath();
+      ctx.ellipse(x + BW * 0.345, yy - BH * 0.03 + lid, T * 0.075, T * 0.02, 0, 0, Math.PI * 2);
+      ctx.fill(); outline(ctx, T, 0.4);
+      for (let i = 0; i < 3; i++) {
+        const life = (t * 0.9 + i * 0.33) % 1;
+        ctx.fillStyle = 'rgba(255,255,255,' + ((1 - life) * 0.6).toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(x + BW * (0.30 + i * 0.05), yy - BH * 0.08 - life * T * 0.14, T * 0.018, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (accent === 'sparks') {
+    ctx.fillStyle = working ? '#ff8c2e' : '#5a4638';
+    ctx.beginPath();
+    ctx.roundRect(x + BW * 0.24, yy + BH * 0.04, T * 0.16, T * 0.10, T * 0.02);
+    ctx.fill(); outline(ctx, T, 0.6);
+    if (working) {
+      for (let i = 0; i < 5; i++) {
+        const life = (t * 1.5 + i * 0.2) % 1;
+        const a = -Math.PI / 2 + (i - 2) * 0.34;
+        ctx.fillStyle = 'rgba(255,' + (180 - i * 14) + ',80,' + ((1 - life) * 0.9).toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(
+          x + BW * 0.32 + Math.cos(a) * life * T * 0.16,
+          yy + BH * 0.04 + Math.sin(a) * life * T * 0.16,
+          T * 0.012 * (1 - life * 0.5), 0, Math.PI * 2,
+        );
+        ctx.fill();
+      }
+    }
+    return;
+  }
+
+  if (accent === 'drips') {
+    ctx.fillStyle = PALETTE.siloLight;
+    ctx.beginPath();
+    ctx.roundRect(x + BW * 0.28, yy - BH * 0.10, T * 0.11, T * 0.20, T * 0.02);
+    ctx.fill(); outline(ctx, T, 0.6);
+    if (working) {
+      for (let i = 0; i < 2; i++) {
+        const life = (t * 1.1 + i * 0.5) % 1;
+        ctx.fillStyle = 'rgba(255,240,200,' + (1 - life).toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.ellipse(x + BW * 0.335, yy + BH * 0.10 + life * T * 0.12, T * 0.014, T * 0.020, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+}
+
+/**
+ * Any production building.
+ *
+ * opts: { derelict, working, now }
+ *   working - a craft is actually running right now; drives every animation and the warm windows
+ *   now     - ms timestamp from the frame loop; the ONLY time source here, so this function has
+ *             no hidden clock and renders identically for a given `now`
+ */
 export function drawBuilding(ctx, x, y, size, buildingType, opts = {}) {
   const derelict = !!opts.derelict;
+  const working = !derelict && !!opts.working;
   const T = 104 * size;
-  const cfg = BUILDING_CONFIG[buildingType] || { roof: PALETTE.roof, accent: 'smoke' };
+  const cfg = BUILDING_CONFIG[buildingType] || FALLBACK_CFG;
+  const extras = cfg.extras || [];
   const roofColor = derelict ? PALETTE.derelictRoof : cfg.roof;
   const wallColor = derelict ? PALETTE.derelictWall : PALETTE.wall;
-  const BW = T * 0.86, BH = T * 0.52;
-  const yy = y - T * 0.08;
 
-  groundShadow(ctx, x, yy + BH * 0.7, BW * 0.6, BH * 0.2, T);
+  // Per-building phase offset so a row of identical bakeries does not puff in lockstep.
+  const t = (opts.now ?? 0) / 1000 + strHash(buildingType) * 6.283;
+
+  const BW = T * 0.86, BH = T * 0.52;
+  // While working the shell breathes very slightly. Small enough to read as life, not as a bug.
+  const bob = working ? Math.sin(t * 2.2) * T * 0.008 : 0;
+  const yy = y - T * 0.08 + bob;
+
+  groundShadow(ctx, x, y - T * 0.08 + BH * 0.7, BW * 0.6, BH * 0.2, T);
+
+  // Behind the shell.
+  drawExtras(ctx, x, yy, BW, BH, T,
+    extras.filter((e) => e === 'silo' || e === 'pipes'), cfg, derelict, size, t, working);
 
   applyDerelictFilter(ctx, derelict);
   ctx.fillStyle = wallColor;
   ctx.beginPath(); ctx.roundRect(x - BW / 2, yy - BH * 0.16, BW, BH, T * 0.06); ctx.fill();
   outline(ctx, T);
 
-  const tilt = derelict ? 0.06 : 0;
   ctx.save();
-  if (derelict) { ctx.translate(x, yy); ctx.rotate(-tilt); ctx.translate(-x, -yy); }
-  ctx.fillStyle = roofColor;
-  ctx.beginPath();
-  ctx.moveTo(x - BW * 0.58, yy - BH * 0.12);
-  if (derelict) ctx.lineTo(x - BW * 0.22, yy - BH * 0.6);
-  else ctx.lineTo(x - BW * 0.2, yy - BH * 0.78);
-  ctx.lineTo(x + BW * 0.2, yy - BH * 0.78);
-  ctx.lineTo(x + BW * 0.58, yy - BH * 0.12);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = PALETTE.trimLight; ctx.lineWidth = 3.6 * size; ctx.stroke();
-  outline(ctx, T);
+  if (derelict) { ctx.translate(x, yy); ctx.rotate(-0.06); ctx.translate(-x, -yy); }
+  drawRoofForm(ctx, x, yy, BW, BH, T, cfg.form || 'gable', roofColor, derelict, size);
   ctx.restore();
   clearFilter(ctx);
 
   if (!derelict) rimLight(ctx, T);
 
+  drawExtras(ctx, x, yy, BW, BH, T,
+    extras.filter((e) => e === 'chimney'), cfg, derelict, size, t, working);
+
+  // Windows: cool when idle, warm and gently pulsing when a craft is running.
   applyDerelictFilter(ctx, derelict);
-  ctx.fillStyle = derelict ? '#6a7860' : PALETTE.window;
-  const windowOmit = derelict; // "omit one window" per §6
-  if (!windowOmit) {
-    ctx.beginPath(); ctx.roundRect(x - BW * 0.3, yy + BH * 0.02, BW * 0.18, BH * 0.24, T * 0.02); ctx.fill();
+  if (!derelict) {
+    const glow = working ? 0.55 + 0.25 * Math.sin(t * 2.6) : 0;
+    ctx.fillStyle = working
+      ? 'rgb(' + Math.round(127 + 128 * glow) + ',' + Math.round(212 + 18 * glow) + ',' + Math.round(240 - 100 * glow) + ')'
+      : PALETTE.window;
+    ctx.beginPath();
+    ctx.roundRect(x - BW * 0.30, yy + BH * 0.02, BW * 0.18, BH * 0.24, T * 0.02);
+    ctx.fill();
     outline(ctx, T, 0.4);
+    if (working) {
+      ctx.fillStyle = 'rgba(255,214,120,' + (0.20 * glow).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(x - BW * 0.21, yy + BH * 0.14, T * 0.11, 0, Math.PI * 2); ctx.fill();
+    }
   }
+  // A derelict building omits its window entirely (SPRITE-NOTES §6), so there is deliberately
+  // no else-branch here - only the door is drawn.
   ctx.fillStyle = PALETTE.wood;
-  ctx.beginPath(); ctx.roundRect(x + BW * 0.06, yy + BH * 0.06, BW * 0.22, BH * 0.42, T * 0.02); ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x + BW * 0.06, yy + BH * 0.06, BW * 0.22, BH * 0.42, T * 0.02);
+  ctx.fill();
   outline(ctx, T, 0.4);
   clearFilter(ctx);
 
-  // category accent
-  if (!derelict) {
-    if (cfg.accent === 'smoke') {
-      ctx.fillStyle = roofColor;
-      ctx.fillRect(x + BW * 0.28, yy - BH * 0.82, T * 0.06, T * 0.14);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.arc(x + BW * 0.31 + i * 3 * size, yy - BH * 0.9 - i * 10 * size, (5 - i) * size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (cfg.accent === 'blades') {
-      ctx.save();
-      ctx.translate(x, yy - BH * 0.78);
-      ctx.strokeStyle = PALETTE.trimLight; ctx.lineWidth = 4 * size;
-      for (let i = 0; i < 4; i++) {
-        ctx.rotate(Math.PI / 2);
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -T * 0.16); ctx.stroke();
-      }
-      ctx.restore();
-    } else if (cfg.accent === 'wheel') {
-      ctx.strokeStyle = PALETTE.woodDark; ctx.lineWidth = 3 * size;
-      ctx.beginPath(); ctx.arc(x - BW * 0.36, yy + BH * 0.14, T * 0.09, 0, Math.PI * 2); ctx.stroke();
-    } else if (cfg.accent === 'pot') {
-      ctx.fillStyle = '#5a5a5a';
-      ctx.beginPath(); ctx.ellipse(x - BW * 0.32, yy + BH * 0.2, T * 0.08, T * 0.06, 0, 0, Math.PI * 2); ctx.fill();
-      outline(ctx, T, 0.3);
-    } else if (cfg.accent === 'churn') {
-      ctx.fillStyle = PALETTE.silo;
-      ctx.beginPath(); ctx.roundRect(x - BW * 0.34, yy + BH * 0.08, T * 0.1, T * 0.16, T * 0.02); ctx.fill();
-      outline(ctx, T, 0.3);
-    }
-  } else {
-    derelictDebris(ctx, x, yy + BH * 0.3, T);
+  // Signboard: a small painted plaque, only where the config asks for one.
+  if (cfg.sign && !derelict) {
+    ctx.fillStyle = cfg.sign;
+    ctx.beginPath();
+    ctx.roundRect(x - BW * 0.16, yy - BH * 0.16, BW * 0.30, T * 0.055, T * 0.014);
+    ctx.fill();
+    outline(ctx, T, 0.45);
   }
+
+  // In front of the shell.
+  drawExtras(ctx, x, yy, BW, BH, T,
+    extras.filter((e) => e !== 'silo' && e !== 'pipes' && e !== 'chimney'),
+    cfg, derelict, size, t, working);
+
+  if (!derelict) drawAccent(ctx, x, yy, BW, BH, T, cfg.accent, cfg, size, t, working);
+
+  if (derelict) derelictDebris(ctx, x, yy + BH * 0.3, T);
 }
 
 // ---------------------------------------------------------------------------------------

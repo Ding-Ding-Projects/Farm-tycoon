@@ -15,6 +15,7 @@ import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
 import { STRUCTURES, CROPS, ANIMALS, GOODS, MATERIALS } from './data.js';
 import * as economy from './economy.js';
+import * as placement from './placement.js';
 
 let canvasRef = null;
 
@@ -169,10 +170,56 @@ function penRadial(screenX, screenY, obj) {
   ui.openRadial(screenX, screenY, options, obj.id);
 }
 
+/** Tile under a screen point. The ghost and handleTap must agree, so they share this. */
+function tileAt(sx, sy) {
+  const viewport = renderer.getViewport();
+  return renderer.screenToTile(sx, sy, viewport.w, viewport.h).map(Math.floor);
+}
+
+/**
+ * Commit the placement ghost.
+ *
+ * A blocked tile deliberately does NOT cancel: it plays the error tone and leaves the ghost up,
+ * so a mis-tap costs a second rather than a crafted kit.
+ */
+function commitPlacement() {
+  const res = placement.confirm();
+  if (res.ok) {
+    audio.place();
+    save();
+    return true;
+  }
+  audio.error();
+  // Distinguish the two ways this can refuse: a blocked tile is fixed by moving, an unaffordable
+  // building is not, and telling someone to "try somewhere else" when they are short of coins
+  // sends them hunting for a tile that was never the problem.
+  ui.toast(
+    res.reason === 'refused'
+      ? "You can't afford that right now."
+      : 'That spot is blocked - try somewhere else.',
+    'error',
+  );
+  return false;
+}
+
 function handleTap(sx, sy) {
   ui.closeRadial();
-  const viewport = renderer.getViewport();
-  const [tx, ty] = renderer.screenToTile(sx, sy, viewport.w, viewport.h).map(Math.floor);
+  const [tx, ty] = tileAt(sx, sy);
+
+  // Placing something beats every other meaning a tap could have: while the ghost is up the
+  // player is answering "where?", not asking to open a panel.
+  if (placement.isActive()) { commitPlacement(); return; }
+
+  // Decorate mode turns a tap on a placed object into a pick-up. This is the drag-to-arrange the
+  // dock has always promised in its toast and never actually implemented.
+  if (state?.decorate?.active) {
+    const target = farm.objectAt(tx, ty);
+    if (target) {
+      placement.beginMove(target.id);
+      ui.toast('Drag it where you like, then tap to drop it. Esc puts it back.', 'info');
+    }
+    return;
+  }
 
   const struct = structureAt(tx, ty);
   if (struct) { openStructure(struct.key, struct.def); return; }
@@ -211,6 +258,16 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
+  // The ghost follows the pointer whether or not a button is down, so you can see where a
+  // building will land before committing to the gesture.
+  if (placement.isActive()) {
+    const [gx, gy] = tileAt(e.clientX, e.clientY);
+    const g = placement.ghost();
+    // Centre the footprint on the cursor: grabbing a 3x3 factory by its top-left corner makes it
+    // feel like it is lagging behind the finger.
+    placement.hover(gx - Math.floor((g?.w || 1) / 2), gy - Math.floor((g?.h || 1) / 2));
+    return;
+  }
   if (!pointerDown) return;
   const dx = e.clientX - lastX, dy = e.clientY - lastY;
   if (!dragging && Math.hypot(e.clientX - downX, e.clientY - downY) > TAP_MOVE_THRESHOLD) {
@@ -235,7 +292,11 @@ function onPointerUp(e) {
   pointerDown = false;
   const elapsed = performance.now() - downTime;
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
-  if (!dragging && moved <= TAP_MOVE_THRESHOLD && elapsed <= TAP_TIME_MAX) {
+  if (placement.isActive()) {
+    // A drag-and-release is the natural way to place, so releasing over a legal tile commits
+    // even when the pointer travelled far enough to count as a drag anywhere else.
+    commitPlacement();
+  } else if (!dragging && moved <= TAP_MOVE_THRESHOLD && elapsed <= TAP_TIME_MAX) {
     handleTap(e.clientX, e.clientY);
   }
   dragging = false;
@@ -256,4 +317,20 @@ export function init(canvas) {
   window.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  window.addEventListener('keydown', onKeyDown);
+}
+
+/**
+ * Keyboard parity for placement.
+ *
+ * A ghost you can only position with a pointer is a building a keyboard-only player can never
+ * put down, and buildAt() no longer has an auto-place path to fall back on - so this is the
+ * accessibility floor for the whole feature, not a convenience.
+ */
+function onKeyDown(e) {
+  if (!placement.isActive()) return;
+  if (e.key === 'Escape') { placement.cancel(); ui.toast('Cancelled.', 'info'); e.preventDefault(); return; }
+  if (e.key === 'Enter' || e.key === ' ') { commitPlacement(); e.preventDefault(); return; }
+  const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (step) { placement.nudge(step[0], step[1]); e.preventDefault(); }
 }

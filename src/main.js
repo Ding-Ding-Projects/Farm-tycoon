@@ -21,6 +21,7 @@ import * as trains from './trains.js';
 import * as zoo from './zoo.js';
 import * as extras from './extras.js';
 import * as foraging from './foraging.js';
+import * as placement from './placement.js';
 import * as lab from './lab.js';
 import * as helicopter from './helicopter.js';
 import * as newspaper from './newspaper.js';
@@ -79,6 +80,9 @@ function buildWorld() {
       const entry = s.production.find((p) => p.objectId === obj.id);
       objects.push({
         id: obj.id, kind: 'building', type: obj.type, tx: obj.x, ty: obj.y,
+        // Working means STILL COOKING, not merely "has a queue entry": a finished craft waiting
+        // to be collected should look finished, so its chimney stops and its windows cool off.
+        working: !!entry && entry.readyAt > now,
         progress: entry ? Math.max(0, Math.min(1, 1 - (entry.readyAt - now) / 60000)) : undefined,
       });
     } else if (obj.kind === 'decoration' || obj.kind === 'pond' || obj.kind === 'mine') {
@@ -109,7 +113,10 @@ function buildWorld() {
     objects.push({ id: node.id, kind: 'forage', type: node.type, tx: node.x, ty: node.y, progress });
   }
 
-  return { objects };
+  // While the ghost is up, show the tile grid: that is the one moment the player is thinking in
+  // tiles rather than in scenery, and it is exactly what CLAUDE.md reserves the grid for.
+  const ghost = placement.ghost();
+  return { objects, ghost, showGrid: !!ghost };
 }
 
 /** Run every timer/tick module's tick(now), defensively — Phase B stubs are safe no-ops. */

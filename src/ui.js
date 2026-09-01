@@ -32,6 +32,7 @@ import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
 import * as workshop from './workshop.js';
 import * as minigames from './minigames.js';
+import * as placement from './placement.js';
 import {
   CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
   ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
@@ -1736,43 +1737,29 @@ function renderBuildingQueue(container, buildingId) {
   container.appendChild(grid);
 }
 
-/** Does a candidate w×h footprint at (x,y) overlap any of the always-present STRUCTURES? */
-function overlapsAnyStructure(x, y, w, h) {
-  for (const def of Object.values(STRUCTURES)) {
-    const [sw, sh] = def.size;
-    const overlaps = x < def.pos.x + sw && x + w > def.pos.x && y < def.pos.y + sh && y + h > def.pos.y;
-    if (overlaps) return true;
-  }
-  return false;
-}
-
 /**
- * Scan the start zone for the first free w×h tile — free of other placed objects (via
- * farm.canPlace) AND of the always-present STRUCTURES footprints, which farm.js has no
- * reason to know about (they're world-layer chrome, not state.farm.objects).
+ * Hand a freshly crafted or bought building to the placement ghost so the PLAYER picks the tile.
+ *
+ * This used to call findFreeTile() and drop the building on the first fitting tile it scanned,
+ * front to back, with no say from anyone. Two things were wrong with that: you could not put a
+ * bakery where you wanted it, and once the scan found nothing you got "No free space" with no way
+ * to rearrange what was already down. The ghost fixes both, and input.js finishes the gesture.
+ *
+ * The panel closes first, because the world is what the player now needs to see.
  */
-function findFreeTile(w, h) {
-  for (let y = FARM.startZone.y; y < FARM.startZone.y + FARM.startZone.h - h + 1; y++) {
-    for (let x = FARM.startZone.x; x < FARM.startZone.x + FARM.startZone.w - w + 1; x++) {
-      if (farm.canPlace(x, y, w, h) && !overlapsAnyStructure(x, y, w, h)) return [x, y];
-    }
-  }
-  return null;
-}
-
-/** Place a freshly crafted/coin-bought building or pen at the first free start-zone tile. */
 function buildAt(kind, id, def, onPlaced) {
-  const [w, h] = def.size || [2, 2];
-  const spot = findFreeTile(w, h);
-  if (!spot) { audio.error(); toast('No free space for that right now.', 'error'); return; }
-  const obj = farm.place(kind, id, spot[0], spot[1]);
-  if (!obj) { audio.error(); toast("Can't build that right now.", 'error'); return; }
-  onPlaced && onPlaced();
-  audio.place();
-  toast(`Built ${def.name}!`, 'success');
-  tutorial.emit(`placed:${id}`);
-  save();
-  refreshPanel();
+  closePanel();
+  placement.begin(kind, id, {
+    label: def.name,
+    onPlaced: () => {
+      onPlaced && onPlaced();
+      audio.place();
+      toast(`Built ${def.name}!`, 'success');
+      tutorial.emit(`placed:${id}`);
+      save();
+    },
+  });
+  toast(`Drag ${def.name} where you want it, then tap to place. Esc cancels.`, 'info');
 }
 
 /**

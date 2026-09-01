@@ -504,7 +504,8 @@ export const BUILDINGS = {
     name: 'Candy Machine', unlockLevel: 26, cost: 5000, size: [2, 2], kit: 'kit_candy_machine', minigame: 'mould_pour', queueSlots: 3,
     recipes: [
       { id: 'caramel',      inputs: { sugar: 2, cream: 1 },        time: 3600, xp: 9, unlockLevel: 26 },
-      { id: 'honey_toffee', inputs: { honey: 1, brown_sugar: 1 },  time: 5400, xp: 12, unlockLevel: 26 },
+      { id: 'honey_toffee', inputs: { honey: 1, brown_sugar: 1 },  time: 5400, xp: 12, unlockLevel: 26,
+        play: { stages: [{ verb: 'pull_taffy' }] } },
       { id: 'chili_choc',   inputs: { chili: 1, sugar: 2, milk: 1 }, time: 7200, xp: 14, unlockLevel: 26 },
     ],
   },
@@ -1131,6 +1132,12 @@ export const VERBS = {
     purpose: 'Filled to the line, a jar seals properly.',
     hint: 'Hot jam runs slow - what pours now is what you asked for half a second ago. Ease off early.',
     stageClass: 'stage-jar', durationMs: 15000,
+  },
+  pull_taffy: {
+    name: 'Pull the Taffy', verbWord: 'stretch', family: 'dual',
+    purpose: 'Pulled through, taffy turns pale and light.',
+    hint: 'Stretch your hands apart, then fold back together. Keep an even rhythm - snatching at it does not aerate.',
+    stageClass: 'stage-dual', durationMs: 14000,
   },
 };
 export const QUALITY = {

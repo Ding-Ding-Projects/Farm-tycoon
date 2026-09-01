@@ -268,6 +268,20 @@ const OPTIMAL = {
     const willArrive = snap.inPipe * 0.42 * 0.52;
     return { rate: snap.level + willArrive < snap.line - 0.02 ? 1 : 0 };
   },
+
+  pull_taffy: () => {
+    // Cyclic, and PACED. Snapping between apart and together as fast as possible still completes
+    // every pull but forfeits the evenness credit - 0.66 against 0.98 - which is the verb saying
+    // that snatching at taffy does not aerate it.
+    let held = 0;
+    let want = null;
+    return (snap) => {
+      if (snap.want !== want) { want = snap.want; held = 0; }
+      held += 16;
+      if (held < 700) return snap.want === 'apart' ? { left: 0.5, right: 0.5 } : { left: 1, right: 0 };
+      return snap.want === 'apart' ? { left: 1, right: 0 } : { left: 0.5, right: 0.5 };
+    };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

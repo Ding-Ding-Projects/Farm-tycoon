@@ -113,8 +113,10 @@ world for whoever picks this up next (full detail and verification evidence in
 
 ## Hard conventions
 
-- **No dependencies, no build step** in the game itself (Electron/electron-builder are the
-  only devDeps). No frameworks. DOM for menus, canvas for the world.
+- **No dependencies, no build step** in the game itself. No frameworks. DOM for menus, canvas
+  for the world. The devDeps are packaging only and none of them is loaded by the game:
+  Electron and electron-builder for Windows, Capacitor for Android. `index.html` still loads
+  `src/main.js` directly as an ES module, in the browser, in Electron, and in the WebView.
 - **No binary assets.** All art is canvas vector code in `sprites.js`; all sound is
   synthesized in `audio.js`.
 - **Timers are absolute wall-clock `readyAt` timestamps** (ms). Never store countdowns.

@@ -65,6 +65,34 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 - [x] Release publish step now runs before the release code-name ledger commit step, so a
       bookkeeping failure can no longer prevent an already-built release from existing
 
+## Playable items
+
+- [x] Per-item minigame gate: a recipe carrying a `play` chain can only be collected by playing
+      it through. Save v4 with a migration that grandfathers crafts queued before it existed
+- [x] Quality tiers resolved once at collect into yield / XP / a coin tip, with a worst-stage cap
+      so a chain cannot be farmed by sandbagging its hard stage
+- [x] Shell plus twelve input families, keyboard parity in the shared normaliser
+- [x] Fourteen verbs, every family in use, `verbWord` uniqueness enforced by test
+- [x] Cake Oven (level 21) with a five-stage cake maker: whisk, pour, oven, pipe, decorate
+- [x] Four more factories: Ice Cream Maker, Soup Kitchen, Sauce Maker, Flower Shop
+- [x] Assist mode and an opt-in auto-finish, both reachable from Settings
+- [x] Both release valves: playable goods buyable from a neighbour, and a jammed craft
+      discardable for half its inputs back
+- [x] Verified in the packaged Windows app, including that dynamic `import()` resolves over
+      `file://` - without which every playable craft would be unreachable once installed
+- [ ] The remaining wiki factories. 31 of roughly 67 exist; Township and Hay Day between them
+      still have about 36 absent, each wanting its own playable item and verb
+- [ ] Per-family audio, a Bake Book from `state.minigames.best`, Masterpiece achievements
+
+## Android
+
+- [x] Capacitor declared, config written, npm scripts, keystore lines in `.gitignore`
+- [x] Launcher icons generated in code across five densities, verified by PNG signature
+- [x] Mobile layout pass: the minigame modal was clipped on a 320px phone and is not now
+- [ ] Android SDK on the build machine (needs Google's licences accepted by the owner)
+- [ ] Release keystore, created by the owner and never by an agent or CI
+- [ ] A built APK, and any device testing at all. See `ANDROID.md`
+
 ## Open items
 
 - [ ] **Screenshots and recordings.** None exist in the README or on the GitHub Pages site

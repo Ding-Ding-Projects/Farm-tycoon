@@ -255,13 +255,16 @@ export function discardBatch(cid) {
   return { recipeId: entry.recipeId, refunded, paidOut: Math.round(paidOut) };
 }
 
-/** Collect a finished queue slot's output into the barn. */
-export function collectBuilding(buildingId, now = Date.now()) {
+/**
+ * Collect a finished queue slot's output into the barn. With `cid` given, collect exactly that
+ * entry (the one whose card the player pressed); without it, the first collectable one.
+ */
+export function collectBuilding(buildingId, now = Date.now(), cid = null) {
   // findIndex SKIPS a ready-but-unplayed entry rather than stopping at it, so an unplayed cake
   // never blocks a finished loaf queued behind it. This is the single most important line in
   // the playable-craft change.
   const idx = state.production.findIndex(
-    (p) => p.objectId === buildingId && p.readyAt <= now && isCollectable(p));
+    (p) => p.objectId === buildingId && p.readyAt <= now && isCollectable(p) && (!cid || p.cid === cid));
   if (idx === -1) return null;
   const entry = state.production[idx];
   const building = findBuilding(buildingId);

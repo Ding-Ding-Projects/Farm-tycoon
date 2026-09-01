@@ -10,20 +10,13 @@
 //        state.photo { frame, stickers: [{ id, x, y }] }
 
 import { state } from './state.js';
-import { DECORATE, PHOTO, FARM, BUILDINGS, DECORATIONS, ANIMALS, STRUCTURES } from './data.js';
+import { DECORATE, PHOTO, FARM } from './data.js';
 import * as farm from './farm.js';
 
-// Mirrors farm.js's private footprintOf() — needed here because a multi-select move must
-// validate every moved object against the others IN the selection being ignored at once,
-// which farm.js's single-object move()/canPlace() cannot express.
-function footprintOf(kind, type) {
-  if (kind === 'field') return [1, 1];
-  if (kind === 'building') return BUILDINGS[type]?.size ?? [1, 1];
-  if (kind === 'decoration') return DECORATIONS[type]?.size ?? [1, 1];
-  if (kind === 'pen') return ANIMALS[type]?.size ?? [2, 2];
-  if (STRUCTURES[type]) return STRUCTURES[type].size;
-  return [1, 1];
-}
+// farm.js's footprintOf(), shared — a multi-select move must validate every moved object against
+// the others IN the selection being ignored at once, which farm.js's single-object move()/
+// canPlace() cannot express, but the footprint itself must be the same answer everywhere.
+const footprintOf = farm.footprintOf;
 
 function rectFree(x, y, w, h, ignoreIds) {
   if (!Number.isInteger(x) || !Number.isInteger(y)) return false;

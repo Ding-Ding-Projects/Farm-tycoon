@@ -35,6 +35,8 @@ import * as tutorial from './tutorial.js';
 import * as workshop from './workshop.js';
 import * as minigames from './minigames.js';
 import * as placement from './placement.js';
+import * as renderer from './render/renderer.js';
+import * as effects from './render/effects.js';
 import {
   CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
   ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
@@ -129,6 +131,33 @@ function compactCount(n) {
   if (Math.abs(v) < 1000000) return `${(v / 1000).toFixed(1)}k`;
   if (Math.abs(v) < 1000000000) return `${(v / 1000000).toFixed(2)}M`;
   return `${(v / 1000000000).toFixed(2)}B`;
+}
+
+/**
+ * A burst of coins falling out of the HUD's coin counter whenever the balance grows. One wiring
+ * point for every way coins arrive (sales, orders, tips, rewards), throttled so a stream of tiny
+ * payouts does not become a hailstorm.
+ */
+let lastCoinBurstAt = 0;
+function coinBurstAtHud(delta) {
+  if (!(delta >= 5) || typeof document === 'undefined') return;
+  const now = Date.now();
+  if (now - lastCoinBurstAt < 150) return;
+  lastCoinBurstAt = now;
+  const pill = document.getElementById('coins-pill');
+  const r = pill && typeof pill.getBoundingClientRect === 'function' ? pill.getBoundingClientRect() : null;
+  if (!r || !(r.width > 0)) return;
+  effects.coinBurst(r.left + r.width / 2, r.top + r.height, delta);
+}
+
+/** Screen point above a farm object, for effects spawned from a panel (the world is still visible
+ *  above the sheet). Null when the renderer has no viewport yet. */
+function screenPointOf(obj) {
+  if (!obj) return null;
+  const vp = renderer.getViewport();
+  const [fw, fh] = farm.footprintOf(obj.kind, obj.type);
+  const [sx, sy, size] = renderer.objectAnchor({ tx: obj.x, ty: obj.y, fw, fh }, vp.w, vp.h);
+  return [sx, sy - renderer.TILE_BASE * size * 0.25];
 }
 
 export function updateHud() {
@@ -1794,7 +1823,12 @@ async function openStagePlayer(entry) {
   refreshPanel();
 }
 
-function renderQueue(container, entries, recipeOf, collectFn) {
+/**
+ * The in-progress list shared by every production building and the Workshop. `collectFn(entry,
+ * index)` collects THAT entry; `fxAt()` (optional) returns the screen point to spawn the collect
+ * sparkle/XP floater at, so the juice lands on the building in the world rather than nowhere.
+ */
+function renderQueue(container, entries, recipeOf, collectFn, fxAt = null) {
   if (!entries.length) return;
   const heading = document.createElement('p');
   heading.className = 'minigame-hint';
@@ -1839,7 +1873,12 @@ function renderQueue(container, entries, recipeOf, collectFn) {
         const result = collectFn(entry, index);
         if (result) {
           audio.harvest();
-          toast(`Collected ${itemName(entry.recipeId)}!`, 'success');
+          const at = fxAt && fxAt();
+          if (at) {
+            effects.sparkle(at[0], at[1]);
+            effects.xpFloater(at[0], at[1] - 24, recipe?.xp ?? 1);
+          }
+          toast(`Collected ${itemName(result.goodId || entry.recipeId)}!`, 'success');
           tutorial.emit(`collected:${entry.recipeId}`);
           refreshPanel();
         } else { audio.error(); toast('Barn is full — make room first.', 'error'); }
@@ -1856,8 +1895,12 @@ function renderBuildingQueue(container, buildingId) {
 
   const recipes = def.recipes || [];
   const entries = state.production.filter((p) => p.objectId === buildingId);
+  // Collect THE ENTRY WHOSE CARD WAS PRESSED (by its stable cid), not whichever ready entry
+  // happens to come first in the queue - with bread and a cake both done, pressing Collect on the
+  // cake used to hand over the bread and toast "Collected Cake!".
   renderQueue(container, entries, (id) => recipes.find((r) => r.id === id),
-    () => production.collectBuilding(buildingId));
+    (entry) => production.collectBuilding(buildingId, Date.now(), entry.cid),
+    () => screenPointOf(obj));
 
   const queueFull = entries.length >= (def.queueSlots ?? Infinity);
   const grid = slotGrid();
@@ -1951,7 +1994,7 @@ function renderWorkshop(container) {
   const recipes = BUILDINGS.build_workshop.recipes || [];
   const entries = state.production.filter((p) => p.objectId === workshopObj.id);
   renderQueue(container, entries, (id) => recipes.find((r) => r.id === id),
-    (entry, index) => workshop.collect(index));
+    (entry, index) => workshop.collect(index), () => screenPointOf(workshopObj));
 
   container.appendChild(hintEl('Craft components from materials, then kits from components:'));
   const craftGrid = slotGrid();
@@ -2281,7 +2324,10 @@ export function init() {
     el.dock.appendChild(wheelBtn);
   }
 
-  economy.onCoinsChanged(() => updateHud());
+  economy.onCoinsChanged((balance, delta) => {
+    updateHud();
+    coinBurstAtHud(delta);
+  });
   economy.onXpChanged((info) => {
     updateHud();
     if (info?.leveledUp) {

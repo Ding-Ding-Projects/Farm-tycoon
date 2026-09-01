@@ -15,8 +15,13 @@ function freshId() { return `obj_${nextObjectId++}_${Date.now().toString(36)}`; 
  * explicit [w,h] in data.js. Animal pens have no size field in data.js (ANIMALS only
  * defines pen economy, not pen geometry), so pens default to a fixed 2x2 footprint here —
  * a farm.js-local rendering/placement decision, not invented game content.
+ *
+ * EXPORTED and shared: placement.js, decorate.js and main.js's buildWorld() all used to carry
+ * their own copy with subtly different fallbacks (`penSize` vs `size`, [2,2] vs [1,1]), which
+ * agreed only by accident. One function, so the ghost, the legality check, the move validator
+ * and the renderer can never disagree about how big a thing is.
  */
-function footprintOf(kind, type) {
+export function footprintOf(kind, type) {
   if (kind === 'field') return [1, 1];
   if (kind === 'building') return BUILDINGS[type]?.size ?? [1, 1];
   if (kind === 'decoration') return DECORATIONS[type]?.size ?? [1, 1];

@@ -16,6 +16,7 @@ import * as tutorial from './tutorial.js';
 import { STRUCTURES, CROPS, ANIMALS, GOODS, MATERIALS } from './data.js';
 import * as economy from './economy.js';
 import * as placement from './placement.js';
+import * as effects from './render/effects.js';
 
 let canvasRef = null;
 
@@ -133,14 +134,23 @@ function fieldRadial(screenX, screenY, obj) {
   const ready = !!obj.cropId && obj.readyAt && obj.readyAt <= now;
 
   if (ready) {
+    // Captured now: harvest() clears the field's cropId, so reading it afterwards names nothing.
+    const crop = CROPS[obj.cropId];
     ui.openRadial(screenX, screenY, [{
-      icon: '🧺', label: 'Harvest', sub: CROPS[obj.cropId]?.name || 'Harvest',
+      icon: '🧺', label: 'Harvest', sub: crop?.name || 'Harvest',
       onSelect: () => {
-        const ok = typeof production.harvest === 'function' && production.harvest(obj.id);
-        if (ok !== false) {
+        // harvest() returns null (not false) when it refuses - a full silo leaves the crop standing
+        // - so only a truthy result is a harvest. The old `ok !== false` toasted success on null.
+        const result = typeof production.harvest === 'function' ? production.harvest(obj.id) : null;
+        if (result) {
           audio.harvest();
-          ui.toast(`Harvested ${CROPS[obj.cropId]?.name || 'crop'}!`, 'success');
+          effects.sparkle(screenX, screenY);
+          effects.xpFloater(screenX, screenY - 26, crop?.xp ?? 1);
+          ui.toast(`Harvested ${crop?.name || 'crop'}!`, 'success');
           tutorial.emit('harvested');
+        } else {
+          audio.error();
+          ui.toast('Silo is full — sell or use some crops first.', 'error');
         }
         save();
       },
@@ -185,8 +195,18 @@ function penRadial(screenX, screenY, obj) {
     options.push({
       icon: '🧺', label: 'Collect', sub: ANIMALS[obj.type]?.name || 'Collect',
       onSelect: () => {
-        const ok = typeof production.collectPen === 'function' && production.collectPen(obj.id);
-        if (ok !== false) { audio.harvest(); ui.toast('Collected!', 'success'); }
+        // collectPen() returns null when the barn is full and leaves the pen ready; that is not a
+        // collection and must not be toasted as one.
+        const result = typeof production.collectPen === 'function' ? production.collectPen(obj.id) : null;
+        if (result) {
+          audio.harvest();
+          effects.sparkle(screenX, screenY);
+          effects.xpFloater(screenX, screenY - 26, ANIMALS[obj.type]?.xp ?? 1);
+          ui.toast(`Collected ${result.qty} ${nameOf(result.product)}!`, 'success');
+        } else {
+          audio.error();
+          ui.toast('Barn is full — make room first.', 'error');
+        }
         save();
       },
     });
@@ -222,6 +242,7 @@ function commitPlacement() {
   const res = placement.confirm();
   if (res.ok) {
     audio.place();
+    if (res.object?.id) effects.placeBounce(res.object.id);
     save();
     return true;
   }

@@ -2245,24 +2245,42 @@ function buildColourPicker(setting, changed) {
       }));
     }
 
-    const rows = [
-      { label: 'Button text on the accent', ratio: contrastRatio(used, onAccent) },
-      { label: 'Link text on the page surface', ratio: contrastRatio(used, surface) },
-    ];
-    for (const r of rows) {
-      const pass = r.ratio >= 4.5;
+    const bg = styles.getPropertyValue('--c-bg').trim() || SURFACE_LIGHT;
+    const controlBorder = styles.getPropertyValue('--c-control-border').trim() || onAccent;
+
+    function line(label, ratio, threshold) {
+      const pass = ratio >= threshold;
       readout.appendChild(el('div', { class: 'contrast-line' }, [
-        el('span', { text: r.label }),
+        el('span', { text: label }),
         el('span', {}, [
-          el('span', { class: 'contrast-ratio', text: r.ratio.toFixed(2) + ':1 ' }),
+          el('span', { class: 'contrast-ratio', text: ratio.toFixed(2) + ':1 ' }),
           el('span', { class: pass ? 'pill-pass' : 'pill-fail', text: pass ? 'AA' : 'below AA' }),
         ]),
       ]));
     }
+
+    readout.appendChild(el('p', { class: 'contrast-group', text: 'Text, against 4.5:1' }));
+    line('Button text on the accent', contrastRatio(used, onAccent), 4.5);
+    line('Link text on the page surface', contrastRatio(used, surface), 4.5);
+
+    /* Text was the only thing this panel used to measure, which meant it could
+       report AA in good conscience while every control on the page had a
+       boundary nobody could see. Non-text contrast is a separate criterion with
+       a separate threshold, so it gets separate rows. */
+    readout.appendChild(el('p', { class: 'contrast-group', text: 'Control boundaries, against 3:1' }));
+    line('Control outline on the page', contrastRatio(controlBorder, bg), 3);
+    line('Control outline on a card', contrastRatio(controlBorder, surface), 3);
+    line('Accent fill on a card', contrastRatio(used, surface), 3);
+
     readout.appendChild(el('p', {
-      class: 'rb-note', style: 'margin:4px 0 0',
-      text: 'Measured against the colours this page is painting right now, not against the ones ' +
-            'it intended to. A failing ratio here is a real one.',
+      class: 'rb-note', style: 'margin:6px 0 0',
+      text: 'Every figure comes from the colours this page is painting right now, not from the ' +
+            'ones it intended to, so a failing ratio here is a real one. What it covers: text ' +
+            'against its own background at the 4.5:1 AA threshold, and the outline of an ' +
+            'interactive control against the surfaces either side of it at 3:1. What it does not ' +
+            'cover: text set over an image, disabled controls, focus indicators, and any colour a ' +
+            'browser extension or a forced-colours mode substitutes after this page has painted. ' +
+            'A pass here is a pass on what is listed, not a clean bill of health for the page.',
     }));
   }
 
@@ -2435,6 +2453,119 @@ function teleport(rawId, { focus = true } = {}) {
   return true;
 }
 
+
+/* --------------------------------------------------------------------------
+   Horizontally scrolling blocks (wide tables, long code samples).
+
+   A scroller is a place a keyboard user has to be able to stop, and a thing a
+   screen reader has to be able to name. Chrome and Firefox make one focusable
+   implicitly; WebKit does not, and no engine announces one as a region, so both
+   have to be said out loud.
+
+   Said only while the block is genuinely scrolling, though. A table that fits
+   its column needs no tab stop and is not a landmark, and thirty permanent
+   landmarks for thirty tables that all fit is noise rather than navigation. The
+   observer re-decides on resize, which is also what a text-size or density
+   change comes through as.
+   -------------------------------------------------------------------------- */
+
+const scrollRegions = typeof ResizeObserver === 'function'
+  ? new ResizeObserver((entries) => {
+      const seen = new Set();
+      for (const entry of entries) {
+        // Content and container are both watched, because a font swap or a
+        // text-size change moves one while the other stands still. Either way
+        // the answer belongs to the scroller.
+        const owner = entry.target.closest('.table-scroll, pre');
+        if (!owner || seen.has(owner)) continue;
+        seen.add(owner);
+        syncScrollRegion(owner);
+      }
+    })
+  : null;
+
+/** Heading text without the permalink anchor that lives inside it. */
+function headingText(node) {
+  let out = '';
+  for (const child of node.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) out += child.nodeValue;
+    else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('section-anchor')) {
+      out += child.textContent;
+    }
+  }
+  return out.trim();
+}
+
+/* A caption is written to be read at leisure underneath a table, so some of them
+   run to several sentences and carry the source's own line breaks. Spoken aloud
+   as the name of a region, that is a paragraph where a label was wanted. Take the
+   first sentence, and fall back to a word boundary. */
+function shortName(text) {
+  let out = String(text).replace(/\s+/g, ' ').trim();
+  if (out.length <= 80) return out;
+  const stop = out.slice(0, 80).lastIndexOf('. ');
+  if (stop > 24) return out.slice(0, stop);
+  const space = out.slice(0, 80).lastIndexOf(' ');
+  return out.slice(0, space > 24 ? space : 80);
+}
+
+/** A name a reader can act on: the table's caption, else the section it sits under. */
+function scrollRegionName(node) {
+  const kind = node.tagName === 'PRE' ? 'code sample' : 'table';
+  let base = '';
+  const caption = node.tagName === 'PRE' ? null : $('caption', node);
+  if (caption) base = shortName(caption.textContent);
+  if (!base) {
+    let prev = node.previousElementSibling;
+    while (prev) {
+      if (/^H[1-6]$/.test(prev.tagName)) { base = shortName(headingText(prev)); break; }
+      prev = prev.previousElementSibling;
+    }
+  }
+  return base ? base + ', scrollable ' + kind : 'Scrollable ' + kind;
+}
+
+function syncScrollRegion(node) {
+  const scrolls = node.scrollWidth > node.clientWidth + 1;
+  const marked = node.getAttribute('tabindex') === '0';
+  if (scrolls === marked) return;
+  if (scrolls) {
+    node.setAttribute('tabindex', '0');
+    node.setAttribute('role', 'region');
+    node.setAttribute('aria-label', node.dataset.scrollName || scrollRegionName(node));
+  } else {
+    // Never pull the floor out from under the reader standing on it.
+    if (node === document.activeElement) return;
+    node.removeAttribute('tabindex');
+    node.removeAttribute('role');
+    node.removeAttribute('aria-label');
+  }
+}
+
+/** Wide tables scroll inside their own container, never the page body. */
+function wrapWideTables(root) {
+  for (const table of $$('table', root)) {
+    if (table.parentElement && table.parentElement.classList.contains('table-scroll')) continue;
+    const scroller = el('div', { class: 'table-scroll' });
+    table.parentNode.insertBefore(scroller, table);
+    scroller.appendChild(table);
+  }
+}
+
+function registerScrollRegions(root) {
+  for (const node of $$('.table-scroll, pre', root)) {
+    node.dataset.scrollName = scrollRegionName(node);
+    syncScrollRegion(node);
+    if (!scrollRegions) continue;
+    scrollRegions.observe(node);
+    if (node.firstElementChild) scrollRegions.observe(node.firstElementChild);
+  }
+}
+
+function releaseScrollRegions() {
+  if (scrollRegions) scrollRegions.disconnect();
+}
+
 function renderArticle(article) {
   const panel = $('#docPanel');
   clear(panel);
@@ -2446,6 +2577,9 @@ function renderArticle(article) {
   ]);
 
   const body = el('div', { class: 'article-body' });
+
+  // A previous article's scrollers are about to be discarded; stop watching them.
+  releaseScrollRegions();
 
   if (typeof article.render === 'function') {
     article.render(body);
@@ -2461,21 +2595,20 @@ function renderArticle(article) {
       body.appendChild(h);
       const holder = el('div');
       holder.innerHTML = section.html;
-      // Wide tables scroll inside their own container, never the page body.
-      for (const table of $$('table', holder)) {
-        if (table.parentElement && table.parentElement.classList.contains('table-scroll')) continue;
-        const scroller = el('div', { class: 'table-scroll' });
-        table.parentNode.insertBefore(scroller, table);
-        scroller.appendChild(table);
-      }
       while (holder.firstChild) body.appendChild(holder.firstChild);
     }
   }
+
+  // Both branches, so an article that builds its own DOM is covered too.
+  wrapWideTables(body);
 
   const wrap = el('article', { class: 'article' }, [head, body]);
   const related = buildRelated(article);
   if (related) wrap.appendChild(related);
   panel.appendChild(wrap);
+
+  // After insertion: scrollWidth and clientWidth are both zero until it is laid out.
+  registerScrollRegions(body);
 }
 
 function buildRelated(article) {

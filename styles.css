@@ -945,3 +945,16 @@ a:hover { color: var(--color-primary); }
 .fishing-track { position: relative; height: 18px; margin: 8px 0; cursor: pointer; background: rgba(0, 0, 0, 0.12); border-radius: 9px; }
 .fishing-marker { position: absolute; top: 0; left: 48%; width: 4px; height: 100%; background: #f0b52e; border-radius: 2px; }
 .fishing-track.steady .fishing-marker { width: 12px; left: calc(50% - 6px); }
+
+/* ---------- Drag interactions (drag.js) ---------- */
+/* A card or ring button that can be pulled onto the world: the browser must not turn the press
+   into a scroll of the sheet. */
+[data-drag] { touch-action: none; cursor: grab; }
+[data-drag]:active { cursor: grabbing; }
+.radial-menu button[data-drag] { touch-action: none; }
+/* The icon under the finger during an item drag. */
+.drag-ghost {
+  position: fixed; left: 0; top: 0; z-index: 65; pointer-events: none;
+  transform: translate(-50%, -60%); font-size: 40px; line-height: 1;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.45));
+}

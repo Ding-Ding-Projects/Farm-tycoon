@@ -17,6 +17,8 @@ import { STRUCTURES, CROPS, ANIMALS, GOODS, MATERIALS, FARM } from './data.js';
 import * as economy from './economy.js';
 import * as placement from './placement.js';
 import * as effects from './render/effects.js';
+import * as drag from './drag.js';
+import * as actions from './actions.js';
 
 let canvasRef = null;
 
@@ -69,15 +71,7 @@ function firstGestureUnlockAudio() {
   audio.unlock();
 }
 
-function structureAt(tx, ty) {
-  for (const [key, def] of Object.entries(STRUCTURES)) {
-    const [w, h] = def.size;
-    if (tx >= def.pos.x && tx < def.pos.x + w && ty >= def.pos.y && ty < def.pos.y + h) {
-      return { key, def };
-    }
-  }
-  return null;
-}
+function structureAt(tx, ty) { return farm.structureAt(tx, ty); }
 
 function isStructureUnlocked(def) {
   return state.level >= def.unlockLevel;
@@ -149,23 +143,9 @@ function fieldRadial(screenX, screenY, obj) {
     // Captured now: harvest() clears the field's cropId, so reading it afterwards names nothing.
     const crop = CROPS[obj.cropId];
     ui.openRadial(screenX, screenY, [{
-      icon: '🧺', label: 'Harvest', sub: crop?.name || 'Harvest',
-      onSelect: () => {
-        // harvest() returns null (not false) when it refuses - a full silo leaves the crop standing
-        // - so only a truthy result is a harvest. The old `ok !== false` toasted success on null.
-        const result = typeof production.harvest === 'function' ? production.harvest(obj.id) : null;
-        if (result) {
-          audio.harvest();
-          effects.sparkle(screenX, screenY);
-          effects.xpFloater(screenX, screenY - 26, crop?.xp ?? 1);
-          ui.toast(`Harvested ${crop?.name || 'crop'}!`, 'success');
-          tutorial.emit('harvested');
-        } else {
-          audio.error();
-          ui.toast('Silo is full — sell or use some crops first.', 'error');
-        }
-        save();
-      },
+      icon: '🧺', label: 'Harvest', sub: `${crop?.name || 'Harvest'} · drag across ripe fields`,
+      onSelect: () => actions.harvestField(obj, screenX, screenY),
+      drag: actions.harvestSweepSpec(),
     }], obj.id);
     return;
   }
@@ -177,7 +157,8 @@ function fieldRadial(screenX, screenY, obj) {
   // (seeds in the silo), most recently planted first, plus "More…" for the full plant sheet -
   // every unlocked crop, seed counts, grow times and a way to buy seeds. The old `.slice(0, 8)`
   // after the unlock filter meant the same eight crops for ever from level 13 on, and sixteen
-  // crops (and every recipe needing them) were unreachable from the world.
+  // crops (and every recipe needing them) were unreachable from the world. Every seed on the
+  // ring is also a drag: sweep it across the fields to sow them all.
   const unlocked = Object.entries(CROPS).filter(([id]) => economy.isUnlocked(id));
   const recent = [...new Set(
     state.farm.objects.filter((o) => o.kind === 'field' && o.cropId)
@@ -191,24 +172,16 @@ function fieldRadial(screenX, screenY, obj) {
   const options = shown.map(([id, crop]) => ({
     icon: crop.icon || '🌱',
     label: crop.name,
-    sub: `${crop.name} · ${state.silo.items[id] || 0} seeds`,
+    sub: `${crop.name} · ${state.silo.items[id] || 0} seeds · drag across fields`,
     onSelect: () => {
       if ((state.silo.items[id] || 0) < crop.seedCost) {
         // No seeds: the plant sheet is where they can be bought, not a dead "can't plant" toast.
         ui.openPanel('plant', obj.id);
         return;
       }
-      const ok = typeof production.plant === 'function' && production.plant(obj.id, id);
-      if (ok) {
-        audio.plant();
-        ui.toast(`Planted ${crop.name}.`, 'success');
-        tutorial.emit('planted');
-      } else {
-        audio.error();
-        ui.toast("Can't plant that here.", 'error');
-      }
-      save();
+      actions.plantField(obj, id);
     },
+    drag: (state.silo.items[id] || 0) >= crop.seedCost ? actions.plantSweepSpec(id) : null,
   }));
   if (!unlocked.length) { ui.toast('No crops unlocked yet.', 'info'); return; }
   if (unlocked.length > 8 || !shown.length) {
@@ -221,34 +194,19 @@ function penRadial(screenX, screenY, obj) {
   const now = Date.now();
   const ready = obj.readyAt && obj.readyAt <= now;
   const fed = !!obj.readyAt;
+  const animal = ANIMALS[obj.type];
   const options = [];
   if (ready) {
     options.push({
-      icon: '🧺', label: 'Collect', sub: ANIMALS[obj.type]?.name || 'Collect',
-      onSelect: () => {
-        // collectPen() returns null when the barn is full and leaves the pen ready; that is not a
-        // collection and must not be toasted as one.
-        const result = typeof production.collectPen === 'function' ? production.collectPen(obj.id) : null;
-        if (result) {
-          audio.harvest();
-          effects.sparkle(screenX, screenY);
-          effects.xpFloater(screenX, screenY - 26, ANIMALS[obj.type]?.xp ?? 1);
-          ui.toast(`Collected ${result.qty} ${nameOf(result.product)}!`, 'success');
-        } else {
-          audio.error();
-          ui.toast('Barn is full — make room first.', 'error');
-        }
-        save();
-      },
+      icon: '🧺', label: 'Collect', sub: `${animal?.name || 'Collect'} · drag onto a pen`,
+      onSelect: () => actions.collectPen(obj, screenX, screenY),
+      drag: actions.collectDragSpec(obj),
     });
   } else if (!fed) {
     options.push({
-      icon: '🌾', label: 'Feed', sub: ANIMALS[obj.type]?.name || 'Feed',
-      onSelect: () => {
-        const ok = typeof production.feedPen === 'function' && production.feedPen(obj.id);
-        if (ok !== false) { audio.animal(); ui.toast('Fed!', 'success'); tutorial.emit('fed'); } else { audio.error(); ui.toast('No feed available.', 'error'); }
-        save();
-      },
+      icon: animal?.feed ? '🌾' : '🍯', label: 'Feed', sub: `${animal?.name || 'Feed'} · drag onto the ${animal?.pen || 'pen'}`,
+      onSelect: () => actions.feedPen(obj),
+      drag: actions.feedDragSpec(obj),
     });
   } else {
     ui.toast('Still working — check back soon!', 'info');
@@ -372,6 +330,10 @@ function onPointerDown(e) {
 function onPointerMove(e) {
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
+  // A drag armed on a card or a ring button (drag.js) owns the pointer once it has moved far
+  // enough to be a drag rather than a tap.
+  if (drag.move(e.clientX, e.clientY)) return;
+
   // Pinch: two fingers zoom by their separation and pan by their midpoint, together, because
   // that is how one physical gesture actually behaves. Doing only the zoom makes the world feel
   // nailed down while your hand moves across it.
@@ -407,6 +369,14 @@ function onPointerMove(e) {
 
 function onPointerUp(e) {
   pointers.delete(e.pointerId);
+
+  // A live drag ends here: placed, dropped or cancelled by drag.js. An armed press that never
+  // moved returns false and is the card's own tap, which its click handler will run.
+  if (drag.end(e.clientX, e.clientY)) {
+    pointerDown = false;
+    dragging = false;
+    return;
+  }
 
   // A third finger lifting while two stay down: the pinch continues from the two that remain, so
   // re-seed its baseline from THEIR geometry - resuming from the old pair's distance lurched the
@@ -456,6 +426,7 @@ function onPointerUp(e) {
  */
 function onPointerCancel(e) {
   pointers.delete(e.pointerId);
+  drag.cancel();   // nothing dropped, nothing spent
   if (pointers.size === 0) {
     pointerDown = false;
     dragging = false;
@@ -470,6 +441,7 @@ function onWheel(e) {
 /** Attach all listeners to the world canvas. Call once during boot. */
 export function init(canvas) {
   canvasRef = canvas;
+  drag.init(canvas);
   canvas.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
@@ -496,6 +468,7 @@ function isEditable(target) {
 }
 
 function onKeyDown(e) {
+  if (e.key === 'Escape' && drag.isActive()) { drag.cancel(); e.preventDefault(); return; }
   if (!placement.isActive()) return;
   // Typing in the panel's search box must not nudge or drop a ghost: a space in a query used to
   // place the building.
@@ -505,3 +478,12 @@ function onKeyDown(e) {
   const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
   if (step) { placement.nudge(step[0], step[1]); e.preventDefault(); }
 }
+
+/**
+ * The pointer/key handlers, exported so tools/test-ui-contracts.mjs can drive a whole gesture
+ * (a card picked up, dragged across the world, released) with synthetic events and prove what
+ * it did to the game - the same functions init() attaches to the canvas and window.
+ */
+export const handlers = {
+  down: onPointerDown, move: onPointerMove, up: onPointerUp, cancel: onPointerCancel, key: onKeyDown,
+};

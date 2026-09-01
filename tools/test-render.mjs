@@ -334,9 +334,13 @@ test('a particle spawned now survives the very next frame drawn with the frame l
 
 test('effects are spawned from the harvest, collect and place paths (source guard)', () => {
   const input = readFileSync(new URL('../src/input.js', import.meta.url), 'utf8');
+  const actions = readFileSync(new URL('../src/actions.js', import.meta.url), 'utf8');
+  const dragSrc = readFileSync(new URL('../src/drag.js', import.meta.url), 'utf8');
   const ui = readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
-  assert.ok(/effects\.sparkle\(/.test(input) && /effects\.xpFloater\(/.test(input), 'input.js must spawn juice on harvest/collect');
-  assert.ok(/effects\.placeBounce\(/.test(input), 'input.js must bounce a placed object');
+  // The harvest/collect actions (tap AND drag paths) live in actions.js; input.js's ring calls them.
+  assert.ok(/effects\.sparkle\(/.test(actions) && /effects\.xpFloater\(/.test(actions), 'actions.js must spawn juice on harvest/collect');
+  assert.ok(/actions\.harvestField\(|actions\.harvestSweepSpec\(/.test(input), 'input.js must route harvests through actions.js');
+  assert.ok(/effects\.placeBounce\(/.test(input) && /effects\.placeBounce\(/.test(dragSrc), 'a placed object bounces from both the tap and the drag path');
   assert.ok(/effects\.coinBurst\(/.test(ui), 'ui.js must burst coins when the balance grows');
 });
 

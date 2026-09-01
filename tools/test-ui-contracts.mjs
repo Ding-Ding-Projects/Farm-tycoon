@@ -188,6 +188,9 @@ const economy = await import('../src/economy.js');
 const input = await import('../src/input.js');
 const main = await import('../src/main.js');
 const placement = await import('../src/placement.js');
+const drag = await import('../src/drag.js');
+const farm = await import('../src/farm.js');
+const renderer = await import('../src/render/renderer.js');
 const decorate = await import('../src/decorate.js');
 const tutorial = await import('../src/tutorial.js');
 const motion = await import('../src/motion.js');
@@ -1396,6 +1399,186 @@ test('input.js wires pointercancel to its own non-committing handler, never to t
   assert.match(src, /document\.addEventListener\('pointerdown', firstGestureUnlockAudio/, 'audio unlocks on any pointer-down');
 });
 
+
+// ---------------------------------------------------------------------------
+// S. Hay Day drags: a card pulled out of the catalog, a recipe onto its factory, feed onto the
+// pen, a seed swept across the fields - whole gestures driven with synthetic pointer events
+// through the same handlers init() attaches to the canvas and window.
+// ---------------------------------------------------------------------------
+function screenOfTile(tx, ty) {
+  const [sx, sy] = renderer.tileToScreen(tx + 0.5, ty + 0.5);
+  return { x: sx, y: sy };
+}
+function press(el, x, y) { el.dispatchEvent({ type: 'pointerdown', pointerId: 7, clientX: x, clientY: y, button: 0 }); }
+function moveTo(x, y) { input.handlers.move({ pointerId: 7, clientX: x, clientY: y }); }
+function release(x, y) { input.handlers.up({ pointerId: 7, clientX: x, clientY: y }); }
+function tapWorld(x, y) {
+  input.handlers.down({ pointerId: 3, clientX: x, clientY: y });
+  input.handlers.up({ pointerId: 3, clientX: x, clientY: y });
+}
+function ringButton(title) {
+  return queryAll(registry.get('radial'), 'button').find((b) => b.title === title);
+}
+
+test('a coop card pulled out of the catalog and dropped on free land is placed there, charged once', () => {
+  const s = freshState(3);
+  s.coins = 5000;
+  ui.openPanel('workshop');
+  const card = cardWithStrong('Chicken Coop');
+  press(card, 100, 700);
+  assert.equal(placement.isActive(), false, 'a press alone is not a drag');
+  const { x, y } = screenOfTile(16, 17);
+  moveTo(x, y);
+  assert.equal(placement.isActive(), true, 'moving makes it a drag: the ghost is up');
+  assert.equal(ui.isPanelOpen(), false, 'and the sheet closed so the world shows');
+  assert.equal(s.coins, 5000, 'nothing charged while it is in the air');
+  release(x, y);
+  assert.equal(placement.isActive(), false, 'released on free land: placed');
+  const pen = s.farm.objects.find((o) => o.kind === 'pen' && o.type === 'chicken');
+  assert.ok(pen, 'the coop exists');
+  assert.deepEqual([pen.x, pen.y], [15, 16], 'its footprint is centred on the tile under the finger');
+  assert.equal(s.coins, 5000 - farm.penPrice('chicken'), 'charged exactly once, on the drop');
+});
+
+test('released on a blocked tile the ghost stays for tap-to-place and nothing is charged', () => {
+  const s = freshState(3);
+  s.coins = 5000;
+  ui.openPanel('workshop');
+  press(cardWithStrong('Chicken Coop'), 100, 700);
+  const barn = data.STRUCTURES.barn.pos;
+  const { x, y } = screenOfTile(barn.x + 1, barn.y + 1);
+  moveTo(x, y);
+  release(x, y);
+  assert.equal(placement.isActive(), true, 'the ghost is still up');
+  assert.equal(s.coins, 5000);
+  assert.equal(s.farm.objects.some((o) => o.kind === 'pen'), false);
+  placement.cancel();
+});
+
+test('a press that never moves is the card\'s own tap: no ghost from the press, and Build still works', () => {
+  const s = freshState(3);
+  s.coins = 5000;
+  ui.openPanel('workshop');
+  const card = cardWithStrong('Chicken Coop');
+  press(card, 100, 700);
+  release(101, 702);
+  assert.equal(placement.isActive(), false, 'a tap does not open the ghost by itself');
+  assert.equal(ui.isPanelOpen(), true, 'and the sheet is still there');
+  buttonLabelled(card, 'Build').click();
+  assert.equal(placement.isActive(), true, 'the tap path (Build, then tap a spot) is untouched');
+  placement.cancel();
+});
+
+test('pointercancel mid-drag abandons the ghost with nothing spent', () => {
+  const s = freshState(3);
+  s.coins = 5000;
+  ui.openPanel('workshop');
+  press(cardWithStrong('Chicken Coop'), 100, 700);
+  const { x, y } = screenOfTile(16, 17);
+  moveTo(x, y);
+  assert.equal(placement.isActive(), true);
+  input.handlers.cancel({ pointerId: 7 });
+  assert.equal(placement.isActive(), false);
+  assert.equal(drag.isActive(), false);
+  assert.equal(s.coins, 5000);
+  assert.equal(s.farm.objects.some((o) => o.kind === 'pen'), false);
+});
+
+test('a recipe dragged out of the sheet onto its own factory queues it; onto another it does not', () => {
+  const s = freshState();
+  const dairyId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  s.barn.items.milk = 5;
+  ui.openPanel('building', dairyId);
+  press(cardWithStrong('Cream'), 200, 700);
+  const dairy = s.farm.objects.find((o) => o.id === dairyId);
+  const { x, y } = screenOfTile(dairy.x, dairy.y);
+  moveTo(x, y);
+  assert.equal(ui.isPanelOpen(), false, 'the sheet closes while the recipe is in the air');
+  const t = drag.target();
+  assert.ok(t && t.ok && t.objectId === dairyId, `the factory under the pointer takes the drop: ${JSON.stringify(t)}`);
+  release(x, y);
+  assert.equal(s.production.filter((p) => p.objectId === dairyId).length, 1, 'queued by the drop');
+  assert.equal(ui.currentPanel(), 'building', 'and the sheet is back');
+  assert.equal(drag.target(), null, 'nothing is being dragged any more');
+
+  const bakeryId = placeStructureAndBuilding(s, 'lake', 'bakery');
+  ui.openPanel('building', dairyId);
+  press(cardWithStrong('Cream'), 200, 700);
+  const bakery = s.farm.objects.find((o) => o.id === bakeryId);
+  const p2 = screenOfTile(bakery.x, bakery.y);
+  moveTo(p2.x, p2.y);
+  assert.equal(drag.target().ok, false, 'another factory is shown as a wrong target');
+  release(p2.x, p2.y);
+  assert.equal(s.production.filter((p) => p.objectId === dairyId).length, 1, 'nothing more was queued');
+  assert.equal(s.production.filter((p) => p.objectId === bakeryId).length, 0);
+  assert.equal(ui.currentPanel(), 'building', 'the sheet comes back after a miss too');
+});
+
+test('the feed pulled off the pen\'s ring and dropped on the pen feeds it', () => {
+  const s = freshState();
+  s.coins = 1000;
+  const pen = farm.place('pen', 'chicken', 16, 16);
+  assert.equal(s.barn.items.chicken_feed, data.ANIMALS.chicken.capacity, 'setup: the coop came with one feeding');
+  const { x, y } = screenOfTile(16, 16);
+  tapWorld(x, y);
+  const feedBtn = ringButton('Feed');
+  assert.ok(feedBtn, 'the ring offers Feed');
+  press(feedBtn, x, y - 74);
+  const p = screenOfTile(17, 17);
+  moveTo(p.x, p.y);
+  assert.equal(registry.get('radial').hidden, true, 'the ring closes once the feed is picked up');
+  assert.equal(drag.target()?.ok, true, 'the pen takes the feed');
+  release(p.x, p.y);
+  assert.ok(pen.readyAt > Date.now(), 'the pen is fed');
+  assert.equal(s.barn.items.chicken_feed, 0, 'one feeding consumed');
+});
+
+test('a seed pulled off the ring and swept across empty fields sows every one it crosses, while seeds last', () => {
+  const s = freshState();
+  const fields = s.farm.objects.filter((o) => o.kind === 'field');
+  s.silo.items.wheat = 3;
+  const first = screenOfTile(fields[0].x, fields[0].y);
+  tapWorld(first.x, first.y);
+  const seed = ringButton('Wheat');
+  assert.ok(seed, 'the ring offers wheat, which has seeds');
+  press(seed, first.x, first.y - 74);
+  let last = first;
+  for (const f of fields.slice(0, 4)) { last = screenOfTile(f.x, f.y); moveTo(last.x, last.y); }
+  assert.equal(drag.isActive(), true);
+  release(last.x, last.y);
+  const sown = fields.filter((f) => f.cropId === 'wheat');
+  assert.equal(sown.length, 3, 'three seeds: three of the four fields crossed were sown');
+  assert.equal(s.silo.items.wheat, 0);
+  assert.equal(drag.isActive(), false);
+});
+
+test('the basket swept across ripe fields harvests each one', () => {
+  const s = freshState();
+  const fields = s.farm.objects.filter((o) => o.kind === 'field');
+  s.silo.items.wheat = 10;
+  for (const f of fields.slice(0, 3)) { assert.equal(production.plant(f.id, 'wheat'), true); f.readyAt = Date.now() - 1; }
+  const first = screenOfTile(fields[0].x, fields[0].y);
+  tapWorld(first.x, first.y);
+  const basket = ringButton('Harvest');
+  assert.ok(basket, 'a ripe field\'s ring offers the basket');
+  press(basket, first.x, first.y - 74);
+  let last = first;
+  for (const f of fields.slice(0, 3)) { last = screenOfTile(f.x, f.y); moveTo(last.x, last.y); }
+  release(last.x, last.y);
+  assert.equal(fields.slice(0, 3).every((f) => f.cropId === null), true, 'all three harvested');
+  assert.equal(s.silo.items.wheat, 10 - 3 + 6, 'three seeds planted, six back');
+});
+
+test('buildWorld carries the queue as slot pips and the live drop target', () => {
+  const s = freshState();
+  const dairyId = placeStructureAndBuilding(s, 'mine_entrance', 'dairy');
+  s.barn.items.milk = 5;
+  assert.equal(production.enqueue(dairyId, 'cream'), true);
+  const b = main.buildWorld().objects.find((o) => o.id === dairyId);
+  assert.equal(b.slots, data.BUILDINGS.dairy.queueSlots);
+  assert.deepEqual(b.queue, ['cooking']);
+  assert.equal(main.buildWorld().dropTarget, null, 'no drag, no target');
+});
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 // toast()'s own setTimeouts (see ui.js) would otherwise hold the event loop open for ~2.6s

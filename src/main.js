@@ -29,6 +29,7 @@ import * as newspaper from './newspaper.js';
 import * as coop from './coop.js';
 import * as regatta from './regatta.js';
 import * as farm from './farm.js';
+import * as drag from './drag.js';
 import { prand, tileHash } from './render/sprites.js';
 import {
   CROPS, GOODS, MATERIALS, STRUCTURES, FARM, FORAGING, HELICOPTER, ANIMALS, BUILDINGS, LEVELS,
@@ -234,9 +235,12 @@ function buildWorld() {
         progress = clamp01(1 - (soonest.readyAt - now) / total);
       }
       const ready = entries.some((p) => p.readyAt <= now && production.isCollectable(p));
+      // The queue as slot pips above the factory (Hay Day's strip): what a dragged recipe lands in.
+      const slots = BUILDINGS[obj.type]?.queueSlots ?? 0;
+      const queue = entries.map((p) => (p.readyAt > now ? 'cooking' : production.isCollectable(p) ? 'ready' : 'play'));
       objects.push({
         id: obj.id, kind: 'building', type: obj.type, tx: obj.x, ty: obj.y, fw, fh,
-        working: cooking.length > 0, progress, ready,
+        working: cooking.length > 0, progress, ready, slots, queue,
       });
     } else if (obj.kind === 'decoration' || obj.kind === 'pond' || obj.kind === 'mine') {
       objects.push({ id: obj.id, kind: 'decoration', type: obj.type, tx: obj.x, ty: obj.y, fw, fh });
@@ -280,7 +284,9 @@ function buildWorld() {
   // tiles rather than in scenery, and it is exactly what CLAUDE.md reserves the grid for.
   const ghost = placement.ghost();
   const unlockedRects = ownedRects(s);
-  return { objects, ghost, showGrid: !!ghost, unlockedRects, isUnlocked: tileTest(unlockedRects) };
+  // The tile or object under a live item drag, tinted by whether it takes the drop.
+  const dropTarget = drag.target();
+  return { objects, ghost, showGrid: !!ghost, unlockedRects, isUnlocked: tileTest(unlockedRects), dropTarget };
 }
 
 /** Run every timer/tick module's tick(now), defensively — Phase B stubs are safe no-ops. */

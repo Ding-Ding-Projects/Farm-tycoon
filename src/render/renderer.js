@@ -492,6 +492,24 @@ function drawPlacementGhost(ctx, ghost, now, w, h) {
   ctx.restore();
 }
 
+/** The footprint of whatever an item drag hovers, green when it takes the drop, red when not. */
+function drawDropTarget(ctx, target, now, w, h) {
+  const { tx, ty, fw = 1, fh = 1, ok } = target;
+  const pulse = 0.5 + 0.5 * Math.sin((motion.phase(now) ?? 0) / 220);
+  const T = TILE_BASE * camera.zoom;
+  const [cx, cy] = objectAnchor({ tx, ty, fw, fh }, w, h);
+  ctx.save();
+  sprites.footprintPath(ctx, cx, cy, fw, fh, T);
+  ctx.fillStyle = ok ? `rgba(120,220,90,${0.22 + 0.14 * pulse})` : `rgba(226,72,58,${0.18 + 0.12 * pulse})`;
+  ctx.fill();
+  ctx.strokeStyle = ok ? 'rgba(40,120,30,0.9)' : 'rgba(150,30,20,0.9)';
+  ctx.lineWidth = Math.max(1.5, T * 0.025);
+  ctx.setLineDash(ok ? [] : [6, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
 /**
  * Draw one frame: ground → sorted objects (via sprites.js) → progress rings → ghost → effects →
  * the two lighting gradients (SPRITE-NOTES §3/§4).
@@ -519,6 +537,7 @@ export function drawFrame(now, world = {}) {
   // sorted objects, back-to-front, culled to the viewport
   const ordered = sortedObjects(objects);
   const rings = [];
+  const pips = [];
   for (const obj of ordered) {
     const [x, y, size] = objectAnchor(obj, w, h);
     const reach = TILE_BASE * size * 1.6;   // tall sprites extend well above their anchor
@@ -531,12 +550,23 @@ export function drawFrame(now, world = {}) {
 
     if (typeof obj.progress === 'number' && obj.progress < 1) rings.push(x, y, size, obj.progress);
     else if (obj.ready) rings.push(x, y, size, 1);
+    if (obj.kind === 'building' && obj.slots > 0) pips.push(obj, x, y, size);
   }
   // Rings in their own pass, so a building drawn later can never paint over an earlier one's ring.
   for (let i = 0; i < rings.length; i += 4) {
     const size = rings[i + 2];
     sprites.drawProgressRing(ctx, rings[i], rings[i + 1] - TILE_BASE * size * 0.55, TILE_BASE * Math.min(size, 1.4) * 0.14, rings[i + 3]);
   }
+
+  // Queue slot pips above every factory, after the objects so a taller neighbour cannot cover them.
+  for (let i = 0; i < pips.length; i += 4) {
+    const obj = pips[i], size = pips[i + 3];
+    sprites.drawQueuePips(ctx, pips[i + 1], pips[i + 2] - TILE_BASE * size * 0.72, TILE_BASE * camera.zoom, obj.slots, obj.queue || []);
+  }
+
+  // The drop target of a live item drag (a recipe over its factory, feed over a pen, a seed over
+  // a field): the footprint tinted the way the placement ghost tints legality.
+  if (world.dropTarget) drawDropTarget(ctx, world.dropTarget, now, w, h);
 
   // Placement ghost, on top of the world so it is never hidden behind what it might replace,
   // but under the golden-hour wash so it still sits in the same light as everything else.

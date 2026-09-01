@@ -57,6 +57,15 @@ function initialExtra(kind, type) {
   return {};
 }
 
+/** The fixed world structure (STRUCTURES) covering a tile, as { key, def }, or null. */
+export function structureAt(x, y) {
+  for (const [key, def] of Object.entries(STRUCTURES)) {
+    const [w, h] = def.size;
+    if (x >= def.pos.x && x < def.pos.x + w && y >= def.pos.y && y < def.pos.y + h) return { key, def };
+  }
+  return null;
+}
+
 /** Is a tile inside any unlocked zone? */
 export function isUnlockedTile(x, y) {
   for (const zoneId of state.farm.unlockedZones) {

@@ -310,6 +310,31 @@ export function drawGrassTile(ctx, x, y, size = 1) {
 }
 
 /** Raised-slab soil plot for a field/crop tile: side thickness + top face + furrows. */
+/**
+ * Queue slot pips above a factory: one per queue slot, empty (pale), cooking (amber), ready
+ * (green) or waiting to be played (blue). The visible target for a recipe dragged onto the
+ * building. Sized from T so they scale with the zoom.
+ */
+export function drawQueuePips(ctx, x, y, T, slots, states = []) {
+  const n = Math.max(0, Math.min(8, slots | 0));
+  if (!n) return;
+  const r = Math.max(3, T * 0.055);
+  const gap = r * 2.6;
+  const x0 = x - ((n - 1) * gap) / 2;
+  ctx.save();
+  ctx.lineWidth = Math.max(1, T * 0.012);
+  for (let i = 0; i < n; i++) {
+    const st = states[i];
+    ctx.beginPath();
+    ctx.arc(x0 + i * gap, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = st === 'ready' ? '#8ed653' : st === 'cooking' ? '#f0b52e' : st === 'play' ? '#6ec8ea' : 'rgba(255,250,234,0.55)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(58,37,16,0.85)';
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export function drawSoilPlot(ctx, x, y, size = 1) {
   const T = 104 * size, D = T * 0.105;   // slab side thickness, in tile units so it zooms
   const dia = (yOff, k = 1) => {

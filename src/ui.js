@@ -39,6 +39,8 @@ import * as renderer from './render/renderer.js';
 import * as effects from './render/effects.js';
 import * as storage from './storage.js';
 import * as motion from './motion.js';
+import * as drag from './drag.js';
+import * as actions from './actions.js';
 import {
   CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
   ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
@@ -302,6 +304,12 @@ export function openRadial(screenX, screenY, options, ctx = null) {
     const show = () => { label.textContent = opt.sub || opt.label || ''; };
     btn.addEventListener('mouseenter', show);
     btn.addEventListener('focus', show);
+    // Press and pull: the icon comes off the ring and goes onto the world (a seed swept across
+    // the fields, the feed onto the pen). A plain tap still runs onSelect through its click.
+    if (opt.drag && !opt.locked) {
+      btn.addEventListener('pointerdown', (e) => drag.start(opt.drag, e));
+      if (btn.dataset) btn.dataset.drag = 'item';
+    }
     radial.appendChild(btn);
   });
   if (options.length) radial.appendChild(label);
@@ -2030,15 +2038,22 @@ function renderBuildingQueue(container, buildingId) {
       : '';
     card.innerHTML = `<span class="icon">${itemIcon(recipe.id)}</span><strong>${itemName(recipe.id)}</strong>
       <span class="minigame-hint">${inputsLine(recipe)}</span>${bookLine}`;
+    const queueable = !(locked || queueFull || short.length > 0);
     card.appendChild(button('Queue', () => {
       const ok = typeof production.enqueue === 'function' && production.enqueue(buildingId, recipe.id);
       if (ok) {
         audio.place();
         toast(`Queued ${itemName(recipe.id)}!`, 'success');
         tutorial.emit(`enqueued:${recipe.id}`);
+        save();
         refreshPanel();
       } else { audio.error(); toast("Can't queue that right now.", 'error'); }
-    }, { disabled: locked || queueFull || short.length > 0 }));
+    }, { disabled: !queueable }));
+    if (queueable) {
+      if (card.dataset) card.dataset.drag = 'item';
+      card.addEventListener('pointerdown', (e) => drag.start(
+        recipeDragSpec(recipe, obj, () => production.enqueue(buildingId, recipe.id), 'building', buildingId), e));
+    }
     if (locked) card.appendChild(hintEl(`Unlocks at level ${recipe.unlockLevel}.`));
     else if (queueFull) card.appendChild(hintEl('Queue is full — collect something first.'));
     else if (short.length) card.appendChild(hintEl(`Need ${short.join(', ')}.`));
@@ -2057,19 +2072,75 @@ function renderBuildingQueue(container, buildingId) {
  *
  * The panel closes first, because the world is what the player now needs to see.
  */
+function placedHandler(kind, id, def, onPlaced) {
+  return () => {
+    onPlaced && onPlaced();
+    audio.place();
+    toast(`${kind === 'decoration' ? 'Placed' : 'Built'} ${def.name}!`, 'success');
+    tutorial.emit(`placed:${id}`);
+    save();
+  };
+}
+
 function buildAt(kind, id, def, onPlaced) {
   closePanel();
-  placement.begin(kind, id, {
-    label: def.name,
-    onPlaced: () => {
-      onPlaced && onPlaced();
-      audio.place();
-      toast(`Built ${def.name}!`, 'success');
-      tutorial.emit(`placed:${id}`);
-      save();
-    },
+  placement.begin(kind, id, { label: def.name, onPlaced: placedHandler(kind, id, def, onPlaced) });
+  toast(`Tap where ${def.name} should go — or drag it there. Esc cancels.`, 'info');
+}
+
+function blockedMessage(res) {
+  if (res?.reason === 'refused') return "You can't afford that right now.";
+  if (res?.reason === 'nokit') return 'The building kit is no longer in the barn — craft another first.';
+  return 'That spot is taken — the ghost stays put: tap free land to place it, or press Esc.';
+}
+
+/**
+ * Hay Day's shop gesture: press a catalog card and pull it out onto the world. The drag goes live
+ * after a few pixels (a plain tap still presses the card's Build button), the sheet closes, the
+ * placement ghost follows the finger, and releasing on free land places it there. Released on a
+ * blocked tile, the ghost stays for tap-to-place - a mis-drop must never cost a crafted kit.
+ */
+function draggablePlaceCard(card, kind, id, def, onPlaced) {
+  if (card.dataset) card.dataset.drag = 'place';
+  card.addEventListener('pointerdown', (e) => {
+    if (e.target && typeof e.target.closest === 'function' && e.target.closest('button') && e.pointerType === 'mouse') {
+      // A mouse press on the Build button is a click in the making; the card body is the handle.
+    }
+    drag.start({
+      kind: 'place', label: def.name,
+      place: { kind, type: id, onPlaced: placedHandler(kind, id, def, onPlaced) },
+      onStart: () => closePanel(),
+      onBlocked: (res) => { audio.error(); toast(blockedMessage(res), 'error'); },
+      onCancel: () => toast('Cancelled.', 'info'),
+    }, e);
   });
-  toast(`Drag ${def.name} where you want it, then tap to place. Esc cancels.`, 'info');
+}
+
+/** A recipe dragged out of a building's sheet and dropped on that building queues it there. */
+function recipeDragSpec(recipe, targetObj, enqueueFn, panelId, ctx) {
+  return {
+    kind: 'item', icon: itemIcon(recipe.id), label: `Queue ${itemName(recipe.id)}`,
+    onStart: () => closePanel(),
+    canDrop: (t) => !!t.obj && t.obj.id === targetObj.id,
+    onDrop: () => {
+      const ok = enqueueFn();
+      if (ok) {
+        audio.place();
+        const at = screenPointOf(targetObj);
+        if (at) effects.sparkle(at[0], at[1]);
+        toast(`Queued ${itemName(recipe.id)}!`, 'success');
+        tutorial.emit(`enqueued:${recipe.id}`);
+        save();
+      } else { audio.error(); toast("Can't queue that right now.", 'error'); }
+      openPanel(panelId, ctx);
+    },
+    onCancel: (t) => {
+      if (t && t.obj && t.obj.kind === 'building' && t.obj.id !== targetObj.id) {
+        toast(`That is made at the ${BUILDINGS[targetObj.type]?.name || 'other building'}.`, 'info');
+      }
+      openPanel(panelId, ctx);
+    },
+  };
 }
 
 /**
@@ -2117,6 +2188,11 @@ function renderWorkshop(container) {
           refreshPanel();
         } else { audio.error(); toast("Can't craft that right now.", 'error'); }
       }, { disabled: !craftable }));
+      if (craftable) {
+        if (card.dataset) card.dataset.drag = 'item';
+        card.addEventListener('pointerdown', (e) => drag.start(
+          recipeDragSpec(recipe, workshopObj, () => workshop.craft(recipe.id), 'workshop', null), e));
+      }
       if (locked) card.appendChild(hintEl(`Unlocks at level ${recipe.unlockLevel}.`));
       else if (queueFull) card.appendChild(hintEl('Queue is full — collect something first.'));
       else if (short.length) card.appendChild(hintEl(`Need ${short.join(', ')}.`));
@@ -2144,6 +2220,7 @@ function renderWorkshop(container) {
     card.innerHTML = `<span class="icon">🏗️</span><strong>${def.name}</strong><span>🪙${def.cost ?? 0}</span>`;
     card.appendChild(button('Build', () => buildAt('building', 'build_workshop', def), { disabled: locked }));
     if (locked) card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
+    else draggablePlaceCard(card, 'building', 'build_workshop', def);
     grid.appendChild(card);
     container.appendChild(grid);
   }
@@ -2169,6 +2246,7 @@ function renderWorkshop(container) {
     card.innerHTML = `<span class="icon">${def.icon || '🐾'}</span><strong>${def.pen || def.name}</strong><span>🪙${farm.penPrice(id)} · ${def.capacity} ${def.name}${def.capacity === 1 ? '' : 's'}</span>`;
     card.appendChild(button('Build', () => buildAt('pen', id, def), { disabled: locked }));
     if (locked) card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
+    else draggablePlaceCard(card, 'pen', id, def);
     penGrid.appendChild(card);
   }
   if (penGrid.children.length) {
@@ -2204,6 +2282,7 @@ function buildingCard(id, def, built) {
   }, { disabled: locked || (needsKit && !haveKit) }));
   if (locked) card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
   else if (needsKit && !haveKit) card.appendChild(hintEl(`Craft a ${itemName(def.kit)} first.`));
+  else draggablePlaceCard(card, 'building', id, def, () => { if (needsKit) workshop.consumeKit(id); });
   return card;
 }
 
@@ -2241,6 +2320,7 @@ function renderDecorationsGrid(container) {
     card.innerHTML = `<span class="icon">${decorationIcon(id)}</span><strong>${def.name}</strong><span>${priceLine}</span>
       <span class="minigame-hint">${def.size[0]}×${def.size[1]}${def.holiday ? ' · seasonal' : ''}</span>`;
     card.appendChild(button('Place', () => buildAt('decoration', id, def), { disabled: !affordable }));
+    if (affordable) draggablePlaceCard(card, 'decoration', id, def);
     grid.appendChild(card);
   }
   if (!grid.children.length) return;
@@ -2499,6 +2579,10 @@ function renderPlant(container, fieldId) {
       if (ok) { audio.plant(); toast(`Planted ${crop.name}.`, 'success'); tutorial.emit('planted'); save(); closePanel(); }
       else { audio.error(); toast('Not enough seeds.', 'error'); }
     }, { disabled: !canPlant }));
+    if (canPlant) {
+      if (card.dataset) card.dataset.drag = 'item';
+      card.addEventListener('pointerdown', (e) => drag.start(actions.plantSweepSpec(id), e));
+    }
     if (!canPlant) {
       const price = production.seedPrice(id);
       card.appendChild(button(`Buy ${crop.seedCost} seed${crop.seedCost === 1 ? '' : 's'} 🪙${price}`, () => {

@@ -772,6 +772,54 @@ a:hover { color: var(--color-primary); }
   color: #8a7f68; text-shadow: none; box-shadow: none; cursor: default; transform: none; filter: none;
 }
 
+/* ---------- Visible focus, everywhere ----------
+   Before this the whole game had FOUR focus rules, three of them on the panel search added days
+   after everything else - so every dock button, every card, every menu item and all 63 merge cells
+   relied on whatever ring the browser draws by default. On a game that restyles every control this
+   heavily that is a bet rather than a decision: the default ring is a thin dark line, and most of
+   this interface is already outlined in near-black at 3px, so it lands on top of a border it
+   cannot be told apart from.
+
+   Two rings on purpose. The pale one is what shows on the dark green and brown controls; the dark
+   one shows on the cream surfaces. Both are drawn OUTSIDE the element with an offset so they never
+   sit on top of the element's own border, which is what makes the default so easy to miss here.
+
+   :focus-visible rather than :focus, so a mouse click does not leave a ring behind - the whole
+   reason the browser distinguishes them. */
+.btn:focus-visible,
+.dock-btn:focus-visible,
+.radial-menu button:focus-visible,
+.sheet-content button:focus-visible,
+.sheet-content [tabindex]:focus-visible,
+[role='gridcell']:focus-visible {
+  outline: 3px solid var(--color-cream);
+  outline-offset: 3px;
+  /* A second, darker ring immediately outside the pale one, so whichever surface the control is
+     sitting on, one of the two has contrast against it. Cheaper and more reliable than trying to
+     pick a single colour that works on cream, brown, green and the world behind the HUD. */
+  box-shadow: 0 0 0 6px rgba(58, 37, 16, 0.85);
+}
+
+/* Cards and rows that are focusable but sit ON cream already: the pale ring would vanish, so the
+   order is reversed - dark first, pale outside it. */
+.build-card:focus-visible,
+.order-card:focus-visible,
+.shop-slot:focus-visible {
+  outline: 3px solid var(--color-outline);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(255, 250, 234, 0.9);
+}
+
+/* The merge board's SELECTION is a different thing from focus and must not look like it: focus is
+   where the keyboard is, selection is what you have picked up, and on this board you move around
+   while holding something. Selection is a filled amber cast plus a ring; focus is the ring above.
+   Both can be on the same cell at once and still be told apart. */
+[role='gridcell'].picked-up {
+  outline: 3px solid #f0b52e;
+  outline-offset: 0;
+  background-image: linear-gradient(rgba(240, 181, 46, 0.55), rgba(240, 181, 46, 0.55));
+}
+
 /* ---------- Progress bars ---------- */
 .bar {                                          /* NEW — generic meter */
   height: 12px; border-radius: var(--radius-pill);

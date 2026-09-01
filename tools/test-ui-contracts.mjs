@@ -1038,6 +1038,33 @@ test("main.js's throttled tickAllSystems() correctly advances regatta rival scor
   });
 }
 
+// ---------------------------------------------------------------------------------------
+// Dock buttons have names, whatever the count is.
+//
+// Every dock button's only text is an EMOJI, so without a label a screen reader announces "star
+// button" and "gear button". They all carried a `title`, which some readers use and some ignore
+// and touch never surfaces at all, so it is not a name you can rely on.
+//
+// The COUNT is deliberately not asserted. Five separate documents claimed the dock had "exactly
+// four" buttons, which was true of index.html and false of the running game - ui.js appends a
+// fifth for the daily wheel at boot, on purpose. Pinning the number here would just move that
+// drift into the test suite. What must hold is that every button, however many there are and
+// wherever it was created, can be identified.
+// ---------------------------------------------------------------------------------------
+test('every dock button has an accessible name, not just an emoji and a title', () => {
+  const markup = readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const dockButtons = markup.match(/<button[^>]*class="dock-btn"[^>]*>/g) || [];
+  assert.ok(dockButtons.length > 0, 'expected dock buttons in index.html');
+  for (const btn of dockButtons) {
+    assert.match(btn, /aria-label="[^"]+"/,
+      `a dock button has no aria-label, so its name is an emoji: ${btn}`);
+  }
+  // The one ui.js creates at runtime has to be labelled in code, and is easy to miss precisely
+  // because it is not in the markup with its siblings.
+  assert.match(uiSource, /wheelBtn\.setAttribute\('aria-label'/,
+    'the daily wheel button is built in ui.js and needs its label there');
+});
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 // toast()'s own setTimeouts (see ui.js) would otherwise hold the event loop open for ~2.6s
 // after the last assertion; exit explicitly once the verdict is known either way.

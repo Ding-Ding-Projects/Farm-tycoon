@@ -157,7 +157,8 @@ every field used to fall through to a magenta placeholder circle stamped "field"
 <details>
 <summary><strong>Dock panels: decorate, achievements, settings, reset</strong></summary>
 
-The dock carries exactly four placeless surfaces — everything else lives in the world.
+The dock carries five placeless surfaces — four in the markup plus the daily wheel, which
+`ui.js` appends at boot. Everything else lives in the world.
 
 | | |
 |---|---|
@@ -324,7 +325,8 @@ ever play its minigame, and offline progress is never penalized for skipping it.
 Systems are opened by **clicking their structure in the world** — never from the HUD or
 dock. A locked structure still exists in the world in a derelict/unbuilt state and is
 still clickable from level 1, so players can see and plan around content before they've
-unlocked it. The dock itself carries exactly four placeless surfaces — decorate,
+unlocked it. The dock itself carries five placeless surfaces — the daily wheel, appended at
+boot by `ui.js`, plus four in the markup: decorate,
 achievements, co-op/regatta, and settings — because everything else has a home in the
 world. (See "Where it disagreed with the content plan" in `design/README.md` for how this
 rule reshaped an earlier HUD dock design.)
@@ -377,7 +379,7 @@ roughly thirty other rule families in total — followed by eight gameplay-logic
 `test-township.mjs`, `test-research.mjs`, `test-deadtime.mjs`, `test-social.mjs`) that
 exercise the actual running modules: planting and harvesting, offline catch-up, save/load
 round-trips, the merge board, workshop crafting, trains/town/zoo, research, and the
-simulated-neighbours social layer, the playable-item gate and all 46 verbs. 668 assertions
+simulated-neighbours social layer, the playable-item gate and all 46 verbs. 669 assertions
 across 13 suites, all passing, as of this checkout.
 
 Three further suites run against a REAL built artifact rather than the source tree and are not

@@ -29,7 +29,8 @@ browser, at `http://127.0.0.1:8123`** (use the loopback address — a stale serv
 - `styles.css` at the repository root is the "Sunlit Homestead" overhaul — byte-identical to
   `design/handoff/styles.css` apart from line endings (root is CRLF, the design reference is LF).
   The design pass is applied to the running game, not sitting unintegrated in `design/`.
-- The dock (`index.html`) carries exactly four buttons: decorate, achievements, co-op/regatta
+- The dock carries five placeless surfaces. FOUR are in `index.html` - decorate, achievements,
+  co-op/regatta
   (hidden until unlocked), settings — matching the "systems open from their world structure"
   interaction rule.
 - `SAVE_VERSION` is **3**. `newGameState()` seeds every subsystem key — `workshop`, `minigames`,

@@ -36,7 +36,9 @@ world for whoever picks this up next (full detail and verification evidence in
 - **Systems open from world objects, never the HUD or dock.** `STRUCTURES` gives each a
   footprint and position; `input.js` resolves a pick to a structure id. Locked ones are
   derelict but still clickable from level 1. The dock keeps only what has no place in the
-  world: settings, achievements, co-op/regatta, and decorating mode. Verified: exactly four
+  world: settings, achievements, co-op/regatta, decorating mode and the daily wheel. Four are
+  in `index.html`; the wheel is appended by `ui.js` at boot, the same way the co-op button ships
+  hidden in markup and is unhidden on unlock. Verified: five
   dock buttons in `index.html`, 22 structures with zero placement overlaps.
 - `design/` holds the checked-in visual overhaul: four HUD directions, the screen board, a
   reference renderer, and `handoff/SPRITE-NOTES.md`. **It is now integrated**, not just a

@@ -313,8 +313,20 @@ function renderComingSoon(container, name) {
   container.appendChild(p);
 }
 
-function hintEl(text, block = false) {
-  const s = document.createElement(block ? 'p' : 'span');
+/**
+ * A standalone hint line under a panel heading.
+ *
+ * Always a BLOCK. It used to be a span, which was invisible for as long as every panel appended
+ * exactly one - and the moment two went in the game ran them together into a single line:
+ * "Energy: 99/100Tap a generator to spawn items." Four panels were doing it (merge, lab,
+ * expeditions, coop) plus the Bake Book. A span cannot take the vertical margin the class already
+ * asks for, so the fix belongs here rather than at five call sites.
+ *
+ * The inline uses of .minigame-hint are raw <span> in card template strings, not this function, so
+ * they are untouched.
+ */
+function hintEl(text) {
+  const s = document.createElement('p');
   s.className = 'minigame-hint';
   s.textContent = text;
   return s;
@@ -768,7 +780,10 @@ function renderMerge(container) {
     cellBtn.style.minWidth = '0';
     cellBtn.style.padding = '2px';
     cellBtn.style.fontSize = '16px';
-    if (i === mergeSelected) cellBtn.style.outline = '3px solid #f0b52e';
+    // Selection is a CLASS, not an inline outline. Inline styles beat the stylesheet, so an
+    // inline outline here would have swallowed the focus ring on the one cell where knowing both
+    // matters most: the cell you have picked up and are still standing on.
+    if (i === mergeSelected) cellBtn.classList.add('picked-up');
 
     const row = Math.floor(i / cols) + 1;
     const col = (i % cols) + 1;
@@ -2130,7 +2145,6 @@ function renderBakeBook(container) {
   if (weakest.length) {
     container.appendChild(hintEl(
       'Still to master: ' + weakest.slice(0, 4).map((v) => `${v.name} (${v.mastered}/${v.played})`).join(', '),
-      true,
     ));
   }
 
@@ -2262,6 +2276,7 @@ export function init() {
     wheelBtn.className = 'dock-btn';
     if (wheelBtn.dataset) wheelBtn.dataset.panel = 'wheel';
     wheelBtn.title = 'Daily Wheel';
+    wheelBtn.setAttribute('aria-label', 'Daily wheel');   // the only text is an emoji; a title alone is not a name
     wheelBtn.textContent = '🎡';
     el.dock.appendChild(wheelBtn);
   }

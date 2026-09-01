@@ -31,7 +31,7 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       panel id unique
 - [x] Twenty of twenty-two structures locked at level 1, still present/clickable (derelict-
       but-visible rule) — confirmed against `LEVELS.unlocks`
-- [x] Dock reduced to exactly four placeless surfaces: decorate, achievements, co-op/regatta,
+- [x] Dock reduced to placeless surfaces only: decorate, achievements, co-op/regatta,
       settings — every other system opens from its world structure
 - [x] Camera pan + clamp (`src/render/renderer.js`) — was flagged as the single most urgent
       gap in an earlier handoff; now implemented and covered by `tools/test-camera.mjs`
@@ -125,6 +125,33 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       not finger occlusion, palm rejection or feel. See `ANDROID.md`
 
 ## Open items
+
+- [x] **Visible focus, everywhere.** The whole game had FOUR focus rules and three of them were on
+      the panel search, added days after everything else - so every dock button, card, menu item
+      and all 63 merge cells relied on whatever ring the browser draws by default. On an interface
+      already outlined in near-black at 3px, that default lands on top of a border it cannot be
+      told apart from. Interactive chrome now gets a two-ring `:focus-visible` indicator (pale
+      inside, dark outside) so one of the two has contrast on cream, brown, green or the world
+      behind the HUD. Verified with a real Tab press, since programmatic focus never sets
+      `:focus-visible`.
+
+- [x] **Merge selection and keyboard focus are no longer the same visual.** Selection was an inline
+      `style.outline`, and an inline style beats the stylesheet - so it would have swallowed the
+      focus ring on the one cell where knowing both matters most: the one you have picked up and
+      are still standing on. Selection is now a class with a filled amber cast; focus is the ring.
+
+- [x] **Hints stopped running into each other.** `hintEl` returned a `<span>`, which was invisible
+      while every panel appended exactly one and produced "Energy: 99/100Tap a generator..." the
+      moment two went in. Four panels were doing it. Fixed in the helper rather than at five call
+      sites; the inline uses of the class are raw spans in card templates and are untouched.
+
+- [x] **Dock buttons have names, and the docs stopped claiming there are four of them.** Their only
+      text is an emoji, so without a label a reader announces "star button". Five documents said
+      the dock carries "exactly four" buttons - true of `index.html`, false of the running game,
+      which appends a fifth for the daily wheel at boot. The guard asserts every button has a name
+      and deliberately does NOT assert the count, since pinning it would move the same drift into
+      the test suite.
+
 
 - [x] **Merge Meadow is playable without a mouse or a screen.** A sweep of all 28 panels for
       controls with no accessible name found one offender and it was severe: 57 of the merge

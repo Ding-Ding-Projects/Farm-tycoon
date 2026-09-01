@@ -45,11 +45,14 @@
   <!-- Bottom dock -->
   <!-- Systems open by clicking their structure in the world; the dock keeps only what has
        no physical place: decorate mode, achievements, co-op/regatta, and settings. -->
+  <!-- aria-label on each, not just title: the only text content is an emoji, and "star button"
+       is not a name. Titles are read inconsistently and never on touch, so the label is the one
+       that can be relied on. -->
   <nav class="dock" id="dock">
-    <button class="dock-btn" data-panel="decorate" title="Decorate">🎨</button>
-    <button class="dock-btn" data-panel="achievements" title="Achievements">⭐</button>
-    <button class="dock-btn" data-panel="coop" title="Co-op &amp; Regatta" hidden>🤝</button>
-    <button class="dock-btn" data-panel="settings" title="Settings">⚙️</button>
+    <button class="dock-btn" data-panel="decorate" title="Decorate" aria-label="Decorate mode">🎨</button>
+    <button class="dock-btn" data-panel="achievements" title="Achievements" aria-label="Achievements">⭐</button>
+    <button class="dock-btn" data-panel="coop" title="Co-op &amp; Regatta" aria-label="Co-op and regatta" hidden>🤝</button>
+    <button class="dock-btn" data-panel="settings" title="Settings" aria-label="Settings">⚙️</button>
   </nav>
 
   <!-- Sliding sheet panels (ui.js fills content per panel) -->

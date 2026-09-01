@@ -11,6 +11,11 @@
 
 export const VERB_LOADERS = {
   press_cutter: () => import('./verbs/press_cutter.js'),
+  whisk_batter: () => import('./verbs/whisk_batter.js'),
+  pour_tin: () => import('./verbs/pour_tin.js'),
+  mind_oven: () => import('./verbs/mind_oven.js'),
+  pipe_frosting: () => import('./verbs/pipe_frosting.js'),
+  place_decor: () => import('./verbs/place_decor.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

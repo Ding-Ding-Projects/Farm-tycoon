@@ -293,6 +293,18 @@ export const GOODS = {
   kit_sugar_mill:       { icon: '🍬', name: 'Sugar Mill Kit',       sellPrice: 290 },
   kit_popcorn_pot:      { icon: '🍿', name: 'Popcorn Pot Kit',      sellPrice: 320 },
   kit_grill:            { icon: '🍔', name: 'BBQ Grill Kit',        sellPrice: 640 },
+  // Dessert tier — the Cake Oven's own intermediates and its cakes. batter/frosting/fondant are
+  // made in the Cake Oven itself and feed its later recipes, which is what gives the building an
+  // internal chain rather than five unrelated one-shot recipes.
+  batter:          { icon: '🥣', name: 'Batter',          sellPrice: 84 },
+  frosting:        { icon: '🧁', name: 'Frosting',        sellPrice: 128 },
+  fondant:         { icon: '🎀', name: 'Fondant',         sellPrice: 197 },
+  sponge_cake:     { icon: '🍰', name: 'Sponge Cake',     sellPrice: 190 },
+  carrot_cake:     { icon: '🥕', name: 'Carrot Cake',     sellPrice: 355 },
+  strawberry_cake: { icon: '🍓', name: 'Strawberry Cake', sellPrice: 508 },
+  honey_cake:      { icon: '🍯', name: 'Honey Cake',      sellPrice: 478 },
+  wedding_cake:    { icon: '💒', name: 'Wedding Cake',    sellPrice: 900 },
+  kit_cake_oven:   { icon: '🎂', name: 'Cake Oven Kit',   sellPrice: 340 },
   kit_pie_oven:         { icon: '🥧', name: 'Pie Oven Kit',         sellPrice: 300 },
   kit_loom:             { icon: '🧵', name: 'Loom Kit',             sellPrice: 470 },
   kit_sewing_machine:   { icon: '👕', name: 'Sewing Machine Kit',   sellPrice: 490 },
@@ -542,6 +554,42 @@ export const BUILDINGS = {
   // production building. Raw MATERIALS become components here, components become a kit,
   // and the kit is consumed to place its building (BUILDINGS[x].kit). It is itself
   // coin-only, as are feed_mill and bakery, so the tutorial never dead-ends.
+  // Cake Oven — the flagship playable factory. Sourced from Hay Day's own Cake Oven (level 21,
+  // 12,100 coins, 3x3) rather than Township's, which sits at level 66 with six products and
+  // would bury the headline feature behind most of the game.
+  //
+  // Its chain is internal: batter, frosting and fondant are made here and feed the cakes above
+  // them, so the building has a shape of its own instead of five unrelated one-shot recipes.
+  cake_oven: {
+    name: 'Cake Oven', unlockLevel: 21, cost: 12100, size: [3, 2],
+    kit: 'kit_cake_oven', minigame: 'crumb_even', queueSlots: 3,
+    recipes: [
+      // Introductory recipe: never playable, by rule. A player's first craft in any factory must
+      // not be gated behind hand-eye skill.
+      { id: 'batter',          inputs: { wheat: 2, egg: 2, sugar: 1 },              time: 900,  xp: 12, unlockLevel: 21 },
+      { id: 'frosting',        inputs: { cream: 1, sugar: 2 },                      time: 1500, xp: 15, unlockLevel: 21 },
+      { id: 'sponge_cake',     inputs: { batter: 1, butter: 1 },                    time: 2700, xp: 24, unlockLevel: 22 },
+      // PLAYABLE — the signature item. A five-stage cake maker: whisk, pour, watch the oven,
+      // pipe the frosting, place the decorations. The bake is weighted because it is the stage
+      // that actually decides whether it is a cake.
+      { id: 'carrot_cake',     inputs: { batter: 1, carrot: 3, frosting: 1 },       time: 3600, xp: 32, unlockLevel: 23,
+        play: { stages: [
+          { verb: 'whisk_batter' }, { verb: 'pour_tin' }, { verb: 'mind_oven', weight: 2 },
+          { verb: 'pipe_frosting' }, { verb: 'place_decor' },
+        ] } },
+      { id: 'fondant',         inputs: { sugar: 3, butter: 1 },                     time: 4200, xp: 30, unlockLevel: 25 },
+      // PLAYABLE — mid-tier, a shorter three-stage chain.
+      { id: 'strawberry_cake', inputs: { batter: 1, strawberry: 3, frosting: 1 },   time: 5400, xp: 40, unlockLevel: 27,
+        play: { stages: [{ verb: 'whisk_batter' }, { verb: 'mind_oven', weight: 2 }, { verb: 'pipe_frosting' }] } },
+      { id: 'honey_cake',      inputs: { batter: 2, honey: 2, butter: 1 },          time: 7200, xp: 48, unlockLevel: 30 },
+      // PLAYABLE — the tier-topping late item, the full five stages again at a harder pace.
+      { id: 'wedding_cake',    inputs: { batter: 2, frosting: 2, fondant: 1 },      time: 10800, xp: 72, unlockLevel: 34,
+        play: { stages: [
+          { verb: 'whisk_batter' }, { verb: 'pour_tin' }, { verb: 'mind_oven', weight: 2 },
+          { verb: 'pipe_frosting' }, { verb: 'place_decor', weight: 2 },
+        ] } },
+    ],
+  },
   build_workshop: {
     name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
     minigame: 'workshop_fit',
@@ -558,6 +606,7 @@ export const BUILDINGS = {
       { id: 'kit_sugar_mill',       inputs: { beam: 2, frame: 2, shingle: 3 },                  time: 6300,  xp: 23, unlockLevel: 6,  sink: true },
       { id: 'kit_popcorn_pot',      inputs: { beam: 2, panel: 3, fitting: 1 },                  time: 7200,  xp: 26, unlockLevel: 6,  sink: true },
       { id: 'kit_grill',            inputs: { beam: 3, fitting: 2, shingle: 4 },                time: 8100,  xp: 29, unlockLevel: 6,  sink: true },
+      { id: 'kit_cake_oven', inputs: { frame: 3, panel: 2, fitting: 2, glazing: 1 }, time: 9000, xp: 34, unlockLevel: 6, sink: true },
       { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 6,  sink: true },
       { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 6,  sink: true },
       { id: 'kit_sewing_machine',   inputs: { frame: 4, fitting: 3, wiring_loom: 1 },           time: 12600, xp: 42, unlockLevel: 6,  sink: true },
@@ -621,6 +670,7 @@ export const MINIGAMES = {
   jar_seal:        { name: 'Seal the Jars',      building: 'preservation_station',   effect: 'sealTightness',      cap: 0.3,  purpose: 'Seat every lid square. A poor seal spoils the batch.' },
   stone_set:       { name: 'Set the Stone',      building: 'jeweler',                effect: 'settingAccuracy',    cap: 0.2,  purpose: 'Seat the stone dead centre. Off-centre and the claw shows.' },
   culture_temp:    { name: 'Hold the Culture',   building: 'yogurt_maker',           effect: 'cultureVigour',      cap: 0.3,  purpose: 'Hold the warmth steady. A cold spot and the culture stalls.' },
+  crumb_even: { name: 'Even the Crumb', building: 'cake_oven', effect: 'crumbEvenness', cap: 0.30, purpose: 'A cake that rises level slices clean and sells for more.' },
 };
 
 /**
@@ -635,6 +685,7 @@ export const EFFECT_KEYS = [
   'mouldPrecision', 'tipChance', 'purityChance', 'materialRefund',
   'oilClarity', 'steepQuality', 'knifePrecision', 'blendHarmony', 'plateFreshness',
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
+  'crumbEvenness',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -684,6 +735,36 @@ export const VERBS = {
     hint: 'Press each round of dough before it slumps — early presses cut cleanest. Keys 1-9 work too.',
     stageClass: 'stage-targets',
     durationMs: 11000,
+  },
+  whisk_batter: {
+    name: 'Whisk the Batter', verbWord: 'whisk', family: 'path',
+    purpose: 'A batter brought together smoothly rises even.',
+    hint: 'Drag round the bowl and keep going one way at a steady pace. Arrow keys work too.',
+    stageClass: 'stage-dial', durationMs: 11000,
+  },
+  pour_tin: {
+    name: 'Pour the Tin', verbWord: 'pour', family: 'balance',
+    purpose: 'Poured level, it bakes level.',
+    hint: 'The tin keeps leaning — counter it and hold the bubble in the middle while it fills.',
+    stageClass: 'stage-pour', durationMs: 9000,
+  },
+  mind_oven: {
+    name: 'Mind the Oven', verbWord: 'mind', family: 'sustain',
+    purpose: 'The bake is the stage that decides whether it is a cake.',
+    hint: 'Hold to raise the heat, let go to drop it. Keep it inside the band — burning is as bad as raw.',
+    stageClass: 'stage-gauge', durationMs: 12000,
+  },
+  pipe_frosting: {
+    name: 'Pipe the Frosting', verbWord: 'pipe', family: 'path',
+    purpose: 'A clean line of frosting is worth more than a fast one.',
+    hint: 'Follow the piping line to the end. No rush — wander off it and the frosting stops.',
+    stageClass: 'stage-trace', durationMs: 12000,
+  },
+  place_decor: {
+    name: 'Place the Decorations', verbWord: 'place', family: 'sequence',
+    purpose: 'Remember the pattern and lay it back.',
+    hint: 'Watch the pattern once, then tap it back in order. Keys 1-4 work too.',
+    stageClass: 'stage-pads', durationMs: 14000,
   },
 };
 export const QUALITY = {
@@ -919,7 +1000,7 @@ export const LEVELS = {
     18: ['pumpkin'],
     19: ['goat', 'expansion_3'],
     20: ['sewing_machine', 'town'],
-    21: ['indigo', 'trains'],
+    21: ['indigo', 'trains', 'cake_oven'],
     22: ['jam_maker'],
     23: ['bee'],
     24: ['mine', 'smelter'],

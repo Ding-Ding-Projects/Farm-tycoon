@@ -635,6 +635,7 @@ const BUILDING_CONFIG = {
   sugar_mill:  { roof: PALETTE.roofAlt, accent: 'blades' },
   popcorn_pot: { roof: PALETTE.roof, accent: 'pot' },
   grill:       { roof: PALETTE.roofDark, accent: 'smoke' },
+  cake_oven: { roof: PALETTE.roofAlt, accent: 'smoke' },
   pie_oven:    { roof: PALETTE.roof, accent: 'smoke' },
   loom:        { roof: '#9a6fd0', accent: 'wheel' },
   sewing_machine: { roof: '#e05548', accent: 'wheel' },

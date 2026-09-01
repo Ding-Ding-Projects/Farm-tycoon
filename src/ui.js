@@ -624,6 +624,33 @@ function renderSettings(container) {
   const langRow = row('<p>Language: English</p>');
   container.appendChild(langRow);
 
+  // Playing is REQUIRED to collect a playable craft, so these two are not decoration: they are
+  // what stops that gate becoming a wall. Assist widens every tolerance and doubles every stage;
+  // auto-finish is the floor-tier way out for someone who still cannot finish one, and is off by
+  // default so an ordinary player never sees it.
+  const help = document.createElement('div');
+  help.className = 'panel-row';
+  help.innerHTML = '<p><strong>Making things</strong></p>';
+  container.appendChild(help);
+
+  const assistRow = row('');
+  assistRow.appendChild(button(state.settings.assist ? '🐢 Assist mode: On' : '🐢 Assist mode: Off', () => {
+    state.settings.assist = !state.settings.assist;
+    save();
+    refreshPanel();
+  }));
+  assistRow.appendChild(hintEl('Longer stages and wider margins on every making game. Tops out at Fine rather than Masterpiece, so it is a helping hand and not a shortcut.'));
+  container.appendChild(assistRow);
+
+  const autoRow = row('');
+  autoRow.appendChild(button(state.settings.autoFinish ? '🤖 Let the machine finish: On' : '🤖 Let the machine finish: Off', () => {
+    state.settings.autoFinish = !state.settings.autoFinish;
+    save();
+    refreshPanel();
+  }));
+  autoRow.appendChild(hintEl('Adds a button inside every making game that completes it at Plain quality — no bonus, no tip. For when a game is not playable for you; nothing is ever lost.'));
+  container.appendChild(autoRow);
+
   const exportBtn = button('Export save', () => {
     const data = state && JSON.stringify(state);
     toast(data ? 'Save copied to console.' : 'Nothing to export.', 'info');

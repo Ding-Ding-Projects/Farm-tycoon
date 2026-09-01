@@ -898,6 +898,17 @@ mark { background: var(--c-mark-bg); color: var(--c-mark-text); border-radius: 3
 .callout-danger { background: var(--c-danger-soft); color: var(--c-on-danger-soft); border-color: var(--c-danger); }
 .callout-ok     { background: var(--c-ok-soft);     color: var(--c-on-ok-soft);     border-color: var(--c-ok); }
 
+/* A link inside a tinted callout must not use --c-accent. The accent is only
+   contrast-checked against the card surface (SURFACE_LIGHT #fffdf8 in app.js,
+   at ACCENT_MIN_CONTRAST 4.6), and every callout tint is darker than that
+   surface, so the shipped default #427d12 measures 3.95 (danger), 4.01 (info),
+   4.16 (ok) and 4.21 (warn) against these four tints -- all under the 4.5 that
+   normal-size body text needs -- and a user-chosen accent can land lower still.
+   Inheriting the callout's own on-soft text colour is accent-independent and
+   measures 11.87-13.05 in light and 9.59-10.42 in dark, and the underline keeps
+   the link identifiable without relying on colour (WCAG 1.4.1). */
+.callout a, .callout a:hover { color: inherit; }
+
 /* section anchors + teleport highlight */
 
 /* The permalink beside a heading used to be `opacity: 0` and revealed only on

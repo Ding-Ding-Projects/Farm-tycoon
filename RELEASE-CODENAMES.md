@@ -28,3 +28,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `7dc0f145cab5` | Dark Chocolate Crystal Dumpling · 黑朱古力水晶餃 | `dark-chocolate-crystal-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0020-dark-chocolate-crystal-dumpling.png |
 | 0.1.0 | `7b9a34f125c7` | Steamed Beef Balls · 山竹牛肉 | `steamed-beef-balls` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0021-steamed-beef-balls.png |
 | 0.1.0 | `b2b05e55694f` | Dried Tangerine Peel Beef Balls · 陳皮牛肉球 | `tangerine-peel-beef-balls` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0022-tangerine-peel-beef-balls.png |
+| 0.1.0 | `7edfa26833f4` | Watercress Beef Balls · 西洋菜牛肉球 | `watercress-beef-balls` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0023-watercress-beef-balls.png |

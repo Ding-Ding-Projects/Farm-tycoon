@@ -243,6 +243,14 @@ const OPTIMAL = {
   // Read the cue, do not count. sizzle reaches exactly 1.0 at the moment the side is done, and
   // the interval differs every flip, so a fixed metronome scores about half of this.
   sear_flip: () => (snap) => (snap.sizzle >= 1 ? { taps: [{ tMs: 0 }] } : { taps: [] }),
+
+  // Spacing: every gap the same. The gap itself is whatever the first two crimps set, so the
+  // driver picks one and holds it rather than aiming at anything the game chose.
+  crimp_edge: () => (snap) => {
+    if (snap.placed.length === 0) return { padIndex: 0 };
+    const last = snap.placed[snap.placed.length - 1];
+    return { padIndex: (last + 3) % snap.notches };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

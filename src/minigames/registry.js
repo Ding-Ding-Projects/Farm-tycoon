@@ -38,6 +38,7 @@ export const VERB_LOADERS = {
   pull_shot: () => import('./verbs/pull_shot.js'),
   toss_bowl: () => import('./verbs/toss_bowl.js'),
   sear_flip: () => import('./verbs/sear_flip.js'),
+  crimp_edge: () => import('./verbs/crimp_edge.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

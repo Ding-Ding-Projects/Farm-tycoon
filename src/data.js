@@ -448,7 +448,8 @@ export const BUILDINGS = {
     name: 'Pie Oven', unlockLevel: 16, cost: 1800, size: [2, 2], kit: 'kit_pie_oven', minigame: 'crimp_pattern', queueSlots: 3,
     recipes: [
       { id: 'carrot_pie',     inputs: { carrot: 3, wheat: 2, egg: 1 },      time: 2400, xp: 8, unlockLevel: 16 },
-      { id: 'pumpkin_pie',    inputs: { pumpkin: 1, wheat: 2, egg: 2 },     time: 3600, xp: 10, unlockLevel: 18 },
+      { id: 'pumpkin_pie',    inputs: { pumpkin: 1, wheat: 2, egg: 2 },     time: 3600, xp: 10, unlockLevel: 18,
+        play: { stages: [{ verb: 'crimp_edge' }] } },
       { id: 'strawberry_pie', inputs: { strawberry: 3, wheat: 2, cream: 1 }, time: 5400, xp: 12, unlockLevel: 16 },
       { id: 'fish_pie',       inputs: { fish_perch: 2, wheat: 2, butter: 1 }, time: 5400, xp: 14, unlockLevel: 16 },
     ],
@@ -1103,6 +1104,12 @@ export const VERBS = {
     purpose: 'Turned at the right moment, it sears rather than steams.',
     hint: 'No beat to count - watch the sizzle and flip when it is seared. Every side differs.',
     stageClass: 'stage-sear', durationMs: 15000,
+  },
+  crimp_edge: {
+    name: 'Crimp the Edge', verbWord: 'crimp', family: 'sequence',
+    purpose: 'An evenly crimped rim seals all the way round.',
+    hint: 'Keep every gap the same. Your first two crimps decide what the rest must be.',
+    stageClass: 'stage-brim', durationMs: 15000,
   },
 };
 export const QUALITY = {

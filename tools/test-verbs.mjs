@@ -297,6 +297,30 @@ const OPTIMAL = {
   // Sequencing. The optimal play works through the tickets in heat order rather than the order
   // they arrived, because the pan keeps whatever heat the last omelet left in it. The dedicated
   // ordering guard below is what actually pins that claim; this driver only proves it is winnable.
+  // Information with a price. The optimal play fills blind for a fixed spell, spends exactly ONE
+  // peek to learn the hidden fill rate, then computes the rest. The peek is a single frame on
+  // purpose: the cost is charged per opening, so a longer look buys nothing and only drips more.
+  peek_pour: () => {
+    let phase = 'fill';
+    let rate = null;
+    let filledMs = 0;
+    return (snap) => {
+      if (phase === 'fill') {
+        if (snap.now < 2500) { filledMs = snap.now + 16; return { ax: -1 }; }
+        phase = 'peek';
+        return { ax: 1 };
+      }
+      if (phase === 'peek') {
+        if (snap.seenLevel === null) return { ax: 1 };
+        // What was seen is the fill MINUS the peek's fixed cost, and that cost is published.
+        rate = (snap.seenLevel + snap.peekCost) / (filledMs / 1000);
+        phase = 'pour';
+        return { ax: 0 };
+      }
+      const estimated = snap.seenLevel + rate * ((snap.now - snap.seenAt) / 1000);
+      return { ax: estimated < snap.target ? -1 : 0 };
+    };
+  },
   ride_heat: () => (snap) => {
     if (snap.busy) return null;
     const left = snap.tickets.filter((k) => !k.done);
@@ -515,6 +539,82 @@ await testAsync('ride_heat: planning the route beats cooking in arrival order, o
       + 'if working straight down the queue is just as good, the pan state is not doing anything',
     );
     assert.ok(plan >= 0.9, `seed ${seed}: a planned route should plate nearly everything, got ${plan.toFixed(3)}`);
+  }
+});
+
+// ---------------------------------------------------------------------------------------
+// peek_pour: the information trade, pinned.
+//
+// The generic sweep proves the verb is winnable and that skill beats idling. Neither touches the
+// claim the verb is actually built on: that looking is worth doing ONCE and not worth doing
+// repeatedly. If pouring blind were as good, there would be no reason to peek; if peeking were
+// free, there would be no reason not to stare. Both ends get asserted.
+// ---------------------------------------------------------------------------------------
+await testAsync('peek_pour: one peek beats both never looking and constantly looking', async () => {
+  const mod = await VERB_LOADERS.peek_pour();
+
+  const play = (seed, decide) => {
+    const g = mod.create(seed, {});
+    let t = 0;
+    while (!g.done() && t < 200000) { g.step(16, decide(g.snapshot())); t += 16; }
+    return g.score();
+  };
+
+  // Fill, glance once, compute, finish. Same policy as the registered driver.
+  const oneGlance = () => {
+    let phase = 'fill';
+    let rate = null;
+    let filledMs = 0;
+    return (snap) => {
+      if (phase === 'fill') {
+        if (snap.now < 2500) { filledMs = snap.now + 16; return { ax: -1 }; }
+        phase = 'peek';
+        return { ax: 1 };
+      }
+      if (phase === 'peek') {
+        if (snap.seenLevel === null) return { ax: 1 };
+        rate = (snap.seenLevel + snap.peekCost) / (filledMs / 1000);
+        phase = 'pour';
+        return { ax: 0 };
+      }
+      return { ax: snap.seenLevel + rate * ((snap.now - snap.seenAt) / 1000) < snap.target ? -1 : 0 };
+    };
+  };
+  // Never look: pour for a plausible fixed spell and hope the tin filled at the rate you assumed.
+  const neverLook = () => (snap) => ({ ax: snap.now < 5000 ? -1 : 0 });
+  // Keep looking: tip back and forth so the level is always known, and pay for every glance.
+  const alwaysLook = () => (snap) => ({ ax: Math.floor(snap.now / 300) % 2 ? 1 : -1 });
+  // A cheat that only works if the snapshot leaks the hidden fill rate. It exists to protect the
+  // one design rule written at the top of the verb: publishing the rate to be helpful would
+  // delete the whole thing, because there would be no reason to ever look. Without the leak this
+  // driver cannot fill at all and scores zero, so it is harmless; with the leak it wins outright.
+  const cheatIfLeaked = () => (snap) => {
+    const leaked = snap.fillRate;
+    if (typeof leaked !== 'number') return { ax: 0 };
+    return { ax: (leaked * (snap.now / 1000)) < snap.target ? -1 : 0 };
+  };
+
+  for (const seed of [1, 42, 555, 9001, 31337, 777, 2024, 4242]) {
+    const glance = play(seed, oneGlance());
+    const blind = play(seed, neverLook());
+    const staring = play(seed, alwaysLook());
+    assert.ok(
+      glance > blind + 0.15,
+      `seed ${seed}: peeking once (${glance.toFixed(3)}) must clearly beat pouring blind `
+      + `(${blind.toFixed(3)}) - if it does not, the hidden fill rate is not hidden enough to matter`,
+    );
+    assert.ok(
+      glance > staring + 0.15,
+      `seed ${seed}: peeking once (${glance.toFixed(3)}) must clearly beat looking constantly `
+      + `(${staring.toFixed(3)}) - if it does not, looking is too cheap and there is no trade`,
+    );
+    assert.ok(glance >= 0.9, `seed ${seed}: a correct read should land on the line, got ${glance.toFixed(3)}`);
+    const cheat = play(seed, cheatIfLeaked());
+    assert.ok(
+      cheat < 0.2,
+      `seed ${seed}: a driver that reads snapshot.fillRate scored ${cheat.toFixed(3)} - the hidden `
+      + 'fill rate has been published, which removes any reason to peek and deletes the verb',
+    );
   }
 });
 

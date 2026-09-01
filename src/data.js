@@ -273,6 +273,10 @@ export const GOODS = {
   plain_yogurt:     { icon: '🥛', name: 'Plain Yogurt',         sellPrice: 1350 },
   berry_yogurt:     { icon: '🫐', name: 'Berry Yogurt',         sellPrice: 2000 },
   mint_yogurt:      { icon: '🍃', name: 'Mint Yogurt',          sellPrice: 4310 },
+  // milkshake_bar
+  vanilla_shake:    { icon: '🥤', name: 'Vanilla Shake',        sellPrice: 1420 },
+  choco_shake:      { icon: '🍫', name: 'Chocolate Shake',      sellPrice: 1880 },
+  berry_shake:      { icon: '🍓', name: 'Berry Shake',          sellPrice: 2540 },
   // omelet_station
   plain_omelet:     { icon: '🍳', name: 'Plain Omelet',         sellPrice: 780 },
   cheese_omelet:    { icon: '🧀', name: 'Cheese Omelet',        sellPrice: 1260 },
@@ -289,6 +293,7 @@ export const GOODS = {
   lamb_skewer:      { icon: '🍢', name: 'Lamb Skewer',          sellPrice: 820 },
   alpaca_scarf:     { icon: '🧣', name: 'Alpaca Scarf',         sellPrice: 420 },
   // kits for the ten buildings above
+  kit_milkshake_bar:        { icon: '🥤', name: 'Milkshake Bar Kit',     sellPrice: 840 },
   kit_omelet_station:       { icon: '🍳', name: 'Omelet Station Kit',    sellPrice: 800 },
   kit_hot_dog_stand:        { icon: '🌭', name: 'Hot Dog Stand Kit',     sellPrice: 780 },
   kit_smoothie_mixer:       { icon: '🥤', name: 'Smoothie Mixer Kit',    sellPrice: 760 },
@@ -565,6 +570,15 @@ export const BUILDINGS = {
       { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36, unlockLevel: 62 },
       { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84,
         play: { stages: [{ verb: 'arc_pour' }] } },
+    ],
+  },
+  milkshake_bar: {
+    name: 'Milkshake Bar', unlockLevel: 86, cost: 62000, size: [2, 2], kit: 'kit_milkshake_bar', minigame: 'peek_judge', queueSlots: 3,
+    recipes: [
+      { id: 'vanilla_shake',  inputs: { milk: 3, vanilla: 1, ice_cream: 1 },            time: 3600,  xp: 40, unlockLevel: 86 },
+      { id: 'choco_shake',    inputs: { milk: 3, cocoa: 2, ice_cream: 1 },              time: 4800,  xp: 48, unlockLevel: 86 },
+      { id: 'berry_shake',    inputs: { milk: 2, strawberry: 3, ice_cream: 1 },         time: 6000,  xp: 58, unlockLevel: 88,
+        play: { stages: [{ verb: 'peek_pour' }] } },
     ],
   },
   omelet_station: {
@@ -864,6 +878,7 @@ export const BUILDINGS = {
       { id: 'kit_smoothie_mixer',     inputs: { panel: 5, glazing: 4, fitting: 3 },           time: 42300, xp: 120, unlockLevel: 21, sink: true },
       { id: 'kit_hot_dog_stand',      inputs: { panel: 6, glazing: 3, fitting: 4 },           time: 43900, xp: 124, unlockLevel: 21, sink: true },
       { id: 'kit_omelet_station',     inputs: { panel: 6, glazing: 4, fitting: 4 },           time: 45200, xp: 128, unlockLevel: 21, sink: true },
+      { id: 'kit_milkshake_bar',      inputs: { panel: 6, glazing: 5, fitting: 4 },           time: 46800, xp: 132, unlockLevel: 21, sink: true },
       { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
       { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
       { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
@@ -907,6 +922,7 @@ export const MINIGAMES = {
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
   press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
   steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  peek_judge:      { name: 'Peek and Pour',      building: 'milkshake_bar',          effect: 'pourJudgement',      cap: 0.25, purpose: 'A steel tin tells you nothing until you tip it, and tipping it costs you shake.' },
   pan_ride:        { name: 'Ride the Heat',      building: 'omelet_station',         effect: 'panControl',         cap: 0.25, purpose: 'One pan, one temperature. Cook near what it is already at and the service flies.' },
   rush_hour:       { name: 'Work the Rush',      building: 'hot_dog_stand',          effect: 'rushComposure',      cap: 0.25, purpose: 'A lunch rush is about what you give up. Take whichever is closest to burning.' },
   vortex_read:     { name: 'Read the Vortex',    building: 'smoothie_mixer',         effect: 'blendFineness',      cap: 0.25, purpose: 'Every jug thins at its own rate. Stop when the vortex forms, not when the clock says.' },
@@ -946,7 +962,7 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
-  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl',
+  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl', 'pourJudgement',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1194,6 +1210,12 @@ export const VERBS = {
     purpose: 'A seam that carries through holds the garment together.',
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
+  },
+  peek_pour: {
+    name: 'Peek and Pour', verbWord: 'peek', family: 'balance',
+    purpose: 'A steel tin hides how full it is, and the machine fills every one at its own rate.',
+    hint: 'Tip it left to fill, right to look inside. Looking spills a fixed amount, so buy the rate with ONE glance and work out the rest.',
+    stageClass: 'stage-balance', durationMs: 14000,
   },
   ride_heat: {
     name: 'Ride the Heat', verbWord: 'ride', family: 'route',
@@ -1520,7 +1542,7 @@ export const LEVELS = {
     83: ['master_grower', 'zoo_polar'],
     84: ['mint'],
     85: ['jeweler'],
-    86: ['gilded_orders'],
+    86: ['gilded_orders', 'milkshake_bar'],
     87: ['master_rancher'],
     88: ['grand_market'],
     89: ['master_crafter'],

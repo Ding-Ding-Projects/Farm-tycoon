@@ -260,6 +260,38 @@ async function main() {
   check('and does not clobber the value the other finger is holding',
     Math.abs(dd.rightAfter - dd.rightBefore) < 0.05, d);
 
+  // --- the browser must not steal a gesture that belongs to a verb -------------------------
+  //
+  // On a WebView, a drag across a minigame stage would otherwise scroll the page or start the
+  // browser's own pinch-zoom, and either one fires pointercancel and ENDS the run rather than
+  // merely feeling wrong. Drag, path, balance and steer verbs are all "a finger dragging across
+  // a stage", so that is most of the library. Checked as computed style on real elements rather
+  // than by reading the stylesheet, because a later rule could override it.
+  const gestures = await cdp.ev(`(() => {
+    const mk = (cls, parent) => { const d = document.createElement('div'); d.className = cls; (parent || document.body).appendChild(d); return d; };
+    const back = mk('modal-backdrop');
+    const card = mk('modal-card', back);
+    const stage = mk('game-stage', card);
+    const cs = (e) => getComputedStyle(e);
+    const out = {
+      backdrop: cs(back).touchAction,
+      card: cs(card).touchAction,
+      stage: cs(stage).touchAction,
+      stageSelect: cs(stage).userSelect || cs(stage).webkitUserSelect,
+      cardScrolls: cs(card).overflowY,
+    };
+    back.remove();
+    return out;
+  })()`);
+  check('a minigame stage owns every gesture that starts on it',
+    gestures.stage === 'none', JSON.stringify(gestures));
+  check('a drag on a stage cannot select the stage text instead',
+    gestures.stageSelect === 'none', JSON.stringify(gestures));
+  check('the modal backdrop does not pan the farm behind it',
+    gestures.backdrop === 'none', JSON.stringify(gestures));
+  check('but a tall dialog can still be scrolled on a phone',
+    gestures.card === 'pan-y' && gestures.cardScrolls === 'auto', JSON.stringify(gestures));
+
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
 

@@ -16,6 +16,8 @@ has been built, what has deliberately **not** been done, and the exact steps and
 | Mobile layout pass, verified at 320x720 and 375x812 | done |
 | Pinch-zoom and two-finger pan in `src/input.js` | done, and verified under emulated touch |
 | `viewport-fit=cover`, so `env(safe-area-inset-*)` reports real values | done |
+| Per-finger sides for the `dual` family, so two hands work | done, and verified |
+| `touch-action` layering so the WebView cannot cancel a verb mid-gesture | done, and verified |
 | Native `android/` project generated | **not done** (needs the Android SDK) |
 | Release keystore created | **not done** (must be created by the repository owner) |
 | APK built | **not done** |
@@ -132,8 +134,17 @@ interception, or how any of it feels. Those stay on the list below.
 - **`dual` needs two simultaneous touch points.** The shared input layer maps a single pointer to
   one side by its x position, which works with a mouse and works with one finger, but a phone can
   send two. If it feels wrong, that normaliser in `src/minigames/input.js` is where to look.
-- **`drag` uses `pointerdown` plus `closest('[data-grab]')`.** Touch drag on Android can be
-  intercepted by the WebView's own scroll handling; `touch-action` on the stage may be needed.
+- ~~**`drag` uses `pointerdown` plus `closest('[data-grab]')`.** Touch drag on Android can be
+  intercepted by the WebView's own scroll handling; `touch-action` on the stage may be needed.~~
+  **Done.** It was needed, and it was worse than a drag problem: only `#world` carried
+  `touch-action`, so a finger dragging across any minigame stage would have scrolled the page or
+  started the browser's own pinch-zoom, and either one fires `pointercancel` and ENDS the run
+  rather than merely feeling wrong. Drag, path, balance and steer verbs are all "a finger dragging
+  across a stage", so that was most of the library. Three layers now, each deliberate: the
+  backdrop blocks everything so a stray drag cannot pan the farm behind it, the card keeps
+  `pan-y` because a long dialog on a phone still has to scroll, and the stage blocks everything
+  because a verb owns any gesture that starts on it. Long-press callout and tap-highlight are
+  suppressed on the stage too, since a sustain verb is a long press by definition.
 - **Dynamic `import()`** is what loads every minigame. It is verified working under Electron's
   `file://`, and Capacitor serves over `https://localhost` instead, which is a different scheme
   again. It should be fine, and it should still be checked first, because if it fails then every

@@ -170,6 +170,15 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       guard on taste. No migration was needed - prices are read from data.js and never written into
       a save, so existing games picked up the new values on load.
 
-- [ ] Regatta league reward tables, Township community buildings past level 70, and
-      per-expansion cost numbers were sourced from wiki text/images and never independently
-      re-derived.
+- [x] **The hand-transcribed tables are now checked for coherence, though NOT against the wikis.**
+      `tools/test-tables.mjs` covers the regatta placement and league ladders, the community
+      buildings and the expansion costs. It deliberately proves shape rather than value: a
+      hand-typed table goes wrong by a slipped digit, and a slipped digit does not look like
+      anything until you ask whether the curve is smooth. All eight checks were watched failing on
+      the exact slips they exist to catch.
+
+      Stated plainly because it matters: this does not verify the numbers against their sources,
+      and re-deriving them from the wikis would be the wrong target anyway - those describe a
+      different game and several figures have deliberately diverged since (the doner kebab stand
+      is at 54 here, not the wiki's 32, because lamb does not arrive until 53). If exact wiki
+      agreement is ever wanted, it is a separate job with a different tool.

@@ -548,7 +548,8 @@ export const BUILDINGS = {
       { id: 'green_tea',      inputs: { tea_leaf: 3 },                                time: 1800,  xp: 24, unlockLevel: 62 },
       { id: 'milk_tea',       inputs: { tea_leaf: 2, milk: 1 },                       time: 2700,  xp: 30, unlockLevel: 62 },
       { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36, unlockLevel: 62 },
-      { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84 },
+      { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84,
+        play: { stages: [{ verb: 'arc_pour' }] } },
     ],
   },
   sushi_bar: {
@@ -1146,6 +1147,12 @@ export const VERBS = {
     purpose: 'A seam that carries through holds the garment together.',
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
+  },
+  arc_pour: {
+    name: 'Pour the Arc', verbWord: 'arc', family: 'aim',
+    purpose: 'A long-spout pour has to be thrown, not pointed, or it lands on the table.',
+    hint: 'The tea falls as it flies, so aim ABOVE the cup. Range comes from angle and power together - two different arcs reach the same cup.',
+    stageClass: 'stage-aim', durationMs: 15000,
   },
   stir_figure: {
     name: 'Stir the Figure', verbWord: 'stir', family: 'path',

@@ -288,6 +288,19 @@ const OPTIMAL = {
   match_seam: () => (snap) => ({ lane: snap.needs === null ? 0 : snap.needs, commit: true }),
   // Repetition, so the optimal play is simply the SAME circle every lap. A driver that varied
   // its radius scored 0.618 against this one's 0.900, which is the gap the verb exists to make.
+  // Ballistic, so the optimal play SOLVES the arc rather than pointing at the cup: 45 degrees is
+  // the max-range angle, which makes power = sqrt(distance / k). Aiming flat at the cup the way
+  // cast_ingot teaches scores 0.000 to 0.418 against this driver's 1.000.
+  arc_pour: () => {
+    let power = 0;
+    return (snap) => {
+      const angle = Math.PI / 4;
+      const want = Math.sqrt(Math.min(1, snap.distance / snap.k));
+      if (power >= want) { power = 0; return { angle, power: want, fired: true }; }
+      power += 16 / 1100;                       // input.js's own power-build rate
+      return { angle, power, fired: false };
+    };
+  },
   stir_figure: () => {
     let a = 0;
     return () => {

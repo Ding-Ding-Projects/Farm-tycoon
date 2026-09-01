@@ -649,3 +649,9 @@ a:hover { color: var(--color-primary); }
 }
 
 [hidden] { display: none !important; }
+
+/* .stage-aim also hosts arc_pour, whose table and cup are an SVG rather than the round dish
+   cast_ingot uses. Both share the flex row above; only these two elements are new. */
+.stage-aim svg { flex: 1; min-width: 0; height: 120px; }
+.stage-aim .table { stroke: var(--color-outline); stroke-width: 2; }
+.stage-aim .cup { fill: var(--color-accent, #7fd4f0); stroke: var(--color-outline); stroke-width: 1.5; rx: 1.5; }

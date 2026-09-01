@@ -486,6 +486,30 @@ a:hover { color: var(--color-primary); }
 .stage-drag .plate { flex: 1; height: 52px; padding: 0; cursor: pointer; border-radius: 12px 12px 20px 20px; background: rgba(255, 250, 234, 0.9); border: 4px solid var(--color-outline); }
 .stage-drag .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
 
+/* drag, ordering flavour — one pile, one correct sequence. */
+.stage-stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+.stage-stack .tray { display: flex; flex-wrap: wrap; gap: 6px; }
+.stage-stack .layer { flex: 1 1 auto; min-width: 62px; padding: 8px 6px; cursor: grab; border-radius: 8px; border: 3px solid var(--color-outline); font-weight: 800; font-size: 11px; color: #4a2f12; }
+.stage-stack .layer.used { opacity: 0.3; cursor: default; }
+.stage-stack .pile { display: flex; flex-direction: column-reverse; justify-content: flex-start; gap: 3px; min-height: 74px; padding: 6px; cursor: pointer; border-radius: 12px; background: rgba(58, 37, 16, 0.1); border: 4px dashed var(--color-outline); }
+.stage-stack .built { height: 12px; border-radius: 3px; border: 2px solid var(--color-outline); }
+.stage-stack .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* path, speed-limited flavour — go as slowly as you like, never quickly. */
+.stage-fold { display: flex; flex-direction: column; gap: var(--sp-3); }
+.stage-fold .shell { position: relative; height: 116px; border-radius: 14px; background: linear-gradient(#f5d99a, #e8b45c); border: 4px solid var(--color-outline); overflow: hidden; }
+.stage-fold .foldline { position: absolute; top: 0; bottom: 0; transform: translateX(-50%); background: rgba(58, 37, 16, 0.16); border-left: 3px dashed rgba(58, 37, 16, 0.5); border-right: 3px dashed rgba(58, 37, 16, 0.5); }
+.stage-fold .seam { position: absolute; top: 0; width: 6px; margin-left: -3px; border-radius: 3px; background: var(--color-primary-deep); }
+.stage-fold .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
+
+/* sequence, symmetry flavour — nothing lights up; the board is the puzzle. */
+.stage-brim { display: flex; align-items: center; gap: var(--sp-4); }
+.stage-brim .ring { position: relative; width: 150px; height: 150px; border-radius: 50%; border: 5px dashed rgba(58, 37, 16, 0.3); }
+.stage-brim .pin { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; padding: 0; cursor: pointer; border-radius: 50%; background: rgba(58, 37, 16, 0.18); border: 3px solid var(--color-outline); }
+.stage-brim .pin.set { background: var(--color-primary); }
+.stage-brim .pin.owed { box-shadow: 0 0 0 3px rgba(255, 250, 234, 0.9); }
+.stage-brim .status { flex: 1; font-weight: 800; font-size: 13px; color: #6d3f14; }
+
 /* recall order — sequence shown once, tapped back */
 .stage-pads .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; }
 .stage-pads .pad { height: 62px; padding: 0; cursor: pointer; border-radius: 13px; border: 3px solid var(--color-outline); box-shadow: 0 4px 0 rgba(58, 37, 16, 0.45); }

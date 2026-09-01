@@ -80,8 +80,12 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       discardable for half its inputs back
 - [x] Verified in the packaged Windows app, including that dynamic `import()` resolves over
       `file://` - without which every playable craft would be unreachable once installed
-- [ ] The remaining wiki factories. 31 of roughly 67 exist; Township and Hay Day between them
-      still have about 36 absent, each wanting its own playable item and verb
+- [ ] The remaining wiki factories. 35 of roughly 67 exist; Township and Hay Day between them
+      still have about 32 absent
+- [ ] **The playable share is 1 in 7.5, and the design target is 1 in 3.** 15 of 112 eligible
+      recipes are playable; reaching the target needs 23 more, each wanting a verb that is a
+      genuinely new mechanic rather than a re-skin. `npm test` prints the real figure on every
+      run so the gap cannot drift out of sight
 - [ ] Per-family audio, a Bake Book from `state.minigames.best`, Masterpiece achievements
 
 ## Android

@@ -24,6 +24,9 @@ export const VERB_LOADERS = {
   throw_shuttles: () => import('./verbs/throw_shuttles.js'),
   guide_dough: () => import('./verbs/guide_dough.js'),
   lay_slices: () => import('./verbs/lay_slices.js'),
+  stack_layers: () => import('./verbs/stack_layers.js'),
+  fold_shell: () => import('./verbs/fold_shell.js'),
+  pin_brim: () => import('./verbs/pin_brim.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

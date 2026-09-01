@@ -311,6 +311,22 @@ export const GOODS = {
   kit_sauce_maker:     { icon: '🥫', name: 'Sauce Maker Kit',     sellPrice: 560 },
   kit_soup_kitchen:    { icon: '🍲', name: 'Soup Kitchen Kit',    sellPrice: 500 },
 
+  // Four more from the wiki rosters, again chosen because every input already exists. Three carry
+  // a playable item; the donut maker deliberately does not, which keeps the playable share near
+  // one recipe in three rather than one per building.
+  club_sandwich:  { icon: '🥪', name: 'Club Sandwich',  sellPrice: 342 },
+  bacon_butty:    { icon: '🥓', name: 'Bacon Butty',    sellPrice: 112 },
+  beef_taco:      { icon: '🌮', name: 'Beef Taco',      sellPrice: 268 },
+  corn_salsa:     { icon: '🌽', name: 'Corn Salsa',     sellPrice: 96  },
+  wool_hat:       { icon: '🎩', name: 'Wool Hat',       sellPrice: 160 },
+  sun_hat:        { icon: '👒', name: 'Sun Hat',        sellPrice: 358 },
+  ring_donut:     { icon: '🍩', name: 'Ring Donut',     sellPrice: 190 },
+  honey_donut:    { icon: '🍯', name: 'Honey Donut',    sellPrice: 306 },
+  kit_sandwich_bar: { icon: '🥪', name: 'Sandwich Bar Kit', sellPrice: 300 },
+  kit_taco_kitchen: { icon: '🌮', name: 'Taco Kitchen Kit', sellPrice: 360 },
+  kit_hat_maker:    { icon: '🎩', name: 'Hat Maker Kit',    sellPrice: 420 },
+  kit_donut_maker:  { icon: '🍩', name: 'Donut Maker Kit',  sellPrice: 460 },
+
   // Dessert tier — the Cake Oven's own intermediates and its cakes. batter/frosting/fondant are
   // made in the Cake Oven itself and feed its later recipes, which is what gives the building an
   // internal chain rather than five unrelated one-shot recipes.
@@ -654,6 +670,50 @@ export const BUILDINGS = {
     ],
   },
 
+  sandwich_bar: {
+    name: 'Sandwich Bar', unlockLevel: 18, cost: 3200, size: [2, 2],
+    kit: 'kit_sandwich_bar', minigame: 'stack_neat', queueSlots: 3,
+    recipes: [
+      { id: 'bacon_butty',   inputs: { bread: 2, bacon: 2 },                       time: 1200, xp: 14, unlockLevel: 18 },
+      // PLAYABLE - drag, but ORDER matters rather than matching: a sandwich built wrong side up
+      // is a different game from sorting slices onto plates.
+      { id: 'club_sandwich', inputs: { bread: 3, bacon: 2, cheese: 1, tomato: 2 }, time: 3600, xp: 30, unlockLevel: 21,
+        play: { stages: [{ verb: 'stack_layers' }] } },
+    ],
+  },
+  taco_kitchen: {
+    name: 'Taco Kitchen', unlockLevel: 28, cost: 7800, size: [2, 2],
+    kit: 'kit_taco_kitchen', minigame: 'shell_crisp', queueSlots: 3,
+    recipes: [
+      { id: 'corn_salsa', inputs: { corn: 3, tomato: 2 },                          time: 1800, xp: 16, unlockLevel: 28 },
+      // PLAYABLE - path, but SPEED-LIMITED: fold too fast and the shell cracks.
+      { id: 'beef_taco',  inputs: { corn: 3, bacon: 2, cheese: 1, chili: 1 },      time: 4200, xp: 34, unlockLevel: 31,
+        play: { stages: [{ verb: 'fold_shell' }] } },
+    ],
+  },
+  hat_maker: {
+    name: 'Hat Maker', unlockLevel: 33, cost: 11500, size: [2, 2],
+    kit: 'kit_hat_maker', minigame: 'brim_true', queueSlots: 3,
+    recipes: [
+      { id: 'wool_hat', inputs: { wool: 3, cotton: 2 },                            time: 2700, xp: 22, unlockLevel: 33 },
+      // PLAYABLE - sequence, but SYMMETRY rather than reaction or recall: each pin needs its
+      // opposite number or the brim sits crooked.
+      { id: 'sun_hat',  inputs: { cotton: 4, indigo: 1, wool: 2 },                 time: 6300, xp: 44, unlockLevel: 36,
+        play: { stages: [{ verb: 'pin_brim' }] } },
+    ],
+  },
+  donut_maker: {
+    name: 'Donut Maker', unlockLevel: 38, cost: 16000, size: [2, 2],
+    kit: 'kit_donut_maker', minigame: 'glaze_even', queueSlots: 3,
+    // No playable recipe here on purpose. Roughly one recipe in three is playable across the
+    // game; giving every building one would make the gate the default rather than the exception,
+    // and inventing a fourth verb just to fill this slot is how re-skins get shipped.
+    recipes: [
+      { id: 'ring_donut',  inputs: { batter: 1, sugar: 2 },                        time: 2400, xp: 20, unlockLevel: 38 },
+      { id: 'honey_donut', inputs: { batter: 1, honey: 2, egg: 1 },                time: 4800, xp: 36, unlockLevel: 41 },
+    ],
+  },
+
   build_workshop: {
     name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
     recipes: [
@@ -673,6 +733,10 @@ export const BUILDINGS = {
       { id: 'kit_soup_kitchen',    inputs: { beam: 2, panel: 3, plumbing: 1 },          time: 10800, xp: 38, unlockLevel: 6, sink: true },
       { id: 'kit_flower_shop',     inputs: { frame: 2, glazing: 2, panel: 2 },          time: 12600, xp: 44, unlockLevel: 6, sink: true },
       { id: 'kit_sauce_maker',     inputs: { beam: 3, fitting: 2, plumbing: 1 },        time: 14400, xp: 48, unlockLevel: 6, sink: true },
+      { id: 'kit_sandwich_bar', inputs: { frame: 2, panel: 2 },                 time: 6000,  xp: 24, unlockLevel: 6, sink: true },
+      { id: 'kit_taco_kitchen', inputs: { beam: 2, panel: 2, fitting: 1 },      time: 7800,  xp: 28, unlockLevel: 6, sink: true },
+      { id: 'kit_hat_maker',    inputs: { frame: 3, panel: 2, glazing: 1 },     time: 9600,  xp: 32, unlockLevel: 6, sink: true },
+      { id: 'kit_donut_maker',  inputs: { beam: 2, frame: 2, plumbing: 1 },     time: 11400, xp: 36, unlockLevel: 6, sink: true },
       { id: 'kit_cake_oven', inputs: { frame: 3, panel: 2, fitting: 2, glazing: 1 }, time: 9000, xp: 34, unlockLevel: 6, sink: true },
       { id: 'kit_pie_oven',         inputs: { brick: 4, beam: 3, plumbing: 1 },                 time: 9000,  xp: 33, unlockLevel: 6,  sink: true },
       { id: 'kit_loom',             inputs: { frame: 4, panel: 3, wiring_loom: 1 },             time: 10800, xp: 37, unlockLevel: 6,  sink: true },
@@ -742,6 +806,10 @@ export const MINIGAMES = {
   season_touch: { name: 'Season by Touch', building: 'soup_kitchen', effect: 'seasoningEdge', cap: 0.25, purpose: 'Seasoned right, a pot goes further.' },
   stem_trim: { name: 'Trim the Stems', building: 'flower_shop', effect: 'bloomLife', cap: 0.30, purpose: 'Cleanly cut stems keep a bouquet alive longer.' },
   heat_balance: { name: 'Balance the Heat', building: 'sauce_maker', effect: 'sauceBalance', cap: 0.25, purpose: 'Heat and sweetness in balance sells at a premium.' },
+  stack_neat: { name: 'Stack it Neat', building: 'sandwich_bar', effect: 'stackNeatness', cap: 0.25, purpose: 'A tidy stack cuts clean and plates well.' },
+  shell_crisp: { name: 'Crisp the Shell', building: 'taco_kitchen', effect: 'shellCrispness', cap: 0.30, purpose: 'A shell that holds together is worth more than one that does not.' },
+  brim_true: { name: 'True the Brim', building: 'hat_maker', effect: 'brimTrueness', cap: 0.25, purpose: 'An even brim keeps its shape.' },
+  glaze_even: { name: 'Even the Glaze', building: 'donut_maker', effect: 'glazeEvenness', cap: 0.30, purpose: 'An even glaze sets glossy.' },
 };
 
 /**
@@ -757,6 +825,7 @@ export const EFFECT_KEYS = [
   'oilClarity', 'steepQuality', 'knifePrecision', 'blendHarmony', 'plateFreshness',
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
+  'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -884,6 +953,24 @@ export const VERBS = {
     purpose: 'Every slice on the plate it belongs to.',
     hint: 'Carry each slice to its matching plate. Work in any order you like.',
     stageClass: 'stage-drag', durationMs: 16000,
+  },
+  stack_layers: {
+    name: 'Stack the Layers', verbWord: 'stack', family: 'drag',
+    purpose: 'Built in the right order, it cuts clean.',
+    hint: 'Build the sandwich bottom up. The tray is shuffled; the recipe is not.',
+    stageClass: 'stage-stack', durationMs: 16000,
+  },
+  fold_shell: {
+    name: 'Fold the Shell', verbWord: 'fold', family: 'path',
+    purpose: 'A shell that holds together is worth more than one that does not.',
+    hint: 'Draw down each fold line. Take your time - move it fast and the shell cracks.',
+    stageClass: 'stage-fold', durationMs: 13000,
+  },
+  pin_brim: {
+    name: 'True the Brim', verbWord: 'pin', family: 'sequence',
+    purpose: 'An even brim keeps its shape.',
+    hint: 'Every pin needs the one straight across from it. Nothing lights up; work it out.',
+    stageClass: 'stage-brim', durationMs: 15000,
   },
 };
 export const QUALITY = {
@@ -1116,7 +1203,7 @@ export const LEVELS = {
     15: ['strawberry', 'juice_press'],
     16: ['pie_oven'],
     17: ['boat'],
-    18: ['pumpkin'],
+    18: ['pumpkin', 'sandwich_bar'],
     19: ['goat', 'expansion_3'],
     20: ['sewing_machine', 'town'],
     21: ['indigo', 'trains', 'cake_oven'],
@@ -1126,17 +1213,17 @@ export const LEVELS = {
     25: ['chili', 'expansion_4'],
     26: ['candy_machine'],
     27: ['duck'],
-    28: ['expansion_5', 'airport'],
+    28: ['expansion_5', 'airport', 'taco_kitchen'],
     29: ['coffee', 'ice_cream_maker'],
     30: ['coffee_kiosk'],
     31: ['expansion_6'],
     32: ['silo_mega_upgrade'],
-    33: ['grapes'],
+    33: ['grapes', 'hat_maker'],
     34: ['barn_mega_upgrade', 'zoo', 'zoo_peacock', 'zoo_monkey'],
     35: ['expansion_7'],
     36: ['golden_fields', 'islands', 'isle_palm', 'tropical_cafe'],
     37: ['expansion_8'],
-    38: ['master_orders'],
+    38: ['master_orders', 'donut_maker'],
     39: ['expansion_9'],
     40: ['golden_windmill'],
     41: ['zoo_penguin'],

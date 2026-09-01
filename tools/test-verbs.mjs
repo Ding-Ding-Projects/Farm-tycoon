@@ -146,6 +146,34 @@ const OPTIMAL = {
       return { grabbed: i, dropOn: snap.belongs[i], dropped: true };
     };
   },
+
+  stack_layers: () => (snap) => {
+    // Ordering: find the tray slot holding the layer the pile wants next, and drop it on the pile.
+    if (!snap.next) return { grabbed: -1, dropOn: -1, dropped: false };
+    const i = snap.tray.findIndex((t) => !t.used && t.name === snap.next);
+    if (i === -1) return { grabbed: -1, dropOn: -1, dropped: false };
+    return { grabbed: i, dropOn: 0, dropped: true };
+  },
+
+  fold_shell: () => {
+    // Speed-limited: creep down the fold line well under the crack threshold. Anything faster
+    // scores worse, which is the whole point of the verb.
+    let y = 0;
+    return (snap) => {
+      y = y >= 1 ? 0 : y + 0.012;
+      return { x: snap.folds[snap.fold], y, down: true };
+    };
+  },
+
+  pin_brim: () => (snap) => {
+    // Symmetry: for each already-set pin, the one straight across is what the brim owes.
+    const half = snap.pins / 2;
+    for (const p of snap.pinned) {
+      const across = (p + half) % snap.pins;
+      if (!snap.pinned.includes(across)) return { padIndex: across };
+    }
+    return { padIndex: null };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

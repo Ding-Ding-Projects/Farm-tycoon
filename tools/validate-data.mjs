@@ -56,7 +56,8 @@ for (const [bid, b] of Object.entries(d.BUILDINGS)) {
   const MUST_HAVE_KIT = ['dairy', 'sugar_mill', 'popcorn_pot', 'grill', 'pie_oven', 'loom', 'sewing_machine', 'juice_press', 'jam_maker', 'coffee_kiosk', 'candy_machine', 'tropical_cafe', 'smelter',
     'oil_press', 'tea_house', 'sushi_bar', 'perfumery', 'salad_bar', 'pasta_kitchen',
     'fondue_pot', 'preservation_station', 'jeweler', 'yogurt_maker', 'cake_oven',
-    'ice_cream_maker', 'soup_kitchen', 'flower_shop', 'sauce_maker'];
+    'ice_cream_maker', 'soup_kitchen', 'flower_shop', 'sauce_maker',
+    'sandwich_bar', 'taco_kitchen', 'hat_maker', 'donut_maker'];
   const COIN_ONLY = ['feed_mill', 'bakery', 'build_workshop'];
   for (const bid of MUST_HAVE_KIT) {
     if (!d.BUILDINGS[bid]) errors.push(`kit inventory names unknown building '${bid}'`);
@@ -824,3 +825,29 @@ console.log(
   `${Object.keys(d.ZOO.enclosures).length} zoo enclosures, ${Object.keys(d.ISLANDS.destinations).length} islands, ` +
   `${Object.keys(d.MATERIALS).length} materials`
 );
+
+// The playable share, printed on every run rather than asserted.
+//
+// The stated design target is roughly one recipe in three being playable. It is NOT there yet,
+// and a number that is quietly wrong is worse than one that is loudly wrong: printing it means
+// the gap cannot drift out of sight, and means nobody has to re-derive it by hand to find out.
+// It is not a hard failure because the shortfall is missing CONTENT, not a broken invariant -
+// failing the build over it would block every unrelated change until the content lands.
+{
+  let eligible = 0;
+  let playable = 0;
+  for (const b of Object.values(d.BUILDINGS)) {
+    for (const r of b.recipes) {
+      if (r.sink) continue;
+      eligible += 1;
+      if (r.play) playable += 1;
+    }
+  }
+  const share = playable === 0 ? Infinity : eligible / playable;
+  const verbs = Object.keys(d.VERBS).length;
+  const onTarget = share <= 3.5;
+  console.log(
+    `playable share: ${playable}/${eligible} recipes (1 in ${share.toFixed(1)}), ${verbs} verbs` +
+    (onTarget ? ' - at the 1-in-3 target' : ` - TARGET IS 1 IN 3, short by ${Math.ceil(eligible / 3) - playable} recipes`)
+  );
+}

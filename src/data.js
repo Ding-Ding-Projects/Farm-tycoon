@@ -273,6 +273,10 @@ export const GOODS = {
   plain_yogurt:     { icon: '🥛', name: 'Plain Yogurt',         sellPrice: 1350 },
   berry_yogurt:     { icon: '🫐', name: 'Berry Yogurt',         sellPrice: 2000 },
   mint_yogurt:      { icon: '🍃', name: 'Mint Yogurt',          sellPrice: 4310 },
+  // hot_dog_stand
+  hot_dog:          { icon: '🌭', name: 'Hot Dog',              sellPrice: 940 },
+  chili_dog:        { icon: '🌶️', name: 'Chili Dog',            sellPrice: 1480 },
+  corn_dog:         { icon: '🌽', name: 'Corn Dog',             sellPrice: 2140 },
   // smoothie_mixer
   berry_smoothie:   { icon: '🥤', name: 'Berry Smoothie',       sellPrice: 1180 },
   mango_smoothie:   { icon: '🥭', name: 'Mango Smoothie',       sellPrice: 1540 },
@@ -281,6 +285,7 @@ export const GOODS = {
   lamb_skewer:      { icon: '🍢', name: 'Lamb Skewer',          sellPrice: 820 },
   alpaca_scarf:     { icon: '🧣', name: 'Alpaca Scarf',         sellPrice: 420 },
   // kits for the ten buildings above
+  kit_hot_dog_stand:        { icon: '🌭', name: 'Hot Dog Stand Kit',     sellPrice: 780 },
   kit_smoothie_mixer:       { icon: '🥤', name: 'Smoothie Mixer Kit',    sellPrice: 760 },
   kit_oil_press:            { icon: '🫒', name: 'Oil Press Kit',          sellPrice: 500 },
   kit_tea_house:            { icon: '🍵', name: 'Tea House Kit',          sellPrice: 730 },
@@ -555,6 +560,14 @@ export const BUILDINGS = {
       { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36, unlockLevel: 62 },
       { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84,
         play: { stages: [{ verb: 'arc_pour' }] } },
+    ],
+  },
+  hot_dog_stand: {
+    name: 'Hot Dog Stand', unlockLevel: 75, cost: 44000, size: [2, 2], kit: 'kit_hot_dog_stand', minigame: 'rush_hour', queueSlots: 3,
+    recipes: [
+      { id: 'hot_dog',        inputs: { bread: 1, bacon: 2 },                          time: 2100,  xp: 26, unlockLevel: 75 },
+      { id: 'chili_dog',      inputs: { bread: 1, bacon: 2, chili: 2 },                 time: 3600,  xp: 38, unlockLevel: 75 },
+      { id: 'corn_dog',       inputs: { corn: 3, bacon: 2, cheese: 1 },                 time: 5400,  xp: 52, unlockLevel: 78 },
     ],
   },
   smoothie_mixer: {
@@ -835,6 +848,7 @@ export const BUILDINGS = {
       { id: 'kit_tea_house',          inputs: { frame: 4, glazing: 3, shingle: 5, tile: 4 },           time: 36300, xp: 103, unlockLevel: 21, sink: true },
       { id: 'kit_sushi_bar',          inputs: { panel: 5, glazing: 3, fitting: 3 },           time: 40680, xp: 115, unlockLevel: 21, sink: true },
       { id: 'kit_smoothie_mixer',     inputs: { panel: 5, glazing: 4, fitting: 3 },           time: 42300, xp: 120, unlockLevel: 21, sink: true },
+      { id: 'kit_hot_dog_stand',      inputs: { panel: 6, glazing: 3, fitting: 4 },           time: 43900, xp: 124, unlockLevel: 21, sink: true },
       { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
       { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
       { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
@@ -878,6 +892,7 @@ export const MINIGAMES = {
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
   press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
   steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  rush_hour:       { name: 'Work the Rush',      building: 'hot_dog_stand',          effect: 'rushComposure',      cap: 0.25, purpose: 'A lunch rush is about what you give up. Take whichever is closest to burning.' },
   vortex_read:     { name: 'Read the Vortex',    building: 'smoothie_mixer',         effect: 'blendFineness',      cap: 0.25, purpose: 'Every jug thins at its own rate. Stop when the vortex forms, not when the clock says.' },
   knife_work:      { name: 'Knife Work',         building: 'sushi_bar',              effect: 'knifePrecision',     cap: 0.25, purpose: 'Slice clean and even. A ragged cut ruins the roll.' },
   blend_nose:      { name: 'Blend the Notes',    building: 'perfumery',              effect: 'blendHarmony',       cap: 0.3,  purpose: 'Balance top and base notes. One loud note flattens the blend.' },
@@ -915,7 +930,7 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
-  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness',
+  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1472,7 +1487,7 @@ export const LEVELS = {
     72: ['pasta_kitchen', 'otter'],
     73: ['expansion_14'],
     74: ['harvest_festival', 'isle_bonita', 'smoothie_mixer'],
-    75: ['deep_silo', 'zoo_tiger'],
+    75: ['deep_silo', 'zoo_tiger', 'hot_dog_stand'],
     76: ['fondue_pot'],
     77: ['watermelon'],
     78: ['expansion_15'],

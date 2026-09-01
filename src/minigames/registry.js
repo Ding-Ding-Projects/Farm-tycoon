@@ -8,6 +8,34 @@
 // The map is deliberately a bare literal of arrow functions rather than anything computed: a
 // dynamic specifier built from a variable cannot be statically checked, and the validator's
 // job is to await every one of these so a typo'd path fails npm test rather than a player's cake.
+//
+// ---------------------------------------------------------------------------------------
+// Verbs that were designed, measured and then CUT. Recorded so nobody rebuilds them.
+//
+//   test_set   - a testing step where guessing at 62% consistently beat actually testing, so the
+//                best strategy was to ignore the mechanic. Four attempts.
+//
+//   work_rush  - a hot dog stand lunch rush: more orders come good than you can plate, and the
+//                intended skill was choosing what to sacrifice. Five attempts, all failed, and
+//                the reason is worth keeping because it is a general trap rather than a tuning
+//                miss: WITH UNIFORM ITEM VALUE AND A HARD LIMIT ON ACTIONS, TRIAGE IS
+//                MATHEMATICALLY IRRELEVANT. Serving any N items scores identically, so the order
+//                cannot matter however tight the windows are. Tightening windows, clustering
+//                arrivals, correlating urgency with arrival time and finally giving orders
+//                different values all failed to make earliest-deadline reliably beat plain
+//                first-come-first-served; on several seeds the naive policy actually won.
+//
+//                Also recorded: the first comparison was against a STRAWMAN. The "first come,
+//                first served" driver picked the largest msLeft, which is "most slack left", not
+//                "waited longest". With uneven windows those are different policies, and the
+//                apparent win vanished once the model published a real waitedMs and the true
+//                policy was measured. Check what your losing driver is actually doing before
+//                believing the gap.
+//
+//                A rush verb can still work, but it needs the loss to depend on the ORDER rather
+//                than on the count: interacting orders, a shared resource, or a penalty that
+//                compounds. Uneven prices alone are not enough.
+// ---------------------------------------------------------------------------------------
 
 export const VERB_LOADERS = {
   press_cutter: () => import('./verbs/press_cutter.js'),

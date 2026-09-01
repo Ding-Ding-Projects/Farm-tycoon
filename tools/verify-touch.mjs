@@ -216,6 +216,50 @@ async function main() {
   })()`);
   check('a single finger still pans, unchanged by the pinch work', single.moved > 0.2, JSON.stringify(single));
 
+  // --- a dual finger keeps its side when it crosses the middle -----------------------------
+  //
+  // Worth stating precisely, because the first version of this check asserted the wrong thing and
+  // passed against both implementations. Two fingers sitting one per half ALREADY worked: each
+  // pointermove landed in its own half and set its own value, so the old position rule handled it
+  // fine. The case that actually differs is a finger CROSSING the midline mid-gesture. Under the
+  // position rule it silently starts driving the other side, clobbering the value the other
+  // finger is holding and freezing its own - a real defect for throw_shuttles and blend_notes,
+  // where the two values genuinely travel and can pass each other.
+  const dual = await cdp.ev(`(() => {
+    const host = document.createElement('div');
+    Object.assign(host.style, { position: 'fixed', left: '0px', top: '0px', width: '300px', height: '300px' });
+    document.body.appendChild(host);
+    return import('./src/minigames/input.js').then((m) => {
+      const inp = m.createInput('dual', host, {});
+      const fire = (type, id, x, y) => {
+        const ev = new PointerEvent(type, {
+          clientX: x, clientY: y, pointerId: id, pointerType: 'touch',
+          bubbles: true, cancelable: true,
+        });
+        (type === 'pointerdown' ? host : document).dispatchEvent(ev);
+      };
+      fire('pointerdown', 21, 60, 150);      // lands LEFT
+      fire('pointerdown', 22, 240, 60);      // lands RIGHT, held high
+      fire('pointermove', 22, 240, 60);      // right = 0.8, and it must stay there
+      const rightBefore = inp.read(16).right;
+      // Now walk the LEFT finger across the middle to the right-hand side, low down.
+      fire('pointermove', 21, 240, 270);
+      const after = inp.read(16);
+      fire('pointerup', 21, 240, 270);
+      fire('pointerup', 22, 240, 60);
+      inp.destroy();
+      host.remove();
+      window.__d = { rightBefore, rightAfter: after.right, leftAfter: after.left };
+      return 'done';
+    });
+  })()`);
+  await cdp.poll('!!window.__d');
+  const d = await cdp.ev('JSON.stringify(window.__d)');
+  const dd = JSON.parse(d);
+  check('a crossing finger keeps driving its own side', Math.abs(dd.leftAfter - 0.1) < 0.05, d);
+  check('and does not clobber the value the other finger is holding',
+    Math.abs(dd.rightAfter - dd.rightBefore) < 0.05, d);
+
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
 

@@ -429,7 +429,8 @@ export const BUILDINGS = {
     name: 'Popcorn Pot', unlockLevel: 9, cost: 750, size: [2, 2], kit: 'kit_popcorn_pot', minigame: 'pop_catch', queueSlots: 3,
     recipes: [
       { id: 'popcorn',          inputs: { corn: 2 },                time: 450,  xp: 3, unlockLevel: 9 },
-      { id: 'buttered_popcorn', inputs: { corn: 2, butter: 1 },     time: 1800, xp: 7, unlockLevel: 9 },
+      { id: 'buttered_popcorn', inputs: { corn: 2, butter: 1 },     time: 1800, xp: 7, unlockLevel: 9,
+        play: { stages: [{ verb: 'catch_kernels' }] } },
       { id: 'chili_popcorn',    inputs: { corn: 3, chili: 1 },      time: 3600, xp: 11, unlockLevel: 25 },
     ],
   },
@@ -533,7 +534,8 @@ export const BUILDINGS = {
     name: 'Oil Press', unlockLevel: 52, cost: 18000, size: [2, 2], kit: 'kit_oil_press', minigame: 'press_flow', queueSlots: 3,
     recipes: [
       { id: 'olive_oil',      inputs: { olive: 3 },                                   time: 2700,  xp: 22, unlockLevel: 55 },
-      { id: 'herb_oil',       inputs: { olive: 2, mint: 2 },                          time: 3600,  xp: 28, unlockLevel: 84 },
+      { id: 'herb_oil',       inputs: { olive: 2, mint: 2 },                          time: 3600,  xp: 28, unlockLevel: 84,
+        play: { stages: [{ verb: 'wind_press' }] } },
       { id: 'lavender_oil',   inputs: { lavender: 3, olive: 1 },                      time: 4500,  xp: 34, unlockLevel: 58 },
     ],
   },
@@ -1110,6 +1112,18 @@ export const VERBS = {
     purpose: 'An evenly crimped rim seals all the way round.',
     hint: 'Keep every gap the same. Your first two crimps decide what the rest must be.',
     stageClass: 'stage-brim', durationMs: 15000,
+  },
+  catch_kernels: {
+    name: 'Catch the Kernels', verbWord: 'catch', family: 'steer',
+    purpose: 'Every kernel caught is a kernel not swept off the floor.',
+    hint: 'Move the bowl under each kernel before it lands. They pop out anywhere.',
+    stageClass: 'stage-catch', durationMs: 15000,
+  },
+  wind_press: {
+    name: 'Wind the Press', verbWord: 'wind', family: 'rate',
+    purpose: 'Wound patiently, the mash gives up all its oil.',
+    hint: 'The screw only turns one way. Wind it up as the mash compacts - too hard too early cracks it.',
+    stageClass: 'stage-swirl', durationMs: 14000,
   },
 };
 export const QUALITY = {

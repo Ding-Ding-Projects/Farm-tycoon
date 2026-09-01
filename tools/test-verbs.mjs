@@ -251,6 +251,16 @@ const OPTIMAL = {
     const last = snap.placed[snap.placed.length - 1];
     return { padIndex: (last + 3) % snap.notches };
   },
+
+  // Interception rather than tracking: head for where the next kernel will land, not for a line.
+  catch_kernels: () => (snap) => ({
+    steer: snap.target < 0 ? 0 : Math.max(-1, Math.min(1, (snap.target - snap.bowl) * 8)),
+    throttle: 1, heldMs: 16,
+  }),
+
+  // Ratchet: ride just under the safe line, which RISES as the mash compacts. Winding straight
+  // to full cracks the press and scores zero.
+  wind_press: () => (snap) => ({ rate: Math.max(snap.turned, snap.safe - 0.01) }),
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

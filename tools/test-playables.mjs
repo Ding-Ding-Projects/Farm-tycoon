@@ -16,6 +16,7 @@ import * as production from '../src/production.js';
 import * as minigames from '../src/minigames.js';
 import * as economy from '../src/economy.js';
 import { BUILDINGS, FARM, QUALITY, qualityTier } from '../src/data.js';
+import { sellableItemIds } from '../src/newspaper.js';
 import { aggregate, weakestStage } from '../src/minigames/quality.js';
 
 let passed = 0;
@@ -365,6 +366,81 @@ test('sellValue honours a registered sellPriceMult provider', () => {
   const base = economy.sellValue('bread');
   economy.registerMultiplierEffect((kind) => (kind === 'sellPriceMult' ? 2 : 1));
   assert.equal(economy.sellValue('bread'), base * 2, 'the multiplier must actually reach the price');
+});
+
+// ---------------------------------------------------------------------------
+// The two release valves. Both exist because the gate is deliberate and a DEAD END is not.
+// ---------------------------------------------------------------------------
+
+test('every playable good is buyable from a neighbour, so a gated order can never hard-stall', () => {
+  // A playable item can ONLY be crafted by playing its game. If an order or a boat crate asks
+  // for one, the newspaper is the route that does not require playing. Narrowing that pool to
+  // exclude playable goods would strand exactly those requests, silently.
+  const pool = new Set(sellableItemIds());
+  const playable = [];
+  for (const def of Object.values(BUILDINGS)) {
+    for (const r of def.recipes) if (r.play) playable.push(r.id);
+  }
+  assert.ok(playable.length > 0, 'this test is meaningless if nothing is playable');
+  for (const id of playable) {
+    assert.ok(pool.has(id), `${id} is gated behind a minigame and cannot be bought either - dead end`);
+  }
+});
+
+test('discarding a jammed craft frees the slot and refunds half the inputs', () => {
+  const s = freshState();
+  const b = bakeryWithStock(s);
+  const recipe = BUILDINGS.bakery.recipes.find((r) => r.id === 'cookie');
+  production.enqueue(b.id, 'cookie');
+  const entry = s.production[0];
+  const wheatAfterEnqueue = s.silo.items.wheat;
+
+  const out = production.discardBatch(entry.cid);
+  assert.ok(out, 'a queued craft must be discardable');
+  assert.equal(s.production.length, 0, 'the slot must be freed');
+  assert.equal(s.silo.items.wheat, wheatAfterEnqueue + Math.floor(recipe.inputs.wheat / 2),
+    'exactly half the wheat, rounded down, comes back');
+});
+
+test('discarding refunds strictly less than it consumed, so it is never a free cancel', () => {
+  const s = freshState();
+  const b = bakeryWithStock(s);
+  const before = { wheat: s.silo.items.wheat, egg: s.barn.items.egg, sugar: s.barn.items.sugar };
+  production.enqueue(b.id, 'cookie');
+  production.discardBatch(s.production[0].cid);
+  const worseOff = s.silo.items.wheat < before.wheat || s.barn.items.egg < before.egg
+    || s.barn.items.sugar < before.sugar;
+  assert.ok(worseOff, 'queue-then-discard must cost something, or it dodges a bad roll for free');
+});
+
+test('a played craft can still be discarded, and an unknown cid is a safe no-op', () => {
+  const s = freshState();
+  const b = bakeryWithStock(s);
+  production.enqueue(b.id, 'cookie');
+  const entry = s.production[0];
+  forceReady(entry);
+  minigames.commitStage(entry, 1);
+  assert.ok(production.discardBatch(entry.cid), 'even a finished craft may be thrown out');
+  assert.equal(production.discardBatch('no_such_cid'), null, 'an unknown handle must not throw');
+});
+
+test('a discard into a full silo pays the refund out in coins rather than losing it', () => {
+  // The dialog promises half the ingredients back. A full container must not quietly turn that
+  // promise into nothing, so whatever will not fit is paid at sell value instead.
+  const s = freshState();
+  const b = bakeryWithStock(s);
+  production.enqueue(b.id, 'cookie');
+  const entry = s.production[0];
+
+  s.silo.capacity = 0;   // nowhere for the wheat to go
+  s.barn.capacity = 0;   // nor the egg or sugar
+  const coinsBefore = s.coins;
+  const out = production.discardBatch(entry.cid);
+
+  assert.ok(out, 'the discard must still happen');
+  assert.equal(s.production.length, 0, 'the slot is freed either way');
+  assert.ok(out.paidOut > 0, 'the un-refundable half must be paid, not silently dropped');
+  assert.equal(s.coins, coinsBefore + out.paidOut, 'and the coins must actually arrive');
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

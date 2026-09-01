@@ -211,6 +211,50 @@ export function applyMinigameBonus(buildingId, goodId, baseXp) {
   return { xp, bonusQty };
 }
 
+/**
+ * Throw out a queued craft, freeing its slot and refunding HALF its inputs, rounded down.
+ *
+ * This exists for one specific dead end. A playable craft can only be collected by playing its
+ * game, so a player who does not want to play three cakes could otherwise sit with three of the
+ * factory's slots occupied for ever. The gate is deliberate; a permanently bricked factory is
+ * not, and this is the release valve.
+ *
+ * Half back rather than all back, so it stays a loss rather than a free cancel: queueing a craft
+ * and discarding it must never be a way to store inputs or dodge a bad roll.
+ */
+export function discardBatch(cid) {
+  const idx = state.production.findIndex((p) => p.cid === cid);
+  if (idx === -1) return null;
+  const entry = state.production[idx];
+  const building = findBuilding(entry.objectId);
+  const def = building && BUILDINGS[building.type];
+  const recipe = def && def.recipes.find((r) => r.id === entry.recipeId);
+  if (!recipe) return null;
+
+  // Whatever will not fit is paid out as coins instead of vanishing. The UI promises half back,
+  // and a full silo must not quietly turn that promise into nothing: the same shortfall-to-coins
+  // rule collectBuilding already uses, for the same reason.
+  const refunded = {};
+  let paidOut = 0;
+  for (const [inputId, qty] of Object.entries(recipe.inputs || {})) {
+    const back = Math.floor(qty / 2);
+    if (back <= 0) continue;
+    const bucket = stockOf(inputId);
+    const room = isCrop(inputId) ? siloRoom() : barnRoom();
+    const give = Math.max(0, Math.min(back, room));
+    if (give > 0) {
+      bucket[inputId] = (bucket[inputId] || 0) + give;
+      refunded[inputId] = give;
+    }
+    const short = back - give;
+    if (short > 0) paidOut += economy.sellValue(inputId) * short;
+  }
+  if (paidOut > 0) economy.addCoins(Math.round(paidOut));
+
+  state.production.splice(idx, 1);
+  return { recipeId: entry.recipeId, refunded, paidOut: Math.round(paidOut) };
+}
+
 /** Collect a finished queue slot's output into the barn. */
 export function collectBuilding(buildingId, now = Date.now()) {
   // findIndex SKIPS a ready-but-unplayed entry rather than stopping at it, so an unplayed cake

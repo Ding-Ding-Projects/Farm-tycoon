@@ -24,8 +24,15 @@ function barnRoom() {
   return Math.max(0, state.barn.capacity - used);
 }
 
-/** Every sellable item id (crops, goods, materials) that could plausibly show up as a listing. */
-function sellableItemIds() {
+/**
+ * Every sellable item id (crops, goods, materials) that could plausibly show up as a listing.
+ *
+ * EXPORTED so the supply-valve Chut in tools/test-playables.mjs can prove it: a PLAYABLE good
+ * can only be crafted by playing its game, so if an order or a boat crate asks for one, a
+ * neighbour's shop is the route that does not require playing. Narrowing this pool to exclude
+ * playable goods would strand exactly those requests, and nothing else in the game would notice.
+ */
+export function sellableItemIds() {
   return [
     ...Object.keys(CROPS || {}),
     ...Object.keys(GOODS || {}),

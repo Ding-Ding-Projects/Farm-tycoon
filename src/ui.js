@@ -1660,6 +1660,23 @@ function renderQueue(container, entries, recipeOf, collectFn) {
       // A PLAYABLE craft: the prep timer is done, but the item only exists once its game has
       // been played through. Nothing expires while it waits here.
       card.appendChild(button(playLabel(entry), () => openStagePlayer(entry)));
+      // The release valve. A playable craft can only be collected by playing it, so without a
+      // way out a player who does not fancy three cakes would hold three slots for ever.
+      card.appendChild(button('Throw it out', () => {
+        const recipe = itemName(entry.recipeId);
+        openModal(`
+          <h3>Throw out the ${recipe}?</h3>
+          <p>The slot is freed and half the ingredients come back, rounded down. Anything that will not fit is paid out in coins. The rest is lost.</p>
+          <div class="minigame-actions">
+            <button class="btn quiet" data-close>Keep it</button>
+            <button class="btn danger" id="confirm-discard">Throw it out</button>
+          </div>`);
+        document.getElementById('confirm-discard')?.addEventListener('click', () => {
+          const out = production.discardBatch(entry.cid);
+          closeModal();
+          if (out) { audio.error(); toast(`Threw out the ${recipe}.`, 'info'); refreshPanel(); }
+        });
+      }, { className: 'quiet' }));
     } else if (ready) {
       card.appendChild(button('Collect', () => {
         const result = collectFn(entry, index);

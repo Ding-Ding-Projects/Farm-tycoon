@@ -144,11 +144,18 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       is `kit_paper_mill` at **-35 coins** (raw 555, sells 520); nothing is profitable even when
       every input is bought at the market's 1.4x. The original ~9,800 scenario is re-run by name.
       Nothing is underwater on direct inputs or on fully expanded raw inputs either.
-- [ ] **No panel in the game has a search field.** With 44 cards in the Bake Book, 43 in
-      Achievements and a barn that grows past a hundred rows, every list is scanned by eye. Adding
-      one to a single panel would be worse than none, because a filter that exists in one place
-      and not the next teaches a player the pattern is unreliable - so this is one job across
-      every panel or it is not worth starting.
+- [x] **Every panel has a search field now, from one wiring line.** `src/panelsearch.js` is
+      attached at the end of `renderPanelContent`, so it filters the cards a panel actually
+      rendered rather than the data behind them - which means every panel gets it, including ones
+      nobody has written yet, and there is one implementation to keep correct instead of
+      twenty-nine. Plain text is the default and matches literally; a `.*` toggle switches to a
+      real regular expression with a token palette anchored beside the field, a case toggle, live
+      validation and a running count. A half-typed pattern matches everything rather than nothing,
+      because a person mid-keystroke has not made a mistake yet.
+
+      It appears on any panel holding six or more cards, which is a RULE rather than a per-panel
+      judgement: below six the whole list is on screen and there is nothing to find. Verified live
+      across 22 panels - 11 above the threshold have it, 11 below do not.
 
 - [ ] **The coins-per-second spread is 12x, and the bottom of the table is not worth crafting.**
       Surfaced by `tools/test-economy.mjs`, which prints it on every run: the median recipe earns

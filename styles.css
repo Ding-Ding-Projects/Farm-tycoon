@@ -708,6 +708,45 @@ a:hover { color: var(--color-primary); }
 .stage-dies .die-lane.empty { opacity: 0.45; text-decoration: line-through; }
 .stage-dies .status { font-weight: 800; font-size: 13px; color: #6d3f14; }
 
+/* ---------- Panel search ----------
+   Attached to every panel with enough in it to be worth searching. The bar wraps rather than
+   scrolls, because on a phone the field and its three toggles do not fit on one line and a
+   sideways-scrolling search box is a search box nobody finds the end of. */
+.panel-search-wrap { margin: 0 0 var(--sp-3); }
+.panel-search { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.panel-search-input {
+  flex: 1 1 160px; min-width: 0; padding: 9px 12px; font: inherit; font-size: 14px; font-weight: 700;
+  color: var(--color-ink); background: rgba(255, 250, 234, 0.95); border: 3px solid var(--color-outline);
+  border-radius: var(--radius-pill);
+}
+.panel-search-input::placeholder { color: var(--color-ink-soft); font-weight: 700; }
+.panel-search-toggle {
+  flex: 0 0 auto; min-width: 40px; min-height: 40px; padding: 6px 10px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 800; color: var(--color-ink);
+  background: rgba(255, 250, 234, 0.9); border: 3px solid var(--color-outline); border-radius: 12px;
+}
+/* On-state is not colour alone: the border thickens and the weight changes, so it survives a
+   contrast theme and a colour-blind reader. */
+.panel-search-toggle.on { background: var(--color-primary); border-width: 4px; }
+.panel-search-toggle:focus-visible, .panel-search-input:focus-visible {
+  outline: 3px solid var(--color-primary-deep); outline-offset: 2px;
+}
+.panel-search-count { flex: 0 0 auto; font-size: 12px; font-weight: 800; color: var(--color-ink-soft); }
+/* An unfinished pattern is a normal state, not an error state, so it is marked rather than alarmed:
+   the field is outlined and the count line says what is wrong in words. */
+.panel-search.invalid .panel-search-input { border-color: #c2622c; }
+.panel-search.invalid .panel-search-count { color: #a8481c; }
+
+.panel-search-palette { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-2); }
+.panel-search-palette .token {
+  min-width: 38px; min-height: 34px; padding: 4px 8px; cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 700;
+  color: var(--color-ink); background: rgba(255, 250, 234, 0.9);
+  border: 3px solid var(--color-outline); border-radius: 10px;
+}
+.panel-search-palette .token:focus-visible { outline: 3px solid var(--color-primary-deep); outline-offset: 2px; }
+.panel-search-empty { margin: var(--sp-3) 0 0; }
+
 /* ---------- Buttons ---------- */
 .btn {
   font-family: var(--font-display); font-weight: 800; font-size: 16px; cursor: pointer;

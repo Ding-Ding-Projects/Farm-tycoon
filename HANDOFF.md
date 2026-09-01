@@ -341,6 +341,12 @@ Two items that were open problems in the previous version of this document:
 
 1. The GitHub Pages site still shows neither the screenshots nor either recording, although both
    recordings are committed and linked from the README.
+
+   Worth knowing before touching the UI: `panelsearch.attach(container)` at the end of
+   `renderPanelContent` is the ONLY thing giving every panel a search bar. It is one line, and
+   deleting or commenting it removes search from twenty-nine panels at once with nothing on screen
+   to say so, which is why `tools/test-panelsearch.mjs` anchors it to the start of a line rather
+   than checking for the substring - a commented-out call still contains the text.
 2. The coins-per-second balance gap (see `ROADMAP.md`): nothing is broken, but a recipe nobody
    would ever choose is dead content, and six of them earn under a hundredth of a coin a second.
 3. Phase 6 integration — per-family audio, a Bake Book from `state.minigames.best`, and

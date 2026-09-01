@@ -29,6 +29,7 @@ import * as collections from './collections.js';
 import * as neighbours from './neighbours.js';
 import * as decorate from './decorate.js';
 import * as bakebook from './bakebook.js';
+import * as panelsearch from './panelsearch.js';
 import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
 import * as workshop from './workshop.js';
@@ -2087,6 +2088,13 @@ function renderPanelContent(panelId, ctx = null) {
       renderComingSoon(container, struct?.name || PANEL_TITLES[panelId] || panelId);
     }
   }
+
+  // One line, every panel, including ones nobody has written yet. Attaching the search here rather
+  // than inside each render function is the whole design: twenty-nine copies of a filter would be
+  // twenty-nine chances to diverge, and the thirtieth panel would ship without one because its
+  // author did not know to add it. panelsearch decides for itself whether there is enough on
+  // screen to be worth searching, so a two-card panel is not given a box that finds nothing.
+  panelsearch.attach(container);
 }
 
 // ---------------------------------------------------------------------------

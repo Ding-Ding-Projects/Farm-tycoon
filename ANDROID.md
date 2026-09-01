@@ -19,6 +19,10 @@ has been built, what has deliberately **not** been done, and the exact steps and
 | Per-finger sides for the `dual` family, so two hands work | done, and verified |
 | `touch-action` layering so the WebView cannot cancel a verb mid-gesture | done, and verified |
 | Save on `pagehide` and `visibilitychange`, not just `beforeunload` | done, and verified |
+| Native Android project generated (`npx cap add android`) | done |
+| `webDir` staged to `www/` instead of the repository root | done, 1.8 MB instead of 639 MB |
+| One-command build, `tools/build-android.mjs` | done |
+| **Debug APK built, installed and PLAYED on an emulator** | done, with device screenshots |
 | Native `android/` project generated | **not done** (needs the Android SDK) |
 | Release keystore created | **not done** (must be created by the repository owner) |
 | APK built | **not done** |
@@ -101,6 +105,12 @@ apps" enabled.
 - [ ] `apksigner verify --print-certs` reports the APK as signed
 - [ ] The app installs and launches
 - [ ] `chrome://inspect` shows zero console errors on boot
+- [x] **The app launches on a real Android 14 emulator with no errors.** Built as a debug APK,
+      installed with `adb install`, launched to `com.farmtycoon.game/.MainActivity`. Capacitor
+      serves every ES module over `https://localhost/src/...` and the game boots clean.
+- [x] **A real touch event plants a crop.** `adb shell input tap` on a field plot consumed a seed
+      (6/50 to 5/50) and advanced the tutorial to the growth-timer step. Screenshots captured
+      straight off the device with `adb exec-out screencap`.
 - [ ] The world renders, and pans and zooms by touch
 - [ ] Pinch-zoom and two-finger pan behave *on real glass*. These now exist and are covered by
       `tools/verify-touch.mjs`, which drives genuine multi-pointer `PointerEvent`s through
@@ -147,6 +157,19 @@ It is NOT a device run. It cannot show finger occlusion, palm rejection, or how 
 WebView gesture interception has since been addressed directly rather than left to chance (see the
 struck-through `drag` item below), and the `touch-action` layering that does it is asserted as
 computed style, but only a real device proves the WebView honours it. Those stay on the list.
+
+## Found by actually running it on a device
+
+Two layout defects that no desktop test could have shown, because `env(safe-area-inset-*)` is
+zero everywhere except on real device chrome:
+
+- **The HUD sat under the status bar.** `.hud-top` had a flat `height: 76px` with no top inset, so
+  the level badge and the coin counters were half hidden behind the clock. Now
+  `calc(76px + env(safe-area-inset-top))` with matching padding.
+- **The dock lost its own bottom padding on every device without a gesture bar.** The longhand
+  `padding-bottom: env(safe-area-inset-bottom, 0px)` overrides the shorthand `padding: 10px 13px`
+  outright, so a zero inset meant zero padding rather than the intended 10px. Now
+  `calc(10px + env(...))`.
 
 ## Known risks worth checking first
 

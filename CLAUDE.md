@@ -94,6 +94,7 @@ world for whoever picks this up next (full detail and verification evidence in
 | `src/render/renderer.js` | camera, iso tile math, frame drawing, DPR scaling |
 | `src/render/sprites.js` | ALL vector art draw functions (no image assets, ever) |
 | `src/render/effects.js` | particles: coin bursts, XP floaters, sparkles |
+| `src/motion.js` | the one reduced-motion answer for the whole game (canvas included) |
 | `src/ui.js` | all DOM: HUD, dock, sheet panels, radial menu, toasts, modals |
 | `src/input.js` | pointer handling: pick/pan/pinch-zoom/drag-plant, drives the placement ghost |
 | `src/placement.js` | the placement ghost: choosing WHERE a building goes, and moving placed ones |

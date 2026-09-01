@@ -126,6 +126,23 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 
 ## Open items
 
+- [x] **Reduced motion reaches the canvas, not just the stylesheet.** `styles.css` had honoured
+      `prefers-reduced-motion` from early on with a blanket rule flattening every CSS animation
+      and transition, which made it look handled. It was not: the world is a canvas, so the
+      machinery on every working factory, the coin bursts, the XP floaters, the sparkles and the
+      camera easing are drawn frame by frame in JavaScript where no stylesheet can reach. Only the
+      minigame shell read the preference, and only for itself.
+
+      `src/motion.js` is now the one answer for the whole game, with a `matchMedia` listener so
+      turning the setting on mid-session takes effect immediately rather than at the next reload -
+      which is exactly when somebody reaches for it. Particles are suppressed at the SPAWNER, the
+      camera snaps instead of gliding, and building animation freezes at one instant.
+
+      Nothing loses information: `working` stays true and only the clock stops, so a busy factory
+      keeps its lit lantern, orange firebox and four-puff plume against an idle one's single wisp.
+      That is asserted, not assumed - forcing `working` false at `drawBuilding` turns the guard red.
+
+
 - [x] **Visible focus, everywhere.** The whole game had FOUR focus rules and three of them were on
       the panel search, added days after everything else - so every dock button, card, menu item
       and all 63 merge cells relied on whatever ring the browser draws by default. On an interface

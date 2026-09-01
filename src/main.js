@@ -8,6 +8,7 @@
 //   window.__farmDebug = { timeSkip(ms), state, give(itemId, qty) }
 
 import * as state from './state.js';
+import * as motion from './motion.js';
 import * as renderer from './render/renderer.js';
 import * as ui from './ui.js';
 import * as input from './input.js';
@@ -247,6 +248,7 @@ function boot() {
   renderer.cameraTarget.y = renderer.camera.y;
   renderer.cameraTarget.zoom = renderer.camera.zoom;
 
+  motion.init();   // must run before the first frame, so nothing animates once and then stops
   ui.init();
   input.init(canvas);
   tutorial.init();

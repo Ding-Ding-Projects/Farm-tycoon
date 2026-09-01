@@ -29,6 +29,7 @@
 import { FARM } from '../data.js';
 import * as sprites from './sprites.js';
 import * as effects from './effects.js';
+import * as motion from '../motion.js';
 
 // Base tile size in px at zoom 1 (see design/handoff/SPRITE-NOTES.md §8: T = 104).
 export const TILE_BASE = 104;
@@ -352,7 +353,12 @@ const KIND_DISPATCH = {
   // `now` and `working` are what make an animated building possible at all: drawBuilding has no
   // clock of its own, so a frame that forgets to pass them renders a permanently idle factory.
   building: (ctx, x, y, size, obj, now) => sprites.drawBuilding(ctx, x, y, size, obj.type, {
-    derelict: !!obj.derelict, working: !!obj.working, now,
+    // `working` stays TRUE under reduced motion; only the clock freezes. That distinction is the
+    // whole point: a state must never be signalled by motion alone, any more than by colour alone.
+    // drawBuilding already carries static working signals - the lantern is lit, the firebox is
+    // orange, and the chimney shows a four-puff plume rather than the single resting wisp an idle
+    // one gets - so a frozen factory still reads as busy from across the farm.
+    derelict: !!obj.derelict, working: !!obj.working, now: motion.phase(now),
   }),
   structure: (ctx, x, y, size, obj) => sprites.drawStructure(ctx, obj.type, x, y, size, { derelict: !!obj.derelict }),
   forage: (ctx, x, y, size, obj) => {
@@ -497,7 +503,10 @@ export function drawFrame(now, world = {}) {
  * bare clamp used to be the last word on where the camera could go, permanently.
  */
 export function tickCamera(dt) {
-  const t = Math.min(1, (dt ?? 1 / 60) * EASE);
+  // motion.ease() returns 1 under prefers-reduced-motion, which turns the glide into a snap. The
+  // player still arrives exactly where they asked to; they just do not travel there. A camera that
+  // eases is one of the largest sustained movements in the game and no stylesheet can reach it.
+  const t = motion.ease(Math.min(1, (dt ?? 1 / 60) * EASE));
   camera.x += (cameraTarget.x - camera.x) * t;
   camera.y += (cameraTarget.y - camera.y) * t;
   cameraTarget.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cameraTarget.zoom));

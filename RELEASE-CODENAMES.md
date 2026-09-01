@@ -38,3 +38,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `959ecc62c638` | Steamed Beef Tripe with Chu Hou Sauce · 柱侯金錢肚 | `chu-hou-beef-tripe` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0030-chu-hou-beef-tripe.png |
 | 0.1.0 | `2a0a15ad5419` | Steamed Curry Cuttlefish · 咖喱蒸魷魚 | `curry-cuttlefish` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0031-curry-cuttlefish.png |
 | 0.1.0 | `48cbc1dd05bc` | Steamed Fish Maw with Oyster Sauce · 蠔皇蒸花膠 | `oyster-sauce-fish-maw` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0032-oyster-sauce-fish-maw.png |
+| 0.1.0 | `ec07cc7d78e0` | Steamed Tofu Stuffed with Shrimp · 百花釀豆腐 | `shrimp-stuffed-tofu` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0033-shrimp-stuffed-tofu.png |

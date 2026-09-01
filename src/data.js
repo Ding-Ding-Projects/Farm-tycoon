@@ -273,6 +273,10 @@ export const GOODS = {
   plain_yogurt:     { icon: '🥛', name: 'Plain Yogurt',         sellPrice: 1350 },
   berry_yogurt:     { icon: '🫐', name: 'Berry Yogurt',         sellPrice: 2000 },
   mint_yogurt:      { icon: '🍃', name: 'Mint Yogurt',          sellPrice: 4310 },
+  // lure_workbench
+  spinner_lure:     { icon: '🎣', name: 'Spinner Lure',         sellPrice: 420 },
+  feather_fly:      { icon: '🪶', name: 'Feather Fly',          sellPrice: 660 },
+  deep_rig:         { icon: '🪝', name: 'Deep Rig',             sellPrice: 1180 },
   // honey_extractor
   beeswax:          { icon: '🕯️', name: 'Beeswax',              sellPrice: 640 },
   honeycomb:        { icon: '🍯', name: 'Honeycomb',            sellPrice: 980 },
@@ -297,6 +301,7 @@ export const GOODS = {
   lamb_skewer:      { icon: '🍢', name: 'Lamb Skewer',          sellPrice: 820 },
   alpaca_scarf:     { icon: '🧣', name: 'Alpaca Scarf',         sellPrice: 420 },
   // kits for the ten buildings above
+  kit_lure_workbench:       { icon: '🎣', name: 'Lure Workbench Kit',   sellPrice: 430 },
   kit_honey_extractor:      { icon: '🐝', name: 'Honey Extractor Kit',  sellPrice: 560 },
   kit_milkshake_bar:        { icon: '🥤', name: 'Milkshake Bar Kit',     sellPrice: 840 },
   kit_omelet_station:       { icon: '🍳', name: 'Omelet Station Kit',    sellPrice: 800 },
@@ -575,6 +580,15 @@ export const BUILDINGS = {
       { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36, unlockLevel: 62 },
       { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84,
         play: { stages: [{ verb: 'arc_pour' }] } },
+    ],
+  },
+  lure_workbench: {
+    name: 'Lure Workbench', unlockLevel: 28, cost: 9500, size: [2, 2], kit: 'kit_lure_workbench', minigame: 'hook_timing', queueSlots: 3,
+    recipes: [
+      { id: 'spinner_lure',   inputs: { wire: 2, plank: 1 },                           time: 1800,  xp: 20, unlockLevel: 28 },
+      { id: 'feather_fly',    inputs: { wire: 1, wool: 2, cotton: 1 },                 time: 2700,  xp: 28, unlockLevel: 28 },
+      { id: 'deep_rig',       inputs: { wire: 3, rope: 2, plank: 1 },                  time: 5400,  xp: 48, unlockLevel: 32,
+        play: { stages: [{ verb: 'set_hook' }] } },
     ],
   },
   honey_extractor: {
@@ -894,6 +908,7 @@ export const BUILDINGS = {
       { id: 'kit_omelet_station',     inputs: { panel: 6, glazing: 4, fitting: 4 },           time: 45200, xp: 128, unlockLevel: 21, sink: true },
       { id: 'kit_milkshake_bar',      inputs: { panel: 6, glazing: 5, fitting: 4 },           time: 46800, xp: 132, unlockLevel: 21, sink: true },
       { id: 'kit_honey_extractor',    inputs: { panel: 4, glazing: 2, fitting: 3 },           time: 33600, xp: 96,  unlockLevel: 21, sink: true },
+      { id: 'kit_lure_workbench',     inputs: { panel: 3, glazing: 2, fitting: 3 },           time: 30000, xp: 88,  unlockLevel: 21, sink: true },
       { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
       { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
       { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
@@ -937,6 +952,7 @@ export const MINIGAMES = {
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
   press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
   steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  hook_timing:     { name: 'Set the Hook',       building: 'lure_workbench',         effect: 'hookTiming',         cap: 0.25, purpose: 'Two threads, one instant. A hook set one thread at a time pulls straight out.' },
   comb_nerve:      { name: 'Work the Frames',    building: 'honey_extractor',        effect: 'combNerve',          cap: 0.25, purpose: 'Every frame you pull is more honey and more risk. Knowing when to stop is the whole job.' },
   peek_judge:      { name: 'Peek and Pour',      building: 'milkshake_bar',          effect: 'pourJudgement',      cap: 0.25, purpose: 'A steel tin tells you nothing until you tip it, and tipping it costs you shake.' },
   pan_ride:        { name: 'Ride the Heat',      building: 'omelet_station',         effect: 'panControl',         cap: 0.25, purpose: 'One pan, one temperature. Cook near what it is already at and the service flies.' },
@@ -978,7 +994,7 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
-  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl', 'pourJudgement', 'combNerve',
+  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl', 'pourJudgement', 'combNerve', 'hookTiming',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1226,6 +1242,12 @@ export const VERBS = {
     purpose: 'A seam that carries through holds the garment together.',
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
+  },
+  set_hook: {
+    name: 'Snap the Hook', verbWord: 'snap', family: 'dual',
+    purpose: 'A hook set one thread at a time pulls straight back out.',
+    hint: 'Both threads must come taut in the SAME instant. Pulling one and then the other never sets it, however hard you pull.',
+    stageClass: 'stage-dual', durationMs: 15000,
   },
   press_luck: {
     name: 'Work the Frames', verbWord: 'work', family: 'release',
@@ -1504,7 +1526,7 @@ export const LEVELS = {
     25: ['chili', 'expansion_4'],
     26: ['candy_machine'],
     27: ['duck'],
-    28: ['expansion_5', 'airport', 'taco_kitchen'],
+    28: ['expansion_5', 'airport', 'taco_kitchen', 'lure_workbench'],
     29: ['coffee', 'ice_cream_maker'],
     30: ['coffee_kiosk'],
     31: ['expansion_6'],

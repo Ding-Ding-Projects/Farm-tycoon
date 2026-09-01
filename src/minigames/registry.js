@@ -92,6 +92,7 @@ export const VERB_LOADERS = {
   ride_heat: () => import('./verbs/ride_heat.js'),
   peek_pour: () => import('./verbs/peek_pour.js'),
   press_luck: () => import('./verbs/press_luck.js'),
+  set_hook: () => import('./verbs/set_hook.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

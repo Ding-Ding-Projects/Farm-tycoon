@@ -303,6 +303,16 @@ const OPTIMAL = {
   // Judgement, not dexterity: keep pulling while the comb is holding, bank the moment the creak
   // says it is at its limit. Greedy play shatters and scores 0.000 on every seed; stopping early
   // banks proportionally less. The dedicated guard below pins that gradient.
+  // Simultaneity: both threads rise together and cross taut on the same frame. Pulling one and
+  // then the other is the natural instinct and scores 0.000, which the dedicated guard pins.
+  set_hook: () => {
+    let pull = 0;
+    return (snap) => {
+      if (snap.threading) { pull = 0; return { left: 0, right: 0 }; }
+      pull = Math.min(1, pull + 0.1);
+      return { left: pull, right: pull };
+    };
+  },
   press_luck: () => (snap) => ({ held: snap.creak !== 'straining' }),
   peek_pour: () => {
     let phase = 'fill';
@@ -668,6 +678,65 @@ await testAsync('press_luck: nerve is rewarded in order, and greed loses everyth
       + `>= timid ${one.toFixed(3)}. If any two collapse together there is no decision left`);
     assert.ok(one > 0,
       `seed ${seed}: stopping at the first frame should still bank something, got ${one.toFixed(3)}`);
+  }
+});
+
+// ---------------------------------------------------------------------------------------
+// set_hook: simultaneity, pinned.
+//
+// The generic sweep proves the verb is winnable and beats idling. The claim it exists for is
+// narrower: that pulling the two threads ONE AFTER THE OTHER cannot work, however hard either is
+// pulled. That is the natural instinct and the whole reason the verb is not just another dual
+// game, so it gets asserted directly rather than trusted to a header comment.
+//
+// The jammed case is here too. Holding both threads permanently taut and waiting is the obvious
+// way to cheat a coincidence check, and it must not pay: only rising edges count.
+// ---------------------------------------------------------------------------------------
+await testAsync('set_hook: pulling one thread then the other never sets it', async () => {
+  const mod = await VERB_LOADERS.set_hook();
+
+  const play = (seed, decide) => {
+    const g = mod.create(seed, {});
+    let t = 0;
+    while (!g.done() && t < 200000) { g.step(16, decide(g.snapshot())); t += 16; }
+    return g.score();
+  };
+
+  // Both threads rise together and cross taut on the same frame.
+  const together = () => {
+    let pull = 0;
+    return (snap) => {
+      if (snap.threading) { pull = 0; return { left: 0, right: 0 }; }
+      pull = Math.min(1, pull + 0.1);
+      return { left: pull, right: pull };
+    };
+  };
+  // The instinct: pull the left taut, then a clear half second later pull the right.
+  const oneThenOther = () => {
+    let frames = 0;
+    return (snap) => {
+      if (snap.threading) { frames = 0; return { left: 0, right: 0 }; }
+      frames += 1;
+      return { left: frames > 6 ? 1 : 0, right: frames > 40 ? 1 : 0 };
+    };
+  };
+  // Jam both taut and hold. A coincidence check that counts levels rather than rising edges
+  // would score this perfectly, which is precisely the mistake worth guarding.
+  const jammed = () => () => ({ left: 1, right: 1 });
+
+  for (const seed of [1, 42, 555, 9001, 31337, 777]) {
+    const both = play(seed, together());
+    const apart = play(seed, oneThenOther());
+    const held = play(seed, jammed());
+
+    assert.ok(both >= 0.9,
+      `seed ${seed}: crossing taut together should set every hook, got ${both.toFixed(3)}`);
+    assert.equal(apart, 0,
+      `seed ${seed}: pulling one thread and then the other must set NOTHING, got ${apart.toFixed(3)} - `
+      + 'if sequential play scores, the verb is not about simultaneity at all');
+    assert.ok(both > held + 0.5,
+      `seed ${seed}: jamming both taut (${held.toFixed(3)}) must not approach playing it `
+      + `(${both.toFixed(3)}) - only rising edges may count, or holding beats timing`);
   }
 });
 

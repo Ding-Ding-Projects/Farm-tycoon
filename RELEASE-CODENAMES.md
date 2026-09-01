@@ -36,3 +36,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `5cb2fc955f10` | Satay Chicken Feet · 沙嗲蒸鳳爪 | `satay-chicken-feet` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0028-satay-chicken-feet.png |
 | 0.1.0 | `f2e99c1e46ba` | Steamed Beef Tripe with Ginger and Scallion · 薑蔥牛柏葉 | `ginger-scallion-beef-tripe` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0029-ginger-scallion-beef-tripe.png |
 | 0.1.0 | `959ecc62c638` | Steamed Beef Tripe with Chu Hou Sauce · 柱侯金錢肚 | `chu-hou-beef-tripe` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0030-chu-hou-beef-tripe.png |
+| 0.1.0 | `2a0a15ad5419` | Steamed Curry Cuttlefish · 咖喱蒸魷魚 | `curry-cuttlefish` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0031-curry-cuttlefish.png |

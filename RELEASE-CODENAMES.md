@@ -30,3 +30,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `b2b05e55694f` | Dried Tangerine Peel Beef Balls · 陳皮牛肉球 | `tangerine-peel-beef-balls` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0022-tangerine-peel-beef-balls.png |
 | 0.1.0 | `7edfa26833f4` | Watercress Beef Balls · 西洋菜牛肉球 | `watercress-beef-balls` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0023-watercress-beef-balls.png |
 | 0.1.0 | `c767260e2ca0` | Steamed Pork Ribs with Black Bean · 豉汁蒸排骨 | `black-bean-pork-ribs` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0024-black-bean-pork-ribs.png |
+| 0.1.0 | `c8da1fbb2a5f` | Steamed Pork Ribs with Garlic · 蒜香蒸排骨 | `garlic-pork-ribs` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0025-garlic-pork-ribs.png |

@@ -19,3 +19,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `05fb31fcccc5` | Classic Siu Mai · 燒賣 | `classic-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0011-classic-siu-mai.png |
 | 0.1.0 | `1c117c57bcf0` | Crab Roe Siu Mai · 蟹籽燒賣 | `crab-roe-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0012-crab-roe-siu-mai.png |
 | 0.1.0 | `556fe8f6e653` | Quail Egg Siu Mai · 鵪鶉蛋燒賣 | `quail-egg-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0013-quail-egg-siu-mai.png |
+| 0.1.0 | `a7ebd77e71d3` | Scallop Siu Mai · 帶子燒賣 | `scallop-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0014-scallop-siu-mai.png |

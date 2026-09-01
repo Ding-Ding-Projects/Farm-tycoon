@@ -20,6 +20,10 @@ export const VERB_LOADERS = {
   tie_bouquet: () => import('./verbs/tie_bouquet.js'),
   sort_chillies: () => import('./verbs/sort_chillies.js'),
   season_pinch: () => import('./verbs/season_pinch.js'),
+  cast_ingot: () => import('./verbs/cast_ingot.js'),
+  throw_shuttles: () => import('./verbs/throw_shuttles.js'),
+  guide_dough: () => import('./verbs/guide_dough.js'),
+  lay_slices: () => import('./verbs/lay_slices.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

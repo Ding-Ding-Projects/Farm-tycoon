@@ -113,6 +113,39 @@ const OPTIMAL = {
       return { charge, fired: false };
     };
   },
+
+  cast_ingot: () => {
+    // Aim needs BOTH halves: build power to the asked depth while already pointed at the
+    // channel, then release. Power builds at input.js's own rate (dt / 1100).
+    let power = 0;
+    return (snap) => {
+      if (power >= snap.wantDepth) {
+        const out = { angle: snap.wantAngle, power, fired: true };
+        power = 0;
+        return out;
+      }
+      power = Math.min(1, power + 16 / 1100);
+      return { angle: snap.wantAngle, power, fired: false };
+    };
+  },
+
+  throw_shuttles: () => (snap) => ({ left: snap.wantLeft, right: snap.wantRight }),
+
+  guide_dough: () => (snap) => {
+    // Steer toward the lane centre and keep the throttle down. Proportional rather than
+    // bang-bang, because the sheet carries momentum and overcorrecting oscillates.
+    const err = snap.centre - snap.pos;
+    return { steer: Math.max(-1, Math.min(1, err * 3)), throttle: 1 };
+  },
+
+  lay_slices: () => {
+    // Carry one slice per frame to the plate it belongs on, working left to right.
+    return (snap) => {
+      const i = snap.placed.findIndex((p) => p === -1);
+      if (i === -1) return { grabbed: -1, dropOn: -1, dropped: false };
+      return { grabbed: i, dropOn: snap.belongs[i], dropped: true };
+    };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

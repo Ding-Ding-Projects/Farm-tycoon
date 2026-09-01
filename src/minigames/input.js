@@ -13,7 +13,23 @@
 //   read()    -> the family's shape for this frame; consumes one-shot events (taps, fires)
 //   destroy() -> removes every listener it added; safe to call twice
 
-const FAMILIES = ['path', 'rhythm', 'sustain', 'balance', 'route', 'sequence', 'release', 'rate'];
+// The twelve grammars. Each is a genuinely different way a hand moves, and that is the real
+// ceiling on how many DISTINCT games can exist: two verbs inside one family can differ, but
+// eventually they start to rhyme. Adding a family raises the ceiling instead of grinding against
+// it, and it is deliberately more work than adding a verb, because it should be.
+//
+//   path      a point you move             rhythm    when you tap
+//   sustain   how long you hold            balance   a point you keep centred
+//   route     which of N you pick          sequence  which pad, in order
+//   release   how big, then let go         rate      how far open, continuously
+//   aim       direction AND power, committed together as one shot
+//   dual      two independent values held at once, one per side
+//   steer     a moving thing kept on course while you keep it going
+//   drag      pick a thing up, carry it, set it down somewhere
+const FAMILIES = [
+  'path', 'rhythm', 'sustain', 'balance', 'route', 'sequence', 'release', 'rate',
+  'aim', 'dual', 'steer', 'drag',
+];
 
 export function isFamily(name) { return FAMILIES.includes(name); }
 export function families() { return FAMILIES.slice(); }
@@ -47,6 +63,14 @@ export function createInput(family, host, opts = {}) {
   let charge = 0, fired = false;
   let rate = 0;
   let keyCursorX = 0.5, keyCursorY = 0.5;
+  // aim: a heading plus a power that builds while held, both committed on release.
+  let aimAngle = 0, aimPower = 0, aimFired = false;
+  // dual: two independent values, one per side. Pointer picks a side by x, keys split Q/A and P/L.
+  let leftV = 0.5, rightV = 0.5;
+  // steer: a heading you correct while a throttle is held.
+  let heading = 0, throttle = 0;
+  // drag: carry one thing from a source to a destination.
+  let grabbed = -1, dropOn = -1, dropped = false;
 
   host.tabIndex = 0; // focusable, so the keyboard path works without a mouse ever being used
 
@@ -64,6 +88,12 @@ export function createInput(family, host, opts = {}) {
       if (pad) padIndex = Number(pad.dataset.pad);
     }
     if (family === 'route') lane = Math.min(lanes - 1, Math.floor(p.x * lanes));
+    if (family === 'aim') { aimPower = 0; aimAngle = Math.atan2(p.y - 0.5, p.x - 0.5); }
+    if (family === 'steer') throttle = 1;
+    if (family === 'drag') {
+      const src = ev.target && ev.target.closest && ev.target.closest('[data-grab]');
+      if (src) grabbed = Number(src.dataset.grab);
+    }
     host.focus();
     ev.preventDefault();
   });
@@ -72,11 +102,21 @@ export function createInput(family, host, opts = {}) {
     const p = localPoint(host, ev);
     x = p.x; y = p.y;
     if (family === 'rate') rate = 1 - p.y;
+    if (family === 'aim' && down) aimAngle = Math.atan2(p.y - 0.5, p.x - 0.5);
+    if (family === 'steer') heading = (p.x - 0.5) * 2;
+    if (family === 'dual') { if (p.x < 0.5) leftV = 1 - p.y; else rightV = 1 - p.y; }
   });
 
   on(doc, 'pointerup', (ev) => {
     if (down && family === 'release') fired = true;
     if (down && family === 'route') commit = true;
+    if (down && family === 'aim') aimFired = true;
+    if (family === 'steer') throttle = 0;
+    if (down && family === 'drag' && grabbed >= 0) {
+      const dst = ev.target && ev.target.closest && ev.target.closest('[data-drop]');
+      dropOn = dst ? Number(dst.dataset.drop) : -1;
+      dropped = true;
+    }
     down = false;
     lastHeldAt = ev.timeStamp;
   });
@@ -103,6 +143,15 @@ export function createInput(family, host, opts = {}) {
     if (k === 'ArrowUp') { keyCursorY = Math.max(0, keyCursorY - step); ev.preventDefault(); }
     if (k === 'ArrowDown') { keyCursorY = Math.min(1, keyCursorY + step); ev.preventDefault(); }
     if (family === 'path' || family === 'balance') { x = keyCursorX; y = keyCursorY; down = true; }
+    if (family === 'aim') { aimAngle = (keyCursorX - 0.5) * Math.PI * 2; down = true; }
+    if (family === 'steer') { heading = (keyCursorX - 0.5) * 2; throttle = 1; }
+    // dual needs two hands, so it gets two key pairs rather than one cursor.
+    if (family === 'dual') {
+      if (k === 'q' || k === 'Q') { leftV = Math.min(1, leftV + step); ev.preventDefault(); }
+      if (k === 'a' || k === 'A') { leftV = Math.max(0, leftV - step); ev.preventDefault(); }
+      if (k === 'p' || k === 'P') { rightV = Math.min(1, rightV + step); ev.preventDefault(); }
+      if (k === 'l' || k === 'L') { rightV = Math.max(0, rightV - step); ev.preventDefault(); }
+    }
     if (family === 'rate') {
       if (k === '[') { rate = Math.max(0, rate - 0.08); ev.preventDefault(); }
       if (k === ']') { rate = Math.min(1, rate + 0.08); ev.preventDefault(); }
@@ -112,6 +161,9 @@ export function createInput(family, host, opts = {}) {
   on(host, 'keyup', (ev) => {
     if (isTapKey(ev.key)) {
       if (family === 'release') fired = true;
+      if (family === 'aim') aimFired = true;
+      if (family === 'steer') throttle = 0;
+      if (family === 'drag' && grabbed >= 0) { dropOn = grabbed; dropped = true; }
       down = false;
     }
   });
@@ -137,6 +189,19 @@ export function createInput(family, host, opts = {}) {
           return out;
         }
         case 'rate': return { rate };
+        case 'aim': {
+          if (down) aimPower = Math.min(1, aimPower + dtMs / 1100);
+          const out = { angle: aimAngle, power: aimPower, fired: aimFired };
+          if (aimFired) { aimFired = false; aimPower = 0; }
+          return out;
+        }
+        case 'dual': return { left: leftV, right: rightV };
+        case 'steer': { if (down) heldMs += 0; return { steer: heading, throttle, heldMs }; }
+        case 'drag': {
+          const out = { grabbed, dropOn, dropped };
+          if (dropped) { dropped = false; grabbed = -1; dropOn = -1; }
+          return out;
+        }
         default: return null;
       }
     },

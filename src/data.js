@@ -419,7 +419,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'cotton_fabric', inputs: { cotton: 3 },        time: 1800, xp: 6, unlockLevel: 14 },
       { id: 'sweater',       inputs: { wool: 2 },          time: 3600, xp: 9, unlockLevel: 14 },
-      { id: 'alpaca_scarf',   inputs: { alpaca_wool: 2, indigo: 1 },                  time: 5400,  xp: 34, unlockLevel: 64 },
+      { id: 'alpaca_scarf',   inputs: { alpaca_wool: 2, indigo: 1 },                  time: 5400,  xp: 34, unlockLevel: 64,
+        play: { stages: [{ verb: 'throw_shuttles' }] } },
     ],
   },
   sewing_machine: {
@@ -482,7 +483,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'silver_bar',   inputs: { ore_silver: 2 },   time: 3600,  xp: 9, unlockLevel: 24 },
       { id: 'gold_bar',     inputs: { ore_gold: 2 },     time: 5400,  xp: 12, unlockLevel: 24 },
-      { id: 'platinum_bar', inputs: { ore_platinum: 2 }, time: 7200,  xp: 16, unlockLevel: 24 },
+      { id: 'platinum_bar', inputs: { ore_platinum: 2 }, time: 7200,  xp: 16, unlockLevel: 24,
+        play: { stages: [{ verb: 'cast_ingot' }] } },
     ],
   },
   oil_press: {
@@ -507,7 +509,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'sushi_roll',     inputs: { rice: 5, fish_perch: 1 },                     time: 3600,  xp: 34, unlockLevel: 60 },
       { id: 'egg_sushi',      inputs: { rice: 5, egg: 3 },                            time: 4200,  xp: 40, unlockLevel: 60 },
-      { id: 'rice_ball',      inputs: { rice: 6, quail_egg: 2 },                      time: 5400,  xp: 48, unlockLevel: 60 },
+      { id: 'rice_ball',      inputs: { rice: 6, quail_egg: 2 },                      time: 5400,  xp: 48, unlockLevel: 60,
+        play: { stages: [{ verb: 'lay_slices' }] } },
     ],
   },
   perfumery: {
@@ -531,7 +534,8 @@ export const BUILDINGS = {
     recipes: [
       { id: 'fresh_pasta',    inputs: { wheat: 2, egg: 1 },                           time: 1800,  xp: 30, unlockLevel: 72 },
       { id: 'lasagna',        inputs: { fresh_pasta: 2, tomato: 3, cheese: 1 },       time: 6300,  xp: 66, unlockLevel: 72 },
-      { id: 'pesto_pasta',    inputs: { fresh_pasta: 2, mint: 2, olive_oil: 1 },      time: 5400,  xp: 62, unlockLevel: 84 },
+      { id: 'pesto_pasta',    inputs: { fresh_pasta: 2, mint: 2, olive_oil: 1 },      time: 5400,  xp: 62, unlockLevel: 84,
+        play: { stages: [{ verb: 'guide_dough' }] } },
     ],
   },
   fondue_pot: {
@@ -856,6 +860,30 @@ export const VERBS = {
     purpose: 'Seasoned right, a pot goes further.',
     hint: 'Hold to build a pinch, let go at the right size. Too much is worse than too little.',
     stageClass: 'stage-pinch', durationMs: 14000,
+  },
+  cast_ingot: {
+    name: 'Cast the Ingot', verbWord: 'cast', family: 'aim',
+    purpose: 'A clean cast needs the angle and the tip together.',
+    hint: 'Aim the crucible at the channel and hold to tip it further, then let go. Arrow keys aim.',
+    stageClass: 'stage-aim', durationMs: 13000,
+  },
+  throw_shuttles: {
+    name: 'Throw the Shuttles', verbWord: 'throw', family: 'dual',
+    purpose: 'Two shuttles, two tensions, one even weave.',
+    hint: 'Hold BOTH marks at once. They drift apart, so one hand will not do. Q/A and P/L.',
+    stageClass: 'stage-dual', durationMs: 13000,
+  },
+  guide_dough: {
+    name: 'Guide the Sheet', verbWord: 'guide', family: 'steer',
+    purpose: 'An even sheet cuts into even pasta.',
+    hint: 'Hold to feed it through and steer AHEAD of the drift; the sheet answers late.',
+    stageClass: 'stage-steer', durationMs: 14000,
+  },
+  lay_slices: {
+    name: 'Lay the Slices', verbWord: 'lay', family: 'drag',
+    purpose: 'Every slice on the plate it belongs to.',
+    hint: 'Carry each slice to its matching plate. Work in any order you like.',
+    stageClass: 'stage-drag', durationMs: 16000,
   },
 };
 export const QUALITY = {

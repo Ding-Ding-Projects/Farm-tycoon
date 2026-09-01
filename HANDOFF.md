@@ -3,6 +3,100 @@
 State of the repository as of commit `013509a` on `main`. Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
 
+## Session of 2026-09-01 — content completion, then an accessibility sweep
+
+Twelve commits on `input-families`, all dewed. Every figure below was read out of a real run at
+`683e95d`, not carried over from the previous handoff.
+
+**State: 49 buildings · 215 recipes · 279 goods · 46 verbs · 44/151 playable (1 in 3.4) ·
+674 assertions across 19 suites, zero failures.**
+
+### What landed
+
+**The wiki factory roster is closed.** The last five arrived: net maker (30), lobster pool (44),
+duck salon (50), doner kebab stand (54), pasta maker (67). Two levels deliberately differ from the
+wikis, and both are supply-chain decisions rather than transcription: the kebab stand is at 54
+because lamb does not exist here until 53, and the pasta maker sits UPSTREAM of the level-72 pasta
+kitchen, extruding dry shapes the kitchen then cooks — which is also why it cannot take
+`fresh_pasta` as an input.
+
+Five new verbs, each earning its slot against the neighbours in a family that already had two to
+five members. `batch_dies` is the one that nearly failed the way `work_rush` did: at the duration
+first written, first-come-first-served TIED batching on nine seeds of twelve. The clock came down
+to 13500ms, and the gap is now a guard — if it ever closes again the verb should be cut, not tuned.
+
+**Both open audit findings are closed.** The `tea_house`/`oil_press` inert-unlock gap is fixed and
+structurally guarded, and the multi-hop kit arbitrage is proven dead: `tools/test-economy.mjs`
+expands all 46 kits to raw leaves following the cheapest producing recipe at each step, and the
+best kit margin in the game is `kit_paper_mill` at **minus 35 coins**.
+
+**23 dead recipes revived.** Syrup turned 76 coins of sugar into 78 over a full hour. Each was
+lifted by the smallest amount clearing both a coins-per-second floor and the project's own
+documented 1.6x rule, iterated to a fixed point because butter, cheese and sugar are inputs to
+other recipes. Worst margin in the game went from 0.0006 to 0.010 per second.
+
+**Three new player-facing surfaces.** The Bake Book (every playable recipe, best tier, and which
+VERBS remain unmastered — skill is per verb while quality is recorded per recipe). A search bar on
+every panel with six or more cards, attached from one line at the end of `renderPanelContent` so
+new panels get it for free. And a one-time explanation of the playable-item gate, because nothing
+told a player that roughly one recipe in three cannot be collected any other way.
+
+### The accessibility sweep, which found the most
+
+Swept all 28 panels for controls with no accessible name. **Merge Meadow had 57 of 63 unnamed** —
+every cell a bare button, empty ones with no text, no title and no label. Selection was an outline
+and nothing else, and all 63 cells were tab stops. Now: every cell names its position and contents,
+`aria-pressed` on the picked-up one, one tab stop with arrow keys, and focus returns to the cell
+that was acted on.
+
+**The whole game had four focus rules and three were mine from earlier the same day.** Everything
+else relied on the browser default, on an interface where nearly every control already carries a
+3px near-black border for that ring to hide against. Interactive chrome now gets a two-ring
+`:focus-visible` indicator.
+
+**Reduced motion never reached the canvas.** `styles.css` had honoured it from early on, which made
+it look handled; the world is a canvas, so the factory machinery, coin bursts, XP floaters,
+sparkles and camera easing all ignored it. `src/motion.js` is now the single answer, with a
+`matchMedia` listener so mid-session changes take effect at once. `working` stays true and only the
+clock freezes, so a busy factory keeps its lit lantern and four-puff plume rather than going idle.
+
+**Touch targets: 33 controls under 44x44, every one of them in the search bar I had added hours
+earlier.** The rest of the game was already clean.
+
+### The one thing measured and deliberately NOT fixed
+
+White button text sits at **1.77** against the light end of the default green gradient, **1.47** on
+gold, **1.89** on gem, **2.57** on danger. AA wants 4.5. The `quiet` variant is fine at **7.08**
+once its translucent fill is composited properly — it first measured 1.19 because the comparison
+was against the overlay rather than the result.
+
+Unlike everything else in the sweep this has no repair without a cost: darkening the fills until
+white passes needs roughly `#3E7A19` throughout and turns a candy button forest-green, while
+switching to dark labels and lightening the fill measures 7.06 and keeps them bright but changes
+every button in the game. Both rewrite the look the design brief asked for, so it is the owner's
+call. Numbers and both routes are in `ROADMAP.md`.
+
+### Traps worth not rediscovering
+
+- **`timeSkip` is milliseconds.** Cost time twice in one session, once producing a recording where
+  every harvest said "Still growing".
+- **A `.modal-card` element exists empty at all times**, so "a modal is present" is true before
+  anything opens. Check its text, not its existence.
+- **Cache-busting an import gives a DIFFERENT module instance** from the one the app's modules
+  hold, so a test flag set on one has no effect on the other. Verify module-level state in Node.
+- **`test()` here is synchronous**, so returning a promise from it marks the test passed before the
+  assertion runs. One guard was written that way and could never have failed.
+- **Guards anchored to a substring pass on a commented-out line.** Anchor to the start of a line.
+- **`localStorage.clear()` does not give a fresh save** — autosave rewrites it.
+
+### Not done
+
+- The release keystore and a signed APK. The Gradle config is wired and the build script injects
+  it; only the key is missing, and it is a credential the owner should generate.
+- The GitHub Pages site still carries neither the screenshots nor either recording, though both
+  recordings are committed and linked from the README.
+- The button contrast decision above.
+
 ## Where the project actually is
 
 **Phase B is complete.** Every module contract in `src/` now has a real implementation body.

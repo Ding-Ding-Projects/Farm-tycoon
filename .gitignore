@@ -161,3 +161,7 @@ keystore.properties
 
 # Staged web payload for the Android build (tools/build-web.mjs). Generated, never committed.
 www/
+
+# Android SDK command-line tools archive: 153 MB, downloaded during setup, never part of the
+# source. Untracked and unignored it sat one "git add -A" away from the history.
+cmdline-tools.zip

@@ -23,6 +23,9 @@ has been built, what has deliberately **not** been done, and the exact steps and
 | `webDir` staged to `www/` instead of the repository root | done, 1.8 MB instead of 639 MB |
 | One-command build, `tools/build-android.mjs` | done |
 | **Debug APK built, installed and PLAYED on an emulator** | done, with device screenshots |
+| Release signing wired into Gradle (`--release`) | done, injected not hand-edited |
+| Release task itself proven to build | done, produces an unsigned APK with no key present |
+| Release APK actually signed | **blocked: needs your keystore, see below** |
 | Native `android/` project generated | **not done** (needs the Android SDK) |
 | Release keystore created | **not done** (must be created by the repository owner) |
 | APK built | **not done** |
@@ -157,6 +160,52 @@ It is NOT a device run. It cannot show finger occlusion, palm rejection, or how 
 WebView gesture interception has since been addressed directly rather than left to chance (see the
 struck-through `drag` item below), and the `touch-action` layering that does it is asserted as
 computed style, but only a real device proves the WebView honours it. Those stay on the list.
+
+## Shipping a release APK: the one step that is yours
+
+Everything else is one command. This part is not, deliberately.
+
+The keystore is a credential, and no agent should create or hold one. It is also the single most
+unrecoverable thing in an Android project: Android identifies an app by its signing key, so losing
+the `.jks` means never being able to publish an update to the same app again, by any route.
+
+Run this once, and keep the password somewhere safe:
+
+```
+keytool -genkeypair -v -keystore android/farm-tycoon.jks -keyalg RSA -keysize 2048 -validity 10000 -alias farmtycoon
+```
+
+Then create `android/keystore.properties` with four lines:
+
+```
+storeFile=farm-tycoon.jks
+storePassword=<the password you chose>
+keyAlias=farmtycoon
+keyPassword=<the same password, unless you set a separate key password>
+```
+
+`*.jks`, `*.keystore` and `keystore.properties` were all added to `.gitignore` before any key
+existed, so none of them can be committed by accident. Then:
+
+```
+node tools/build-android.mjs --release
+```
+
+The signing block is INJECTED into `android/app/build.gradle` by that script rather than committed
+into it, because `android/` is regenerable and gitignored, so a hand edit would vanish the next
+time anyone ran `npx cap add android`. Gradle reads the passwords out of the properties file at
+build time, so no secret ever becomes a command argument or reaches a log.
+
+What is proven and what is not: the release TASK builds, verified by running `assembleRelease` with
+no key present and getting `app-release-unsigned.apk` out, which is the documented graceful
+degradation. The signing step itself is untested, because testing it needs a key that must not be
+created here. That is a real gap and is stated rather than glossed.
+
+The permanent no-signing policy that applies to the Windows installer is explicitly overridden for
+Android only, at the owner's direction, because Android's package manager refuses to install an
+unsigned APK at all: signing is not decoration there, it is the only way an installable artifact
+exists. A self-signed certificate is also not acceptable to Play, so this produces a sideloadable
+APK and the release notes must say so plainly rather than implying store distribution.
 
 ## Found by actually running it on a device
 

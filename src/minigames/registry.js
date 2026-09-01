@@ -35,6 +35,7 @@ export const VERB_LOADERS = {
   split_press: () => import('./verbs/split_press.js'),
   draw_steam: () => import('./verbs/draw_steam.js'),
   skim_curds: () => import('./verbs/skim_curds.js'),
+  pull_shot: () => import('./verbs/pull_shot.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

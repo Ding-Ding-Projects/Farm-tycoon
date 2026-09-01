@@ -420,7 +420,8 @@ export const BUILDINGS = {
     name: 'Sugar Mill', unlockLevel: 8, cost: 600, size: [2, 2], kit: 'kit_sugar_mill', minigame: 'press_pressure', queueSlots: 3,
     recipes: [
       { id: 'sugar',       inputs: { sugarcane: 1 },           time: 600,  xp: 3, unlockLevel: 8 },
-      { id: 'brown_sugar', inputs: { sugarcane: 2 },           time: 1200, xp: 4, unlockLevel: 8 },
+      { id: 'brown_sugar', inputs: { sugarcane: 2 },           time: 1200, xp: 4, unlockLevel: 8,
+        play: { stages: [{ verb: 'pull_shot' }] } },
       { id: 'syrup',       inputs: { sugarcane: 4 },           time: 3600, xp: 8, unlockLevel: 8 },
     ],
   },
@@ -1082,6 +1083,12 @@ export const VERBS = {
     purpose: 'Gathered in one pass, the curds knit into a firm wheel.',
     hint: 'One clean sweep across each band. Doubling back spreads the curds apart again.',
     stageClass: 'stage-skim', durationMs: 13000,
+  },
+  pull_shot: {
+    name: 'Pull the Shot', verbWord: 'pull', family: 'release',
+    purpose: 'A batch landed on the mark refines clean.',
+    hint: 'Hold to build a pull, let go to add it. Land the TOTAL on the mark - going over spoils it.',
+    stageClass: 'stage-pinch', durationMs: 15000,
   },
 };
 export const QUALITY = {

@@ -223,6 +223,18 @@ const OPTIMAL = {
       return { x, y: (snap.band + 0.5) * snap.bandHeight, down: true };
     };
   },
+
+  pull_shot: () => {
+    // Running total: size each pull to exactly what is LEFT, not to a fixed amount. Pulling
+    // blindly at full charge overshoots and scores zero, which is the point of the verb.
+    let charge = 0;
+    return (snap) => {
+      const want = Math.min(1, snap.remaining / 0.28);
+      if (charge >= want) { const out = { charge, fired: true }; charge = 0; return out; }
+      charge = Math.min(1, charge + 16 / 1100);
+      return { charge, fired: false };
+    };
+  },
 };
 
 /** Drive a verb to completion with a driver, returning its final score. */

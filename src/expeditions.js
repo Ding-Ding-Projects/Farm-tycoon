@@ -14,6 +14,7 @@ import { state } from './state.js';
 import { EXPEDITIONS } from './data.js';
 import * as economy from './economy.js';
 import * as museum from './museum.js';
+import * as storage from './storage.js';
 
 function hasItems(items) {
   if (!items) return true;
@@ -140,13 +141,14 @@ export function collect(crewIdx) {
         museum.addArtifact(entry.artifact, 1);
         result.loot.push({ artifact: entry.artifact, qty: 1 });
       } else if (entry.item) {
+        // Never past the barn cap: what fits is stored, the rest is paid out as coins.
         const qty = Math.round(randInt(entry.qty) * (1 + lootBonus));
-        state.barn.items[entry.item] = (state.barn.items[entry.item] || 0) + qty;
-        result.loot.push({ item: entry.item, qty });
+        const { given, paidOut } = storage.addOrPay(entry.item, qty);
+        result.loot.push({ item: entry.item, qty: given, paidOut });
       } else if (entry.material) {
         const qty = Math.round(randInt(entry.qty) * (1 + lootBonus));
-        state.barn.items[entry.material] = (state.barn.items[entry.material] || 0) + qty;
-        result.loot.push({ material: entry.material, qty });
+        const { given, paidOut } = storage.addOrPay(entry.material, qty);
+        result.loot.push({ material: entry.material, qty: given, paidOut });
       } else if (entry.coins) {
         const coins = Math.round(randInt(entry.coins) * (1 + lootBonus));
         economy.addCoins(coins);

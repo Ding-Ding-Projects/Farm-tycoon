@@ -14,15 +14,14 @@
 import { state } from './state.js';
 import { MERGE } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
+import * as extras from './extras.js';
 
 const COLS = MERGE.board.cols;
 const ROWS = MERGE.board.rows;
 const CELL_COUNT = COLS * ROWS;
 
-function barnRoom() {
-  const used = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  return Math.max(0, state.barn.capacity - used);
-}
+function barnRoom() { return storage.room('barn'); }
 
 function ensureMergeState() {
   if (!state.merge) {
@@ -79,7 +78,10 @@ export function currentEnergy(now = Date.now()) {
     m.energyUpdatedAt = now;
     return m.energy;
   }
-  const intervalMs = MERGE.energy.regenSeconds * 1000;
+  // Merge Mania (a weekend event) refills energy faster.
+  let regenMult = 1;
+  try { regenMult = Math.max(1, extras.activeEventEffect()?.mergeEnergyRegenMult || 1); } catch { regenMult = 1; }
+  const intervalMs = Math.max(1000, Math.round((MERGE.energy.regenSeconds * 1000) / regenMult));
   const elapsed = Math.max(0, now - m.energyUpdatedAt);
   const gained = Math.floor(elapsed / intervalMs);
   if (gained > 0) {
@@ -174,6 +176,7 @@ export function merge(from, to) {
   m.cells[to] = { chain: cell.chain, tier: cell.tier + 1 };
   m.cells[from] = null;
   const bonus = applyMergeBonus();
+  economy.trackStat('merges', 1);   // the counter the Merge Mania event and regatta tasks read
   return { tier: m.cells[to].tier, bonus };
 }
 
@@ -206,13 +209,14 @@ export function claim(cellIndex) {
   if (!reward) return false;
   const m = state.merge;
 
+  // An item reward needs its room in the barn BEFORE anything is paid or the cell cleared: the
+  // tools chain's three pickaxes used to vanish into a full barn after five merges of work.
+  if (reward.item && barnRoom() < (reward.qty || 1)) return false;
+
   if (reward.coins) economy.addCoins(reward.coins);
   if (reward.diamonds) state.diamonds += reward.diamonds;
   if (reward.vouchers) state.vouchers += reward.vouchers;
-  if (reward.item) {
-    const given = Math.min(reward.qty || 1, barnRoom());
-    if (given > 0) state.barn.items[reward.item] = (state.barn.items[reward.item] || 0) + given;
-  }
+  if (reward.item) storage.add(reward.item, reward.qty || 1);
 
   m.cells[cellIndex] = null;
   return { reward };

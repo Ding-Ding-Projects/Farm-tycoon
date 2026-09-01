@@ -9,6 +9,7 @@
 import { state } from './state.js';
 import { TRAINS, AIRPORT, CROPS, GOODS } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lazy state seeding. state.js (owned by another lane) does not yet carry `trains`/`airport`
@@ -50,12 +51,8 @@ function drawMaterials(pool, count) {
   return out;
 }
 
-function barnUsed() {
-  return Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-}
-
 function barnRoom() {
-  return Math.max(0, state.barn.capacity - barnUsed());
+  return storage.room('barn');
 }
 
 function addToBarn(items) {
@@ -77,9 +74,16 @@ function removeItem(id, qty) {
 }
 
 /** A fresh set of wagon requests, drawn from unlocked goods/crops (level-scaled qty). */
+/** Crops and goods the player can make now - never Workshop components or kits (the crafting
+ *  spine is not cargo). */
+function cargoPool() {
+  return [...Object.keys(CROPS), ...Object.keys(GOODS)]
+    .filter((id) => economy.isUnlocked(id) && !economy.isWorkshopCraft(id));
+}
+
 function generateWagons() {
   const n = randomInt(TRAINS.wagons[0], TRAINS.wagons[1]);
-  const pool = [...Object.keys(CROPS), ...Object.keys(GOODS)].filter((id) => economy.isUnlocked(id));
+  const pool = cargoPool();
   const wagons = [];
   for (let i = 0; i < n; i++) {
     const itemId = pool.length ? pickRandom(pool) : 'wheat';
@@ -90,7 +94,7 @@ function generateWagons() {
 
 function generateCrates() {
   const n = AIRPORT.crates;
-  const pool = [...Object.keys(CROPS), ...Object.keys(GOODS)].filter((id) => economy.isUnlocked(id));
+  const pool = cargoPool();
   const crates = [];
   for (let i = 0; i < n; i++) {
     const itemId = pool.length ? pickRandom(pool) : 'wheat';
@@ -124,6 +128,9 @@ export function tick(now) {
       t.pendingMaterials = { materials, xp };
       t.returningAt = now + TRAINS.tripTime * 1000;
       t.current = null;
+      // "Send a train": one that leaves with cargo aboard. The counter every train achievement,
+      // co-op task and regatta task reads - it was never incremented before.
+      if (filledWagons > 0) economy.trackStat('trainsCompleted', 1);
     }
   }
   if (t.returningAt && now >= t.returningAt && t.pendingMaterials && !t.readyToCollect) {
@@ -149,6 +156,7 @@ export function tick(now) {
       a.pendingBonus = bonus;
       a.returningAt = now + TRAINS.tripTime * 1000; // no dedicated flight-return time in data; reuse trip cadence
       a.current = null;
+      if (filledCrates > 0) economy.trackStat('planesCompleted', 1);
     }
   }
   if (a.returningAt && now >= a.returningAt && a.pendingMaterials && !a.readyToCollect) {
@@ -162,7 +170,11 @@ export function currentTrain() {
   return state.trains.current;
 }
 
-/** Fill one wagon from storage. */
+/**
+ * Fill one wagon from storage. All or nothing: a wagon only counts toward the reward once it
+ * holds everything it asked for, so a partial fill would strand the goods it took (there is no
+ * unload) - the player is refused until they have the full amount.
+ */
 export function fillWagon(index) {
   ensureState();
   const t = state.trains.current;
@@ -171,10 +183,9 @@ export function fillWagon(index) {
   const need = wagon.requested - wagon.filled;
   if (need <= 0) return false;
   const have = itemStock(wagon.itemId);
-  const take = Math.min(need, have);
-  if (take <= 0) return false;
-  removeItem(wagon.itemId, take);
-  wagon.filled += take;
+  if (have < need) return false;
+  removeItem(wagon.itemId, need);
+  wagon.filled += need;
   return true;
 }
 
@@ -193,7 +204,7 @@ export function currentPlane() {
   return state.airport.current;
 }
 
-/** Fill one plane crate from storage. */
+/** Fill one plane crate from storage - all or nothing, like fillWagon. */
 export function fillCrate(index) {
   ensureState();
   const a = state.airport.current;
@@ -202,10 +213,9 @@ export function fillCrate(index) {
   const need = crate.requested - crate.filled;
   if (need <= 0) return false;
   const have = itemStock(crate.itemId);
-  const take = Math.min(need, have);
-  if (take <= 0) return false;
-  removeItem(crate.itemId, take);
-  crate.filled += take;
+  if (have < need) return false;
+  removeItem(crate.itemId, need);
+  crate.filled += need;
   return true;
 }
 

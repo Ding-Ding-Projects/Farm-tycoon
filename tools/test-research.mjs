@@ -12,6 +12,8 @@ import * as museum from '../src/museum.js';
 import * as expeditions from '../src/expeditions.js';
 import * as extras from '../src/extras.js';
 import * as economy from '../src/economy.js';
+import * as production from '../src/production.js';
+import * as storage from '../src/storage.js';
 import {
   LAB, EFFECT_KEYS, MUSEUM, EXPEDITIONS, MATERIALS, TRAINS, AIRPORT, HELICOPTER,
   DAILY_WHEEL, EVENTS, MINE, CROPS, GOODS,
@@ -39,7 +41,11 @@ function freshState() {
   s.coins = 1e9;
   s.diamonds = 0;
   // Research costs draw on crop/good items as well as materials — stock the barn/silo deep
-  // enough that no lab test is actually about resource affordability.
+  // enough that no lab test is actually about resource affordability. The capacities go up
+  // with the stock: a refund into a store that is already past its cap is (correctly) paid out
+  // as coins instead, and these tests are about research, not about the cap.
+  s.silo.capacity = 1e9;
+  s.barn.capacity = 1e9;
   for (const id of Object.keys(MATERIALS)) s.barn.items[id] = 1e6;
   for (const id of Object.keys(CROPS)) s.silo.items[id] = 1e6;
   for (const id of Object.keys(GOODS)) s.barn.items[id] = 1e6;
@@ -347,6 +353,45 @@ test('event points accrue through trackStat, and a tier pays exactly once', () =
 });
 
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// research reaches its consumers, and a cancel puts everything back where it lives
+// ---------------------------------------------------------------------------
+
+test('cancelResearch returns crops to the silo and materials to the barn, exactly', () => {
+  const s = freshState();
+  lab.build();
+  const cost = LAB.tree.irrigation_1.cost;
+  const before = { wheat: s.silo.items.wheat, cotton: s.silo.items.cotton, barnWheat: s.barn.items.wheat || 0 };
+  assert.equal(lab.startResearch('irrigation_1'), true);
+  assert.equal(s.silo.items.wheat, before.wheat - cost.items.wheat, 'wheat is taken from the silo');
+  assert.equal(s.silo.items.cotton, before.cotton - cost.items.cotton);
+  assert.equal(lab.cancelResearch(), true);
+  assert.equal(s.silo.items.wheat, before.wheat, 'wheat goes back to the silo');
+  assert.equal(s.silo.items.cotton, before.cotton);
+  assert.equal(s.barn.items.wheat || 0, before.barnWheat, 'never into the barn, where a crop is unplantable');
+});
+
+test('researched effects reach their consumers: irrigation shortens the grow time, granary widens the silo', () => {
+  const s = freshState();
+  const fieldId = s.farm.objects.find((o) => o.kind === 'field').id;
+  assert.equal(production.plant(fieldId, 'wheat'), true);
+  let field = s.farm.objects.find((o) => o.id === fieldId);
+  assert.equal(field.readyAt - field.plantedAt, CROPS.wheat.growTime * 1000, 'nothing researched: the plain grow time');
+
+  s.lab.researched.push('irrigation_1');
+  const mult = LAB.tree.irrigation_1.effect.cropGrowMult;
+  assert.equal(economy.multiplier('cropGrowMult', 'wheat'), mult, 'the merged multiplier reads the research');
+  field.cropId = null; field.readyAt = null; field.plantedAt = null;
+  assert.equal(production.plant(fieldId, 'wheat'), true);
+  field = s.farm.objects.find((o) => o.id === fieldId);
+  assert.equal(field.readyAt - field.plantedAt, Math.round(CROPS.wheat.growTime * 1000 * mult), 'Irrigation I shortens a planting');
+
+  const siloBase = s.silo.capacity;
+  s.lab.researched.push('granary_1');
+  assert.equal(economy.bonus('siloCapBonus'), LAB.tree.granary_1.effect.siloCapBonus);
+  assert.equal(storage.capacity('silo'), siloBase + LAB.tree.granary_1.effect.siloCapBonus, 'Granary I is real silo room');
+});
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) {

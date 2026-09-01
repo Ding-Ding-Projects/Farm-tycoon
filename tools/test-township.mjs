@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { state, newGameState, importSave } from '../src/state.js';
-import { TRAINS, AIRPORT, TOWN, ZOO, ISLANDS } from '../src/data.js';
+import { TRAINS, AIRPORT, TOWN, ZOO, ISLANDS, CROPS } from '../src/data.js';
 import * as trains from '../src/trains.js';
 import * as town from '../src/town.js';
 import * as zoo from '../src/zoo.js';
@@ -251,6 +251,73 @@ test('islands: a voyage resolves cargo after an offline gap and cannot double-sa
 });
 
 // -------------------------------------------------------------------------------------------
+
+// -------------------------------------------------------------------------------------------
+// all-or-nothing loading, the transport counters, and the zoo's "no room" rule
+// -------------------------------------------------------------------------------------------
+
+function stockFor(itemId, qty) { (CROPS[itemId] ? fillSilo : fillBarn)(itemId, qty); }
+
+test('trains: fillWagon is all-or-nothing - a short stock is refused and untouched', () => {
+  setState(freshState(TRAINS.unlockLevel));
+  trains.tick(Date.now());
+  const wagon = trains.currentTrain().wagons[0];
+  const bucket = CROPS[wagon.itemId] ? state.silo.items : state.barn.items;
+  bucket[wagon.itemId] = wagon.requested - 1;
+  assert.equal(trains.fillWagon(0), false, 'one unit short is refused');
+  assert.equal(wagon.filled, 0);
+  assert.equal(bucket[wagon.itemId], wagon.requested - 1, 'a refused fill takes nothing');
+  bucket[wagon.itemId] = wagon.requested;
+  assert.equal(trains.fillWagon(0), true);
+  assert.equal(wagon.filled, wagon.requested);
+  assert.equal(bucket[wagon.itemId], 0, 'exactly the request, once');
+});
+
+test('trains: a train that leaves with cargo counts toward trainsCompleted; an empty departure does not', () => {
+  setState(freshState(TRAINS.unlockLevel));
+  const now = Date.now();
+  trains.tick(now);
+  trains.tick(now + TRAINS.departureWindow * 1000 + 1); // leaves empty
+  assert.equal(state.stats.trainsCompleted || 0, 0, 'an empty train is not a sent train');
+
+  setState(freshState(TRAINS.unlockLevel));
+  trains.tick(now);
+  const t = trains.currentTrain();
+  t.wagons.forEach((w, i) => { stockFor(w.itemId, w.requested); assert.ok(trains.fillWagon(i)); });
+  assert.equal(trains.dispatchTrain(), true);
+  assert.equal(state.stats.trainsCompleted, 1);
+});
+
+test('airport: a plane that leaves with cargo counts toward planesCompleted', () => {
+  setState(freshState(AIRPORT.unlockLevel));
+  const now = Date.now();
+  trains.tick(now);
+  const p = trains.currentPlane();
+  assert.ok(p, 'a plane should be on the apron');
+  p.crates.forEach((c, i) => { stockFor(c.itemId, c.requested); assert.ok(trains.fillCrate(i)); });
+  trains.tick(now + 1);
+  assert.equal(trains.currentPlane(), null, 'a full plane leaves');
+  assert.equal(state.stats.planesCompleted, 1);
+});
+
+test('zoo: collect() refuses a full barn and leaves the souvenir waiting; a collect counts zooSouvenirs', () => {
+  setState(freshState(ZOO.unlockLevel));
+  fillBarn('glass', 10);
+  fillBarn('nails', 10);
+  assert.ok(zoo.buyEnclosure('zoo_peacock'));
+  fillSilo('wheat', 20);
+  assert.ok(zoo.feed('zoo_peacock'));
+  const enc = state.zoo.enclosures.zoo_peacock;
+  enc.readyAt = Date.now() - 1;
+  state.barn.capacity = barnTotal(); // not one slot free
+  assert.equal(zoo.collect('zoo_peacock'), false, 'no room means no collect');
+  assert.ok(enc.readyAt > 0, 'the souvenir is still waiting');
+  assert.equal(state.barn.items.peacock_feather || 0, 0);
+  state.barn.capacity = 999999;
+  assert.ok(zoo.collect('zoo_peacock'));
+  assert.equal(state.barn.items.peacock_feather, 1);
+  assert.equal(state.stats.zooSouvenirs, 1);
+});
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) {

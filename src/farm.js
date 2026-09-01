@@ -30,11 +30,22 @@ export function footprintOf(kind, type) {
   return [1, 1];
 }
 
-function costOf(kind, type) {
+/**
+ * A pen's price is the enclosure PLUS its animals: ANIMALS[x].penCost + animalCost for each of
+ * its `capacity` heads. animalCost sat in data.js unread, so every pen came fully stocked for
+ * the price of the fence (a turkey run's three 2,800-coin birds were free).
+ */
+export function penPrice(type) {
+  const a = ANIMALS[type];
+  if (!a) return 0;
+  return (a.penCost ?? 0) + (a.animalCost ?? 0) * (a.capacity ?? 0);
+}
+
+export function costOf(kind, type) {
   if (kind === 'field') return FARM.fieldCost;
   if (kind === 'building') return BUILDINGS[type]?.cost ?? 0;
   if (kind === 'decoration') return DECORATIONS[type]?.cost ?? 0;
-  if (kind === 'pen') return ANIMALS[type]?.penCost ?? 0;
+  if (kind === 'pen') return penPrice(type);
   return 0;
 }
 

@@ -17,6 +17,7 @@ import { BUILDINGS } from './data.js';
 import * as economy from './economy.js';
 import * as production from './production.js';
 import * as collections from './collections.js';
+import * as storage from './storage.js';
 
 function def() {
   return BUILDINGS.build_workshop;
@@ -90,18 +91,20 @@ export function collect(index) {
   const recipe = recipeOf(entry.recipeId);
   if (!recipe) return null;
 
-  const used = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  const room = Math.max(0, state.barn.capacity - used);
-  const given = Math.min(1, room);
+  const given = Math.min(1, storage.room('barn'));
   if (given === 0) return null; // barn full — leave it queued, collect once there is room
 
-  state.barn.items[entry.recipeId] = (state.barn.items[entry.recipeId] || 0) + given;
+  storage.add(entry.recipeId, given);
   // The Workshop has its own minigame (workshop_fit) like every other production building —
   // spend a finished run's bonus at this same collection point, through production.js's own
   // helper rather than a second copy of the *Mult/chance-of-a-bonus-unit logic.
   const { xp, bonusQty } = production.applyMinigameBonus(workshop.id, entry.recipeId, recipe.xp);
   economy.addXp(xp);
   economy.trackStat('goodsProduced', given + bonusQty);
+  // Components (everything the Workshop makes that is not a kit) are what the Fitter / Master
+  // Builder achievements and the co-op and regatta crafting tasks count.
+  if (!entry.recipeId.startsWith('kit_')) economy.trackStat('componentsCrafted', given + bonusQty);
+  collections.record('recipe_book', entry.recipeId);
   collections.recordMake(workshop.id);
 
   const idx = state.production.indexOf(entry);

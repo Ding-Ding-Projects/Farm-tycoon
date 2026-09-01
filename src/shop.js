@@ -5,6 +5,7 @@
 import { state } from './state.js';
 import { SHOP, MARKET, CROPS, GOODS, MATERIALS } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 const MIN_SELL_TIME = 15; // seconds — a listing always takes at least this long, however cheap
 
@@ -119,14 +120,17 @@ function mulberry32(seed) {
 }
 
 function marketPoolForDay(rng, index) {
-  const goodIds = Object.keys(GOODS);
+  // Kits and components are the crafting spine, never stall goods.
+  const goodIds = Object.keys(GOODS).filter((id) => !economy.isWorkshopCraft(id));
   const materialIds = Object.keys(MATERIALS);
   const wantsMaterial = rng() < MARKET.materialChance && materialIds.length > 0;
   const pool = wantsMaterial ? materialIds : goodIds;
   const itemId = pool[Math.floor(rng() * pool.length) % pool.length];
   const qty = 1 + Math.floor(rng() * 5); // 1..5
   const base = baseValue(itemId);
-  const price = Math.max(1, Math.round(base * MARKET.priceMultiplier));
+  // The offer's price is for the whole bundle: base x priceMultiplier PER UNIT, times qty. It
+  // used to be one unit's price for up to five units, i.e. below the barn's own sell price.
+  const price = Math.max(qty, Math.round(base * MARKET.priceMultiplier * qty));
   return { item: itemId, qty, price };
 }
 
@@ -163,14 +167,10 @@ export function buyOffer(index) {
   const offer = market.offers[index];
   if (!offer || market.bought[index]) return false;
   if (state.coins < offer.price) return false;
-
-  const bucket = CROPS[offer.item] ? state.silo : state.barn;
-  const total = Object.values(bucket.items).reduce((a, b) => a + b, 0);
-  const room = Math.max(0, bucket.capacity - total);
-  if (room < offer.qty) return false; // never overflow the silo/barn cap
+  if (storage.roomFor(offer.item) < offer.qty) return false; // never overflow the silo/barn cap
 
   economy.addCoins(-offer.price);
-  bucket.items[offer.item] = (bucket.items[offer.item] || 0) + offer.qty;
+  storage.add(offer.item, offer.qty);
   market.bought[index] = true;
   return true;
 }

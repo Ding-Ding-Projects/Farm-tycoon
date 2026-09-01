@@ -9,12 +9,14 @@
 import { state } from './state.js';
 import { MUSEUM, ARTIFACTS } from './data.js';
 import * as economy from './economy.js';
+import * as collections from './collections.js';
 
 /** Add found artifacts. Duplicates are kept and can be sold per MUSEUM.duplicatePolicy. */
 export function addArtifact(id, qty = 1) {
   if (!ARTIFACTS[id] || !(qty > 0)) return false;
   state.museum.artifacts[id] = (state.museum.artifacts[id] || 0) + qty;
   economy.trackStat('artifactsFound', qty);
+  collections.record('relic_catalogue', id);   // the Relic Catalogue fills from real finds
   return true;
 }
 

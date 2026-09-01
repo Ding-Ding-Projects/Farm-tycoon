@@ -223,6 +223,7 @@ function freshWorld() {
 
 test('buildWorld gives every object a footprint and emits animals, a pen floor and a pen front for a pen', () => {
   const s = freshWorld();
+  s.coins = 1000;   // a coop and its five hens
   const pen = farm.place('pen', 'chicken', 15, 15);
   assert.ok(pen, 'the chicken coop must place inside the start zone');
   const { objects } = main.buildWorld();

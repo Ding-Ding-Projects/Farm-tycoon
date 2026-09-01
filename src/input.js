@@ -253,7 +253,9 @@ function commitPlacement() {
   ui.toast(
     res.reason === 'refused'
       ? "You can't afford that right now."
-      : 'That spot is blocked - try somewhere else.',
+      : res.reason === 'nokit'
+        ? 'The building kit is no longer in the barn — craft another first.'
+        : 'That spot is blocked - try somewhere else.',
     'error',
   );
   return false;

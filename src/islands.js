@@ -6,6 +6,7 @@
 import { state } from './state.js';
 import { ISLANDS } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 function randomInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
 function randomQty(qty) { return Array.isArray(qty) ? randomInt(qty[0], qty[1]) : qty; }
@@ -68,10 +69,7 @@ export function pendingCargo() {
   return s.voyage.cargo;
 }
 
-function barnRoom() {
-  const used = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  return Math.max(0, state.barn.capacity - used);
-}
+function barnRoom() { return storage.room('barn'); }
 
 /** Collect the cargo into the barn. */
 export function collect() {

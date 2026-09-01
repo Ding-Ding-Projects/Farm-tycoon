@@ -37,6 +37,7 @@ import * as minigames from './minigames.js';
 import * as placement from './placement.js';
 import * as renderer from './render/renderer.js';
 import * as effects from './render/effects.js';
+import * as storage from './storage.js';
 import {
   CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
   ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
@@ -171,14 +172,15 @@ export function updateHud() {
   const span = Math.max(1, next - cur);
   const frac = Math.max(0, Math.min(1, (state.xp - cur) / span));
 
-  const key = `${state.coins}|${state.diamonds}|${siloUsed}|${state.silo.capacity}|${barnUsed}|${state.barn.capacity}|${level}|${frac.toFixed(3)}`;
+  const siloCap = storage.capacity('silo'), barnCap = storage.capacity('barn');
+  const key = `${state.coins}|${state.diamonds}|${siloUsed}|${siloCap}|${barnUsed}|${barnCap}|${level}|${frac.toFixed(3)}`;
   if (key === lastHud) return;
   lastHud = key;
 
   el.coinsValue.textContent = compactCount(state.coins);
   el.diamondsValue.textContent = compactCount(state.diamonds);
-  el.siloValue.textContent = `${siloUsed}/${state.silo.capacity}`;
-  el.barnValue.textContent = `${barnUsed}/${state.barn.capacity}`;
+  el.siloValue.textContent = `${siloUsed}/${siloCap}`;
+  el.barnValue.textContent = `${barnUsed}/${barnCap}`;
   el.levelNumber.textContent = String(level);
 
   const ring = el.levelBadge.querySelector('.progress-ring');
@@ -2058,7 +2060,7 @@ function renderWorkshop(container) {
     const locked = !economy.isUnlocked(id);
     const card = document.createElement('div');
     card.className = `build-card${locked ? ' locked' : ''}`;
-    card.innerHTML = `<span class="icon">🐾</span><strong>${def.name}</strong><span>🪙${def.penCost ?? 0}</span>`;
+    card.innerHTML = `<span class="icon">${def.icon || '🐾'}</span><strong>${def.pen || def.name}</strong><span>🪙${farm.penPrice(id)} · ${def.capacity} ${def.name}${def.capacity === 1 ? '' : 's'}</span>`;
     card.appendChild(button('Build', () => buildAt('pen', id, def), { disabled: locked }));
     if (locked) card.appendChild(hintEl(`Unlocks at level ${def.unlockLevel}.`));
     penGrid.appendChild(card);

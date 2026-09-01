@@ -18,6 +18,7 @@ import { state } from './state.js';
 import { COOP, NEIGHBOURS, CROPS, GOODS, MATERIALS } from './data.js';
 import * as economy from './economy.js';
 import * as neighbours from './neighbours.js';
+import * as storage from './storage.js';
 
 function ensure() {
   if (!state.coop) {
@@ -33,25 +34,17 @@ function ensure() {
   return state.coop;
 }
 
-function isCrop(id) { return Object.prototype.hasOwnProperty.call(CROPS, id); }
-function totalCount(items) { return Object.values(items).reduce((a, b) => a + b, 0); }
-function siloRoom() { return Math.max(0, state.silo.capacity - totalCount(state.silo.items)); }
-function barnRoom() { return Math.max(0, state.barn.capacity - totalCount(state.barn.items)); }
-function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; }
-function roomFor(id) { return isCrop(id) ? siloRoom() : barnRoom(); }
-
-function addToBarn(id, qty) {
-  const given = Math.max(0, Math.min(qty, barnRoom()));
-  if (given > 0) state.barn.items[id] = (state.barn.items[id] || 0) + given;
-  return given;
-}
+const isCrop = storage.isCrop;
+const stockOf = storage.bucketFor;
+const roomFor = storage.roomFor;
 
 function applyRewards(rewards) {
   if (!rewards) return;
   if (rewards.coins) economy.addCoins(rewards.coins);
   if (rewards.xp) economy.addXp(rewards.xp);
   if (rewards.materials) {
-    for (const [id, qty] of Object.entries(rewards.materials)) addToBarn(id, qty);
+    // What fits lands in the barn; the rest is paid out rather than lost to a full store.
+    for (const [id, qty] of Object.entries(rewards.materials)) storage.addOrPay(id, qty);
   }
 }
 
@@ -279,3 +272,20 @@ export function tick(now = Date.now()) {
   refreshBoard(now);
   refreshDailyTasksIfNeeded(now);
 }
+
+// Perks flow through economy's shared merge points like research and mastery do - Standing
+// Orders (truckIntervalMult), Fair Dealing (orderPayoutMult), Shared Know-how (cropGrowMult),
+// Deep Contacts (mineYieldBonus) and the Communal Store (barnCapBonus). activePerkEffect() was
+// computed and registered nowhere, so all five perks were inert however many points they cost.
+// Both providers read state.coop only if it already exists: they must never create the co-op
+// slice as a side effect of pricing a sale.
+economy.registerMultiplierEffect((kind) => {
+  if (!state?.coop || !kind || !kind.endsWith('Mult')) return 1;
+  const v = activePerkEffect()[kind];
+  return typeof v === 'number' && v > 0 ? v : 1;
+});
+economy.registerBonusEffect((key) => {
+  if (!state?.coop || !key || key.endsWith('Mult')) return 0;
+  const v = activePerkEffect()[key];
+  return typeof v === 'number' ? v : 0;
+});

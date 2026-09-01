@@ -7,6 +7,8 @@ import { CROPS, ANIMALS, BUILDINGS, QUALITY } from './data.js';
 import * as economy from './economy.js';
 import * as collections from './collections.js';
 import * as minigames from './minigames.js';
+import * as storage from './storage.js';
+import * as extras from './extras.js';
 
 // Building mastery (collections.js) computes a `productionTimeMult` contribution that is meant
 // to flow through economy's ONE multiplier merge point (economy.registerMultiplierEffect) —
@@ -26,12 +28,18 @@ import * as minigames from './minigames.js';
 economy.registerMultiplierEffect((kind) => collections.masteryEffect()[kind] ?? 1);
 
 // Materials (data.js MATERIALS) have no dedicated bucket — see the NOTE in state.js. Any
-// input/output id that is not a crop lives in the barn, materials included.
-function isCrop(id) { return Object.prototype.hasOwnProperty.call(CROPS, id); }
-function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; }
-function totalCount(items) { return Object.values(items).reduce((a, b) => a + b, 0); }
-function siloRoom() { return Math.max(0, state.silo.capacity - totalCount(state.silo.items)); }
-function barnRoom() { return Math.max(0, state.barn.capacity - totalCount(state.barn.items)); }
+// input/output id that is not a crop lives in the barn, materials included. storage.js is the
+// one answer for where an id lives and how much room is left (capacity includes research and
+// co-op bonuses there, not here).
+const isCrop = storage.isCrop;
+const stockOf = storage.bucketFor;
+function siloRoom() { return storage.room('silo'); }
+function barnRoom() { return storage.room('barn'); }
+
+/** The active event's passive effect map ({} when none) - read at the point of use. */
+function eventEffect() {
+  try { return extras.activeEventEffect() || {}; } catch { return {}; }
+}
 
 /**
  * Can this queue entry be collected? A PLAYABLE craft (one carrying a `play` record) cannot,
@@ -73,7 +81,9 @@ export function plant(fieldId, cropId) {
   const now = Date.now();
   field.cropId = cropId;
   field.plantedAt = now;
-  field.readyAt = now + crop.growTime * 1000;
+  // Research (irrigation) and the co-op's Shared Know-how shorten the grow time through the
+  // shared multiplier merge point. Applied at planting so an absolute readyAt stays absolute.
+  field.readyAt = now + Math.max(1000, Math.round(crop.growTime * 1000 * economy.multiplier('cropGrowMult', cropId)));
   return true;
 }
 
@@ -90,23 +100,34 @@ export function growthStage(field, now = Date.now()) {
   return 2;
 }
 
-/** Harvest a ready field: +2x seeds to silo (capacity permitting), +XP, sparkle effect. */
+/**
+ * Harvest a ready field: +2x seeds to silo, +XP. Returns { cropId, qty, paidOut } or null.
+ *
+ * A FULL SILO REFUSES THE HARVEST and leaves the crop standing, exactly as collectPen and
+ * collectBuilding already leave their produce waiting. The old code stored zero, paid the XP,
+ * and cleared the field anyway - the crop simply vanished. With partial room, what fits is
+ * stored and the rest is paid out as coins at sellValue (collectBuilding's own shortfall rule),
+ * so the silo cap can never destroy value.
+ */
 export function harvest(fieldId, now = Date.now()) {
   const field = findField(fieldId);
   if (!field || !field.cropId || field.readyAt === null || now < field.readyAt) return null;
   const crop = CROPS[field.cropId];
   const cropId = field.cropId;
   const yieldQty = crop.seedCost * 2; // Hay Day rule: harvest returns 2x the planted seed
-  const given = Math.min(yieldQty, siloRoom());
+  if (siloRoom() <= 0) return null;   // silo full — the crop stays in the ground
 
-  if (given > 0) state.silo.items[cropId] = (state.silo.items[cropId] || 0) + given;
-  economy.addXp(crop.xp);
+  const { given, paidOut } = storage.addOrPay(cropId, yieldQty);
+  economy.addXp(Math.round(crop.xp * (eventEffect().cropXpMult || 1)));
   economy.trackStat('cropsHarvested', 1);
+  collections.record('crop_almanac', cropId);
 
   field.cropId = null;
   field.plantedAt = null;
   field.readyAt = null;
-  return { cropId, qty: given };
+  const out = { cropId, qty: given };
+  if (paidOut > 0) out.paidOut = paidOut;   // only present when the silo could not hold it all
+  return out;
 }
 
 /** Feed an animal pen (consumes feed items from barn); starts its produce timer. */
@@ -123,7 +144,7 @@ export function feedPen(penId) {
     if (have < need) return false;
     state.barn.items[animal.feed] = have - need;
   }
-  pen.readyAt = Date.now() + animal.produceTime * 1000;
+  pen.readyAt = Date.now() + Math.max(1000, Math.round(animal.produceTime * 1000 * economy.multiplier('animalProduceMult', pen.type)));
   return true;
 }
 
@@ -133,14 +154,16 @@ export function collectPen(penId, now = Date.now()) {
   if (!pen || pen.readyAt === null || now < pen.readyAt) return null;
   const animal = ANIMALS[pen.type];
   const qty = animal.capacity;
-  const given = Math.min(qty, barnRoom());
-  if (given === 0) return null; // barn full — leave the pen ready, collect once there is room
+  if (barnRoom() <= 0) return null; // barn full — leave the pen ready, collect once there is room
 
-  state.barn.items[animal.product] = (state.barn.items[animal.product] || 0) + given;
+  const { given, paidOut } = storage.addOrPay(animal.product, qty);
   economy.addXp(animal.xp);
   economy.trackStat('goodsProduced', given);
+  economy.trackStat('animalCollections', given);   // the counter every animal achievement/task reads
   pen.readyAt = null;
-  return { product: animal.product, qty: given };
+  const out = { product: animal.product, qty: given };
+  if (paidOut > 0) out.paidOut = paidOut;
+  return out;
 }
 
 /** Enqueue a recipe on a production building (consumes inputs immediately, Hay Day-style). */
@@ -173,7 +196,10 @@ export function enqueue(buildingId, recipeId) {
   const play = recipe.play
     ? { seed: (Date.now() ^ hashString(cid)) >>> 0, stage: 0, scores: [], attempts: 0, done: false, tier: null }
     : null;
-  state.production.push({ objectId: buildingId, recipeId, readyAt: Date.now() + recipe.time * 1000, cid, play });
+  // Research (automation) and building mastery shorten the craft through the shared multiplier
+  // merge point - the one consumer productionTimeMult never had.
+  const ms = Math.max(1000, Math.round(recipe.time * 1000 * economy.multiplier('productionTimeMult', recipeId)));
+  state.production.push({ objectId: buildingId, recipeId, readyAt: Date.now() + ms, cid, play });
   return true;
 }
 
@@ -288,10 +314,12 @@ export function collectBuilding(buildingId, now = Date.now(), cid = null) {
   // and banked in state.minigames.results) on top of it — that bonus is computed by finalize()
   // but was never actually being spent anywhere, exactly the gap minigames.js's own comment on
   // pendingBonus() describes ("the consuming path, used at collect") without it being wired.
-  const tierXp = Math.round(recipe.xp * (tier ? tier.xpMult : 1));
+  const tierXp = Math.round(recipe.xp * (tier ? tier.xpMult : 1) * (eventEffect().productionXpMult || 1));
   const { xp, bonusQty } = applyMinigameBonus(buildingId, entry.recipeId, tierXp);
   economy.addXp(xp);
   economy.trackStat('goodsProduced', given + bonusQty);
+  if (entry.recipeId.endsWith('_feed')) economy.trackStat('feedMade', given + bonusQty);
+  collections.record('recipe_book', entry.recipeId);
 
   // Room for fewer than the tier earned: pay the shortfall out as coins rather than inventing
   // a partial-entry state, and rather than silently dropping units the player played for.

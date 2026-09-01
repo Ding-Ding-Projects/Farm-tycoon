@@ -13,6 +13,8 @@ import { state } from './state.js';
 import { FORAGING, FARM, STRUCTURES } from './data.js';
 import * as economy from './economy.js';
 import * as farm from './farm.js';
+import * as storage from './storage.js';
+import * as collections from './collections.js';
 
 let nextNodeId = 1;
 function freshId() { return `forage_${nextNodeId++}_${Date.now().toString(36)}`; }
@@ -37,10 +39,7 @@ function randomQty(qty) {
   return qty;
 }
 
-function barnRoom() {
-  const used = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  return Math.max(0, state.barn.capacity - used);
-}
+function barnRoom() { return storage.room('barn'); }
 
 function nodeDef(type) {
   return FORAGING.nodes[type] || null;
@@ -68,19 +67,21 @@ export function collectNode(nodeId, now) {
   if (node.readyAt > now) return null;
   const def = nodeDef(node.type);
   if (!def) return null;
+  // A full barn leaves the node standing (it used to reset the node and pay the XP for nothing).
+  if (barnRoom() <= 0) return null;
 
   const picked = weightedPick(def.yields);
-  const result = { itemId: null, qty: 0, xp: 0 };
+  const result = { itemId: null, qty: 0, xp: 0, paidOut: 0 };
   if (picked) {
-    const qty = Math.min(randomQty(picked.qty), barnRoom());
-    if (qty > 0) {
-      state.barn.items[picked.item] = (state.barn.items[picked.item] || 0) + qty;
-      result.itemId = picked.item;
-      result.qty = qty;
-    }
+    const { given, paidOut } = storage.addOrPay(picked.item, randomQty(picked.qty));
+    result.itemId = picked.item;
+    result.qty = given;
+    result.paidOut = paidOut;
+    collections.record('forage_journal', picked.item);
   }
 
   economy.addXp(FORAGING.xpPerPickup);
+  economy.trackStat('foraged', 1);   // one find, the counter every forage task/achievement reads
   result.xp = FORAGING.xpPerPickup;
 
   node.readyAt = now + def.respawn * 1000;

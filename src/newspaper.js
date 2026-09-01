@@ -12,17 +12,13 @@ import { state } from './state.js';
 import { NEWSPAPER, CROPS, GOODS, MATERIALS } from './data.js';
 import * as economy from './economy.js';
 import * as neighbours from './neighbours.js';
+import * as storage from './storage.js';
 
 let nextListingId = 1;
 function freshId() { return `listing_${nextListingId++}_${Date.now().toString(36)}`; }
 
 function randomQty([lo, hi]) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
 function randomInRange([lo, hi]) { return lo + Math.random() * (hi - lo); }
-
-function barnRoom() {
-  const used = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  return Math.max(0, state.barn.capacity - used);
-}
 
 /**
  * Every sellable item id (crops, goods, materials) that could plausibly show up as a listing.
@@ -37,7 +33,7 @@ export function sellableItemIds() {
     ...Object.keys(CROPS || {}),
     ...Object.keys(GOODS || {}),
     ...Object.keys(MATERIALS || {}),
-  ];
+  ].filter((id) => !economy.isWorkshopCraft(id));   // kits and components are never for sale
 }
 
 /**
@@ -63,12 +59,16 @@ function generateIssue(now) {
       if (!(base > 0)) continue;
       const bargain = Math.random() < NEWSPAPER.bargainChance;
       const mult = bargain ? randomInRange(NEWSPAPER.bargainBand) : randomInRange(NEWSPAPER.priceBand);
-      const price = Math.max(1, Math.round(base * mult));
+      const qty = randomQty([1, 10]);
+      // `price` is the price of the whole LOT (buy() pro-rates it when only part fits). It used
+      // to be one unit's price for the entire lot - ten items for the price of one - which made
+      // the newspaper a 6x money printer against the barn's own sell button.
+      const price = Math.max(qty, Math.round(base * mult * qty));
       listings.push({
         id: freshId(),
         neighbourId,
         item: itemId,
-        qty: randomQty([1, 10]),
+        qty,
         price,
         bargain,
       });
@@ -95,13 +95,17 @@ export function refresh(now) {
   return generateIssue(now);
 }
 
-/** Buy a listing; pays coins and puts the goods in the barn. Respects barn capacity. */
+/**
+ * Buy a listing: pays coins and puts the goods in the store they belong to - crops in the silo
+ * (they used to land in the barn, where a crop can neither be planted nor spent), everything
+ * else in the barn. Respects that store's capacity: what fits is bought at the pro-rated price.
+ */
 export function buy(listingId) {
   const idx = state.newspaper.listings.findIndex((l) => l.id === listingId);
   if (idx === -1) return false;
   const listing = state.newspaper.listings[idx];
 
-  const room = barnRoom();
+  const room = storage.roomFor(listing.item);
   if (room <= 0) return false;
   const qty = Math.min(listing.qty, room);
   const cost = Math.round(listing.price * (qty / listing.qty));
@@ -112,7 +116,7 @@ export function buy(listingId) {
   } catch {
     return false;
   }
-  state.barn.items[listing.item] = (state.barn.items[listing.item] || 0) + qty;
+  storage.add(listing.item, qty);
 
   if (qty >= listing.qty) {
     state.newspaper.listings.splice(idx, 1);

@@ -16,14 +16,7 @@ import { state } from './state.js';
 import { REGATTA } from './data.js';
 import * as economy from './economy.js';
 import * as neighbours from './neighbours.js';
-
-function totalCount(items) { return Object.values(items).reduce((a, b) => a + b, 0); }
-function barnRoom() { return Math.max(0, state.barn.capacity - totalCount(state.barn.items)); }
-function addToBarn(id, qty) {
-  const given = Math.max(0, Math.min(qty, barnRoom()));
-  if (given > 0) state.barn.items[id] = (state.barn.items[id] || 0) + given;
-  return given;
-}
+import * as storage from './storage.js';
 
 function pickBoard(seasonId) {
   const rng = neighbours._rng(neighbours._hash(`${state.neighbours.seed}:regattaboard:${seasonId}`));
@@ -60,8 +53,10 @@ function startNewSeason(now, league, carry = {}) {
   // jump the new endsAt straight past `now` on the very first iteration and silently swallow
   // every season in between (seasonId barely moving while weeks of "missed" seasons vanish).
   const baseline = state.regatta ? state.regatta.endsAt : now;
+  // Rivals start racing when the SEASON starts, not when the player next looks: a season that
+  // began while the game was closed shows crews that have plainly been at it since then.
   const rivals = neighbours.sample(REGATTA.laneCount - 1, `regatta_${seasonId}`).map((nb) => ({
-    neighbourId: nb.id, points: 0, lastTickAt: now,
+    neighbourId: nb.id, points: 0, lastTickAt: baseline,
   }));
   state.regatta = {
     seasonId,
@@ -82,7 +77,11 @@ function ensure() {
   return state.regatta;
 }
 
-/** Standings, player included, sorted by points. */
+/**
+ * Standings, player included, sorted by points. A tie goes AGAINST the player: you must beat a
+ * crew to place above it. The old stable sort left the player - pushed first - on top of every
+ * tie, which is how twenty idle weeks used to become twenty wins and a golden-league promotion.
+ */
 export function standings() {
   const s = ensure();
   const rows = [{ id: 'player', name: 'You', points: s.points, isPlayer: true }];
@@ -95,19 +94,42 @@ export function standings() {
       isPlayer: false,
     });
   }
-  rows.sort((a, b) => b.points - a.points);
+  rows.sort((a, b) => (b.points - a.points) || ((a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0)));
   return rows;
 }
 
+/** Advance rival scores from their own last tick up to `upTo`, never past the season's end. */
+function advanceRivals(upTo) {
+  const s = state.regatta;
+  const cap = Math.min(upTo, s.endsAt);
+  for (const r of s.rivals) {
+    const elapsedSeconds = Math.max(0, (cap - r.lastTickAt) / 1000);
+    if (elapsedSeconds <= 0) continue;
+    const sim = neighbours.simulate(r.neighbourId, elapsedSeconds);
+    r.points += sim.points;
+    r.lastTickAt = cap;
+  }
+}
+
+/**
+ * Settle a finished season. A season the player never scored in was not entered: no place, no
+ * reward, and neither a promotion nor a demotion - the league is decided by racing, not by
+ * absence in either direction.
+ */
 function doSettle(now) {
+  const s = state.regatta;
+  const league = s.league;
+  if (!(s.points > 0)) {
+    startNewSeason(now, league, { lastPlace: null, lastRewards: null, placementClaimed: true });
+    return { place: null, rewards: null, entered: false };
+  }
   const rows = standings();
   const place = rows.findIndex((r) => r.isPlayer) + 1;
   maybePromoteDemote(place);
   const rewardDef = REGATTA.rewards.placement.find((p) => p.place === place)
     || REGATTA.rewards.placement[REGATTA.rewards.placement.length - 1];
-  const result = { place, rewards: rewardDef };
-  const league = state.regatta.league;
-  startNewSeason(now, league, { lastPlace: place, lastRewards: rewardDef, placementClaimed: false });
+  const result = { place, rewards: rewardDef, entered: true };
+  startNewSeason(now, state.regatta.league, { lastPlace: place, lastRewards: rewardDef, placementClaimed: false });
   return result;
 }
 
@@ -116,8 +138,10 @@ export function activeSeason(now = Date.now()) {
   ensure();
   let guard = 0;
   // Bounded loop: a save left untouched for months still resolves in a handful of iterations
-  // (one per missed season), never in an unbounded loop or a fabricated fortune.
+  // (one per missed season), never in an unbounded loop or a fabricated fortune. Each missed
+  // season's rivals race to that season's end before it is placed.
   while (now >= state.regatta.endsAt && guard < 2000) {
+    advanceRivals(state.regatta.endsAt);
     doSettle(now);
     guard++;
   }
@@ -174,7 +198,9 @@ export function completeTask(taskId) {
   const def = REGATTA.taskPool.find((t) => t.id === taskId);
   const league = REGATTA.leagues.find((l) => l.id === s.league) || REGATTA.leagues[0];
 
-  s.points += Math.round(def.points * league.rewardMult);
+  const pts = Math.round(def.points * league.rewardMult);
+  s.points += pts;
+  economy.trackStat('regattaPoints', pts);   // the counter the Crew Hand / Commodore achievements read
   economy.addCoins(Math.round(REGATTA.rewards.perTask.coins * league.rewardMult));
   economy.addXp(REGATTA.rewards.perTask.xp);
   entry.handedIn = true;
@@ -196,22 +222,27 @@ export function claimPlacement() {
   if (r.coins) economy.addCoins(r.coins);
   if (r.diamonds) state.diamonds += r.diamonds;
   if (r.materials) {
-    for (const [id, qty] of Object.entries(r.materials)) addToBarn(id, qty);
+    // What fits lands in the barn; the rest is paid out rather than lost to a full store.
+    for (const [id, qty] of Object.entries(r.materials)) storage.addOrPay(id, qty);
   }
-  if (r.decoration) addToBarn(r.decoration, 1);
+  if (r.decoration) grantDecoration(r.decoration);
   s.placementClaimed = true;
   return true;
+}
+
+/**
+ * A decoration reward is an owned decoration the player can place for free from the Workshop's
+ * decorations list - not a barn item. It used to be dropped into the barn, where it occupied a
+ * slot for ever, sold for nothing and could never be placed.
+ */
+function grantDecoration(decoId) {
+  if (!state.decorate) state.decorate = { active: false, selection: [], history: [], historyIndex: 0 };
+  if (!state.decorate.owned) state.decorate.owned = {};
+  state.decorate.owned[decoId] = (state.decorate.owned[decoId] || 0) + 1;
 }
 
 /** Advance rival scores from elapsed time; called from the game loop. */
 export function tick(now = Date.now()) {
   activeSeason(now);
-  const s = state.regatta;
-  for (const r of s.rivals) {
-    const elapsedSeconds = Math.max(0, (now - r.lastTickAt) / 1000);
-    if (elapsedSeconds <= 0) continue;
-    const sim = neighbours.simulate(r.neighbourId, elapsedSeconds);
-    r.points += sim.points;
-    r.lastTickAt = now;
-  }
+  advanceRivals(now);
 }

@@ -3,6 +3,7 @@
 import { state } from './state.js';
 import { ACHIEVEMENTS, DAILY_WHEEL, PETS, EVENTS, MUSEUM } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -67,8 +68,9 @@ export function spin() {
     economy.addCoins(result.coins);
   }
   if (result.diamonds) state.diamonds += result.diamonds;
-  if (result.item) state.barn.items[result.item] = (state.barn.items[result.item] || 0) + (result.qty || 1);
-  if (result.material) state.barn.items[result.material] = (state.barn.items[result.material] || 0) + (result.qty || 1);
+  // Never past the barn cap: what fits is stored, the rest is paid out as coins.
+  if (result.item) result.paidOut = storage.addOrPay(result.item, result.qty || 1).paidOut;
+  if (result.material) result.paidOut = storage.addOrPay(result.material, result.qty || 1).paidOut;
 
   return result;
 }

@@ -75,6 +75,7 @@ export const VERB_LOADERS = {
   stir_figure: () => import('./verbs/stir_figure.js'),
   arc_pour: () => import('./verbs/arc_pour.js'),
   read_vortex: () => import('./verbs/read_vortex.js'),
+  ride_heat: () => import('./verbs/ride_heat.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

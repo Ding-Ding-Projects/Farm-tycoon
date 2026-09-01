@@ -294,6 +294,19 @@ const OPTIMAL = {
   // Deduction, not timing. The thickness is never shown, so the optimal play watches how fast
   // the jug thins for a moment, solves for it, and releases on that. A fixed hold that ignores
   // the jug scores 0.007 to 0.671 against this driver's 0.99.
+  // Sequencing. The optimal play works through the tickets in heat order rather than the order
+  // they arrived, because the pan keeps whatever heat the last omelet left in it. The dedicated
+  // ordering guard below is what actually pins that claim; this driver only proves it is winnable.
+  ride_heat: () => (snap) => {
+    if (snap.busy) return null;
+    const left = snap.tickets.filter((k) => !k.done);
+    if (!left.length) return null;
+    const sorted = [...left].sort((x, y) => x.heat - y.heat);
+    const lo = sorted[0];
+    const hi = sorted[sorted.length - 1];
+    const next = Math.abs(snap.panHeat - lo.heat) <= Math.abs(snap.panHeat - hi.heat) ? lo : hi;
+    return { lane: next.lane, commit: true };
+  },
   read_vortex: () => (snap) => {
     if (snap.heldMs < 1200) return { held: true };     // observe first
     const dropped = 1 - snap.level;
@@ -449,6 +462,61 @@ for (const id of ids) {
     }
   });
 }
+
+// ---------------------------------------------------------------------------------------
+// ride_heat: the ordering claim, pinned.
+//
+// The generic sweep above proves a verb is winnable and that skill beats idling. Neither says
+// anything about the thing this verb exists for, which is that the SEQUENCE matters: cooking the
+// tickets in heat order must beat cooking them in the order they arrived.
+//
+// That check earns its own guard because the previous attempt at an ordering verb (work_rush,
+// cut) died exactly here. Its ordering claim was measured against a driver whose name said "first
+// come, first served" while it actually picked "most slack remaining", and the gap it appeared to
+// show evaporated the moment the real policy was measured. So this guard names both policies
+// explicitly and asserts the direction on every seed.
+// ---------------------------------------------------------------------------------------
+await testAsync('ride_heat: planning the route beats cooking in arrival order, on every seed', async () => {
+  const mod = await VERB_LOADERS.ride_heat();
+
+  const play = (seed, pick) => {
+    const g = mod.create(seed, {});
+    let t = 0;
+    while (!g.done() && t < 200000) {
+      const snap = g.snapshot();
+      let move = null;
+      if (!snap.busy) {
+        const left = snap.tickets.filter((k) => !k.done);
+        if (left.length) move = { lane: pick(left, snap).lane, commit: true };
+      }
+      g.step(16, move);
+      t += 16;
+    }
+    return g.score();
+  };
+
+  // Plan: work through the remaining tickets in heat order, starting at whichever end of the
+  // range the pan is already nearer to.
+  const planned = (left, snap) => {
+    const sorted = [...left].sort((a, b) => a.heat - b.heat);
+    const lo = sorted[0];
+    const hi = sorted[sorted.length - 1];
+    return Math.abs(snap.panHeat - lo.heat) <= Math.abs(snap.panHeat - hi.heat) ? lo : hi;
+  };
+  // Arrival order: straight down the queue, which is what the tickets tempt you into.
+  const inOrder = (left) => left[0];
+
+  for (const seed of [1, 42, 555, 9001, 31337, 777, 2024, 4242, 88, 1234]) {
+    const plan = play(seed, planned);
+    const queue = play(seed, inOrder);
+    assert.ok(
+      plan > queue + 0.15,
+      `seed ${seed}: planned ${plan.toFixed(3)} must clearly beat arrival order ${queue.toFixed(3)} - `
+      + 'if working straight down the queue is just as good, the pan state is not doing anything',
+    );
+    assert.ok(plan >= 0.9, `seed ${seed}: a planned route should plate nearly everything, got ${plan.toFixed(3)}`);
+  }
+});
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) process.exit(1);

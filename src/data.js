@@ -273,6 +273,10 @@ export const GOODS = {
   plain_yogurt:     { icon: '🥛', name: 'Plain Yogurt',         sellPrice: 1350 },
   berry_yogurt:     { icon: '🫐', name: 'Berry Yogurt',         sellPrice: 2000 },
   mint_yogurt:      { icon: '🍃', name: 'Mint Yogurt',          sellPrice: 4310 },
+  // omelet_station
+  plain_omelet:     { icon: '🍳', name: 'Plain Omelet',         sellPrice: 780 },
+  cheese_omelet:    { icon: '🧀', name: 'Cheese Omelet',        sellPrice: 1260 },
+  garden_omelet:    { icon: '🍄', name: 'Garden Omelet',        sellPrice: 2080 },
   // hot_dog_stand
   hot_dog:          { icon: '🌭', name: 'Hot Dog',              sellPrice: 940 },
   chili_dog:        { icon: '🌶️', name: 'Chili Dog',            sellPrice: 1480 },
@@ -285,6 +289,7 @@ export const GOODS = {
   lamb_skewer:      { icon: '🍢', name: 'Lamb Skewer',          sellPrice: 820 },
   alpaca_scarf:     { icon: '🧣', name: 'Alpaca Scarf',         sellPrice: 420 },
   // kits for the ten buildings above
+  kit_omelet_station:       { icon: '🍳', name: 'Omelet Station Kit',    sellPrice: 800 },
   kit_hot_dog_stand:        { icon: '🌭', name: 'Hot Dog Stand Kit',     sellPrice: 780 },
   kit_smoothie_mixer:       { icon: '🥤', name: 'Smoothie Mixer Kit',    sellPrice: 760 },
   kit_oil_press:            { icon: '🫒', name: 'Oil Press Kit',          sellPrice: 500 },
@@ -560,6 +565,15 @@ export const BUILDINGS = {
       { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36, unlockLevel: 62 },
       { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84,
         play: { stages: [{ verb: 'arc_pour' }] } },
+    ],
+  },
+  omelet_station: {
+    name: 'Omelet Station', unlockLevel: 77, cost: 47000, size: [2, 2], kit: 'kit_omelet_station', minigame: 'pan_ride', queueSlots: 3,
+    recipes: [
+      { id: 'plain_omelet',   inputs: { egg: 3, butter: 1 },                           time: 1800,  xp: 24, unlockLevel: 77 },
+      { id: 'cheese_omelet',  inputs: { egg: 3, cheese: 2 },                           time: 3000,  xp: 34, unlockLevel: 77 },
+      { id: 'garden_omelet',  inputs: { egg: 3, mushroom: 2, bell_pepper: 1 },         time: 5100,  xp: 50, unlockLevel: 80,
+        play: { stages: [{ verb: 'ride_heat' }] } },
     ],
   },
   hot_dog_stand: {
@@ -849,6 +863,7 @@ export const BUILDINGS = {
       { id: 'kit_sushi_bar',          inputs: { panel: 5, glazing: 3, fitting: 3 },           time: 40680, xp: 115, unlockLevel: 21, sink: true },
       { id: 'kit_smoothie_mixer',     inputs: { panel: 5, glazing: 4, fitting: 3 },           time: 42300, xp: 120, unlockLevel: 21, sink: true },
       { id: 'kit_hot_dog_stand',      inputs: { panel: 6, glazing: 3, fitting: 4 },           time: 43900, xp: 124, unlockLevel: 21, sink: true },
+      { id: 'kit_omelet_station',     inputs: { panel: 6, glazing: 4, fitting: 4 },           time: 45200, xp: 128, unlockLevel: 21, sink: true },
       { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
       { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
       { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
@@ -892,6 +907,7 @@ export const MINIGAMES = {
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
   press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
   steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  pan_ride:        { name: 'Ride the Heat',      building: 'omelet_station',         effect: 'panControl',         cap: 0.25, purpose: 'One pan, one temperature. Cook near what it is already at and the service flies.' },
   rush_hour:       { name: 'Work the Rush',      building: 'hot_dog_stand',          effect: 'rushComposure',      cap: 0.25, purpose: 'A lunch rush is about what you give up. Take whichever is closest to burning.' },
   vortex_read:     { name: 'Read the Vortex',    building: 'smoothie_mixer',         effect: 'blendFineness',      cap: 0.25, purpose: 'Every jug thins at its own rate. Stop when the vortex forms, not when the clock says.' },
   knife_work:      { name: 'Knife Work',         building: 'sushi_bar',              effect: 'knifePrecision',     cap: 0.25, purpose: 'Slice clean and even. A ragged cut ruins the roll.' },
@@ -930,7 +946,7 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
-  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure',
+  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1178,6 +1194,12 @@ export const VERBS = {
     purpose: 'A seam that carries through holds the garment together.',
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
+  },
+  ride_heat: {
+    name: 'Ride the Heat', verbWord: 'ride', family: 'route',
+    purpose: 'One pan holds one temperature, and it keeps whatever the last omelet left in it.',
+    hint: 'Swinging the pan costs seconds. Work through the tickets in heat order instead of the order they arrived.',
+    stageClass: 'stage-route', durationMs: 8800,
   },
   read_vortex: {
     name: 'Read the Vortex', verbWord: 'read', family: 'sustain',
@@ -1489,7 +1511,7 @@ export const LEVELS = {
     74: ['harvest_festival', 'isle_bonita', 'smoothie_mixer'],
     75: ['deep_silo', 'zoo_tiger', 'hot_dog_stand'],
     76: ['fondue_pot'],
-    77: ['watermelon'],
+    77: ['watermelon', 'omelet_station'],
     78: ['expansion_15'],
     79: ['golden_barn'],
     80: ['preservation_station'],

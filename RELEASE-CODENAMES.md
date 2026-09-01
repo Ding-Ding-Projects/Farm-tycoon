@@ -25,3 +25,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `c1b74e4e5bf2` | Mushroom Siu Mai · 北菇燒賣 | `mushroom-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0017-mushroom-siu-mai.png |
 | 0.1.0 | `7b0c17da7831` | Fish Maw Siu Mai · 花膠燒賣 | `fish-maw-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0018-fish-maw-siu-mai.png |
 | 0.1.0 | `67dd01a5c73c` | Black Truffle Siu Mai · 黑松露燒賣 | `truffle-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0019-truffle-siu-mai.png |
+| 0.1.0 | `7dc0f145cab5` | Dark Chocolate Crystal Dumpling · 黑朱古力水晶餃 | `dark-chocolate-crystal-dumpling` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0020-dark-chocolate-crystal-dumpling.png |

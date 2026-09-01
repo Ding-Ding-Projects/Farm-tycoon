@@ -33,3 +33,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `c8da1fbb2a5f` | Steamed Pork Ribs with Garlic · 蒜香蒸排骨 | `garlic-pork-ribs` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0025-garlic-pork-ribs.png |
 | 0.1.0 | `e2d99ac6bfde` | Steamed Pork Ribs with Plum Sauce · 梅子蒸排骨 | `plum-sauce-pork-ribs` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0026-plum-sauce-pork-ribs.png |
 | 0.1.0 | `7ac35a6e467c` | Steamed Chicken Feet in Black Bean Sauce · 豉汁蒸鳳爪 | `black-bean-chicken-feet` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0027-black-bean-chicken-feet.png |
+| 0.1.0 | `5cb2fc955f10` | Satay Chicken Feet · 沙嗲蒸鳳爪 | `satay-chicken-feet` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0028-satay-chicken-feet.png |

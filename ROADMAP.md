@@ -98,7 +98,13 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       on an inverted pendulum. A third, `test_set`, was cut earlier for the same class of reason.
       A fourth was cut before a line of it was written: a pasta extruder whose output lagged the
       crank is a re-skin of `jar_fill`, which already owns input dead time
-- [ ] Per-family audio, a Bake Book from `state.minigames.best`, Masterpiece achievements
+- [x] **Phase 6 integration is complete.** Per-family audio and the Masterpiece achievements
+      already existed and were already wired - `audio.js` carries a distinct hit sound for all
+      twelve input families, and `minigames.js` increments `masterpiecesMade`, which both
+      achievements read. The Bake Book was the one genuinely missing piece and now ships in
+      `src/bakebook.js`: every playable recipe, the best tier reached on each, and which VERBS
+      are still unmastered, since skill is per verb while quality is recorded per recipe. It opens
+      from Achievements rather than the dock, which is contractually four buttons.
 
 ## Android
 
@@ -138,6 +144,12 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       is `kit_paper_mill` at **-35 coins** (raw 555, sells 520); nothing is profitable even when
       every input is bought at the market's 1.4x. The original ~9,800 scenario is re-run by name.
       Nothing is underwater on direct inputs or on fully expanded raw inputs either.
+- [ ] **No panel in the game has a search field.** With 44 cards in the Bake Book, 43 in
+      Achievements and a barn that grows past a hundred rows, every list is scanned by eye. Adding
+      one to a single panel would be worse than none, because a filter that exists in one place
+      and not the next teaches a player the pattern is unreliable - so this is one job across
+      every panel or it is not worth starting.
+
 - [ ] **The coins-per-second spread is 12x, and the bottom of the table is not worth crafting.**
       Surfaced by `tools/test-economy.mjs`, which prints it on every run: the median recipe earns
       0.045 coins per second of queue time, the best earns 0.541, and syrup earns 0.001 - 76 coins

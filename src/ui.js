@@ -28,6 +28,7 @@ import * as newspaper from './newspaper.js';
 import * as collections from './collections.js';
 import * as neighbours from './neighbours.js';
 import * as decorate from './decorate.js';
+import * as bakebook from './bakebook.js';
 import * as audio from './audio.js';
 import * as tutorial from './tutorial.js';
 import * as workshop from './workshop.js';
@@ -247,7 +248,7 @@ const PANEL_TITLES = {
   workshop: 'Building Workshop', museum: 'Museum', lab: 'Laboratory', expeditions: 'Expedition Camp',
   town: 'Town', zoo: 'Zoo', newspaper: 'Newspaper', collections: 'Collections', photo: 'Photo Mode',
   building: 'Building', pen: 'Animal Pen', decorate: 'Decorate', achievements: 'Achievements',
-  coop: 'Co-op & Regatta', settings: 'Settings', wheel: 'Daily Wheel',
+  coop: 'Co-op & Regatta', settings: 'Settings', wheel: 'Daily Wheel', bakebook: 'Bake Book',
 };
 
 let openPanelId = null;
@@ -311,8 +312,8 @@ function renderComingSoon(container, name) {
   container.appendChild(p);
 }
 
-function hintEl(text) {
-  const s = document.createElement('span');
+function hintEl(text, block = false) {
+  const s = document.createElement(block ? 'p' : 'span');
   s.className = 'minigame-hint';
   s.textContent = text;
   return s;
@@ -1970,6 +1971,70 @@ function renderAchievements(container) {
     grid.appendChild(card);
   }
   container.appendChild(grid);
+
+  const bookSum = bakebook.summary();
+  container.appendChild(row('')).appendChild(button(
+    `Bake Book \u2014 ${bookSum.mastered}/${bookSum.total} mastered`,
+    () => openPanel('bakebook'),
+  ));
+}
+
+/**
+ * The Bake Book. Every playable recipe and the best tier you have ever reached on it.
+ *
+ * It opens from Achievements rather than from the dock, because the dock is contractually four
+ * buttons - the four things with no place in the world - and a fifth would break the contract
+ * test as well as the rule behind it. A record of what you have made sits naturally beside a
+ * record of what you have done.
+ *
+ * The list is derived in bakebook.js and only rendered here, so what "mastered" means is decided
+ * in exactly one place.
+ */
+function renderBakeBook(container) {
+  const sum = bakebook.summary();
+  const tiers = sum.perTier.map((t) => `${t.label} ${t.count}`).join(' \u00b7 ');
+  container.appendChild(hintEl(
+    sum.complete
+      ? `Every one of the ${sum.total} playable recipes at Masterpiece. The book is finished.`
+      : `${sum.mastered}/${sum.total} at Masterpiece \u00b7 ${sum.played} played, ${sum.unplayed} never tried \u00b7 ${tiers}`,
+    true,
+  ));
+
+  // Skill is per VERB while quality is recorded per RECIPE, so a player stuck at Plain on four
+  // recipes usually has one verb they have not got the hang of - which is invisible on any single
+  // recipe card. Only verbs actually attempted are worth naming; never having tried something is
+  // not the same as being bad at it.
+  const weakest = bakebook.verbStanding().filter((v) => v.played > 0 && v.mastered < v.played);
+  if (weakest.length) {
+    container.appendChild(hintEl(
+      'Still to master: ' + weakest.slice(0, 4).map((v) => `${v.name} (${v.mastered}/${v.played})`).join(', '),
+      true,
+    ));
+  }
+
+  // ONE grid, not a chapter per building. bakebook.byBuilding() exists and is tested, but almost
+  // every factory has exactly one playable recipe, so grouping put a heading above 42 of the 44
+  // cards and turned a scannable page into a very long scroll. The building name goes on the card
+  // instead, which is the same information in a quarter of the height.
+  const grid = slotGrid();
+  for (const e of bakebook.entries()) {
+    const card = document.createElement('div');
+    // An unplayed recipe looks locked but is NOT a failure, and the copy says which it is: a book
+    // that renders "never tried" and "tried and did badly" the same way tells the player they
+    // failed at something they have not attempted.
+    card.className = `build-card${e.bestIndex === undefined ? ' locked' : ''}`;
+    const badge = e.mastered ? '\u2b50' : e.bestIndex === undefined ? '\u2b1c' : '\u2705';
+    const verbs = e.stages.map((st) => st.name).join(' \u2192 ');
+    const stand = e.bestIndex === undefined
+      ? 'never played'
+      : `best: ${e.bestTier ? e.bestTier.label : e.bestIndex}`;
+    card.innerHTML = `<span class="icon">${badge}</span><strong>${itemName(e.recipeId)}</strong>
+      <span class="minigame-hint">${e.buildingName} \u00b7 lv ${e.unlockLevel}</span>
+      <span class="minigame-hint">${verbs}</span>
+      <span>${stand}</span>`;
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
 }
 
 function renderDecorate(container) {
@@ -2015,6 +2080,7 @@ function renderPanelContent(panelId, ctx = null) {
     case 'wheel': renderWheel(container); break;
     case 'settings': renderSettings(container); break;
     case 'achievements': renderAchievements(container); break;
+    case 'bakebook': renderBakeBook(container); break;
     case 'decorate': renderDecorate(container); break;
     default: {
       const struct = STRUCTURES[ctx];

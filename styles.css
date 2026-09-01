@@ -256,11 +256,24 @@ a:hover { color: var(--color-primary); }
 }
 .order-card { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .shop-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; aspect-ratio: 1; justify-content: center; }
-.build-card { display: flex; flex-direction: column; gap: 9px; min-width: 150px; text-align: left; }
+/* min-width was a flat 150px, which is wider than a grid track gets on a phone: the tracks
+   computed to 144.5px and every card still drew at 150, so the grid scrolled sideways by a few
+   pixels no matter what the track sizing said. A card cannot be allowed to overrule the column it
+   sits in. 150px stays as the PREFERRED width via flex-basis, so nothing changes on a wide panel;
+   it just stops being a floor the layout cannot go under. */
+.build-card { display: flex; flex-direction: column; gap: 9px; min-width: 0; flex: 1 1 150px; text-align: left; }
 .build-card.locked { filter: saturate(0.55); opacity: 0.85; }
 .build-card.locked .btn { pointer-events: none; }
 .card-row { display: flex; gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-2); }
-.slot-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--sp-3); }
+/* auto-fill with an explicit minimum, NOT a fixed count of 1fr columns.
+   `repeat(6, 1fr)` reads as "six equal columns that share the width", and it is not: 1fr means
+   minmax(AUTO, 1fr), and that auto floor is the column's min-content. The cards' min-content is
+   about 150px, so six columns demanded 960px inside a 727px sheet and every panel using this
+   class scrolled sideways with its last column cut in half - achievements included, since long
+   before the Bake Book arrived. Measured, not inferred: getComputedStyle reported
+   `150px 150px 150px 150px 150px 150px` against a 727px container.
+   Letting the browser choose the count fits the space it actually has. */
+.slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-3); }
 .slot-empty {                                   /* NEW — dashed empty/locked slot */
   display: grid; place-items: center; border-radius: var(--radius-card);
   background: rgba(122, 74, 24, 0.07); border: 3px dashed rgba(122, 74, 24, 0.32);
@@ -781,7 +794,9 @@ a:hover { color: var(--color-primary); }
   .meter-chip .bar { width: 72px; }
   .dock-btn { width: var(--hit-dock); height: var(--hit-dock); }
   .sheet-panel { max-height: 76vh; padding: 26px var(--sp-4) var(--sp-5); }
-  .slot-grid { grid-template-columns: repeat(4, 1fr); }
+  /* Same reasoning as the base rule: a fixed four columns cannot shrink past their min-content
+     either, it just took a narrower sheet to notice. */
+  .slot-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 }
 
 [hidden] { display: none !important; }

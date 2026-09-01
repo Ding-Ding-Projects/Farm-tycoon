@@ -113,8 +113,16 @@ Applies to **Phase B**: the game is implemented **fully, start to finish, in a s
 >   materials the spine of progression and gives trains, the airport and the helicopter a
 >   reason to exist.
 > - **Every production building has its own minigame**, with an effect only that factory would
->   have. Optional bonus layer, never a gate — gating a recipe on hand-eye skill would break
->   the idle contract and punish offline play.
+>   have. This is the per-BUILDING bonus layer (`MINIGAMES`), and it remains optional.
+> - **Some ITEMS are playable, and for those the game is required.** A recipe carrying a `play`
+>   chain (`VERBS`, one game per stage) can only be collected by playing it through. This
+>   REVERSES the original "never a gate" rule above, deliberately and at the owner's explicit
+>   direction, after the trade-off was put to them. What protects the idle contract instead:
+>   a run never expires, a game can be scored badly but never failed, an unplayed craft never
+>   blocks a collectable one behind it, four whole recipe classes may never be playable (kits,
+>   workshop components, animal feed, and any building's introductory recipe), and Assist mode
+>   plus an opt-in auto-finish exist so the gate can never become a wall.
+>   Offline time still completes the PREP timer; it cannot complete the game.
 > - **Systems open by clicking their structure in the world**, never from the HUD or dock, and
 >   locked structures are derelict but still clickable from level 1 so the map doubles as the
 >   roadmap.

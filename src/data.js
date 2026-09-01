@@ -592,7 +592,6 @@ export const BUILDINGS = {
   },
   build_workshop: {
     name: 'Building Workshop', unlockLevel: 6, cost: 900, size: [3, 2], minigame: 'workshop_fit', queueSlots: 3,
-    minigame: 'workshop_fit',
     recipes: [
       { id: 'shingle',              inputs: { slab: 1, nails: 1 },                              time: 600,   xp: 3, unlockLevel: 6,  sink: true },
       { id: 'beam',                 inputs: { brick: 1, nails: 2 },                             time: 900,   xp: 4, unlockLevel: 6,  sink: true },

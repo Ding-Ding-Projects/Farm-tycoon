@@ -26,9 +26,13 @@ world for whoever picks this up next (full detail and verification evidence in
   zero console errors; `window.__farmDebug` exposes real, mutating state.
 - **Two mechanics distinguish this from its sources.** Buildings are *crafted*, not bought:
   the Building Workshop turns materials into components, components into a kit, and the kit
-  places the factory. And every production building has *its own* minigame with an effect
-  only that factory has — optional, a bonus layer, never a gate, because gating a recipe on
-  hand-eye skill would break the idle contract.
+  places the factory. Every production building has *its own* minigame with an effect only
+  that factory has (`MINIGAMES`), which stays an optional bonus layer. Separately, some
+  *items* are **playable**: a recipe carrying a `play` chain (`VERBS`) can only be collected
+  by playing its own game through, one verb per stage. That gate is deliberate and replaces
+  the old "never a gate" rule; `src/minigames.js` documents what keeps it from becoming a
+  wall (no expiry, no failure state, never blocks the queue, four exempt recipe classes,
+  Assist mode and an opt-in auto-finish).
 - **Systems open from world objects, never the HUD or dock.** `STRUCTURES` gives each a
   footprint and position; `input.js` resolves a pick to a structure id. Locked ones are
   derelict but still clickable from level 1. The dock keeps only what has no place in the

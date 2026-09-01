@@ -61,6 +61,11 @@ table has no entry for an island dock. The nearest thing is the Boat Dock, which
 panel. The last section of this article,
 <a href="#/township/gaps">what is implemented, what is wired and what is not</a>, gives the full
 state of all three modules.</p>
+<figure class="shot">
+  <img src="./screenshots/29-panel-town_gate.webp" alt="A sliding panel titled Town reading that the Road to Town is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Road to Town.</strong> Captured at <code>7dc0f14</code>, before the panels were wired: the town module was implemented and this panel opened on the generic placeholder.</figcaption>
+</figure>
 `,
     },
     {
@@ -342,6 +347,11 @@ genuinely surprising the first time you meet it.</p>
   entirely lets the barn answer. This was verified by running the module directly rather than
   inferred from reading it, and the same lookup governs whether a zoo order can be filled.</p>
 </div>
+<figure class="shot">
+  <img src="./screenshots/30-panel-zoo_gate.webp" alt="A sliding panel titled Zoo reading that the Road to the Zoo is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Road to the Zoo.</strong> The same shape as the town, in the same pre-wiring capture.</figcaption>
+</figure>
 `,
     },
     {
@@ -690,6 +700,18 @@ drawn on. Neither is enforced by anything today.</p>
   <p>Everything above was checked against the source at the time of writing. These are the kind of
   gaps that get closed by one change each, so if you are reading this after a Township interface
   pass has landed, check the modules rather than trusting this list.</p>
+</div>
+<div class="shot-row">
+  <figure class="shot">
+    <img src="./screenshots/02b-locked-town_gate.webp" alt="The world view with a weathered, derelict-looking town gate and a red toast notification reading that it unlocks at level 20."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Town, locked at level 20.</strong> The gate is drawn and clickable from the first minute, and tapping it names the level it opens at.</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="./screenshots/02d-locked-zoo_gate.webp" alt="The world view with a weathered, derelict-looking zoo gate and a red toast notification reading that it unlocks at level 34."
+         width="896" height="560" loading="lazy" decoding="async">
+    <figcaption><strong>Zoo, locked at level 34.</strong> The same treatment. Nothing is hidden from the map, only gated.</figcaption>
+  </figure>
 </div>
 `,
     },

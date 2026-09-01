@@ -709,6 +709,11 @@ export const article = {
   and because it means a newspaper listing cannot be reconstructed after the fact from the save's seed
   alone.
 </p>
+<figure class="shot">
+  <img src="./screenshots/31-panel-mailbox.webp" alt="A sliding panel titled Newspaper reading that the Mailbox is being built — check back soon."
+       width="896" height="560" loading="lazy" decoding="async">
+  <figcaption><strong>The Mailbox.</strong> Captured at <code>7dc0f14</code>, before the panels were wired to their modules, so the newspaper does not appear on it. The co-op and regatta panel has no capture at all: at that commit its dock button carried a <code>hidden</code> attribute that nothing ever cleared.</figcaption>
+</figure>
 `,
     },
 

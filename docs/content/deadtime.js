@@ -256,7 +256,7 @@ fastest book to see a payout from, which suits a book you fill by tapping bushes
 <figure class="shot">
   <img src="./screenshots/32-panel-bookshelf.webp" alt="A sliding panel titled Collections reading that the Collections Shelf is being built — check back soon."
        width="896" height="560" loading="lazy" decoding="async">
-  <figcaption><strong>The Collections Shelf.</strong> The collections module is implemented, and this panel still shows the placeholder.</figcaption>
+  <figcaption><strong>The Collections Shelf.</strong> The collections module was implemented at that commit, and this panel opened on the placeholder.</figcaption>
 </figure>
 `,
     },
@@ -487,7 +487,7 @@ unobtainable decoration instead of silently becoming one.</p>
   <figure class="shot">
     <img src="./screenshots/07b-dock-decorate-on.webp" alt="The Decorate panel closed with an info toast reading that decorate mode is on and the player can drag decorations to arrange the farm, though no such dragging exists yet."
          width="896" height="560" loading="lazy" decoding="async">
-    <figcaption><strong>Decorate, on.</strong> The toggle flips and a toast confirms it, and in this build that is the whole of it: nothing in the renderer, the input layer or the farm module reads the flag, so there is no drag-to-arrange yet.</figcaption>
+    <figcaption><strong>Decorate, on.</strong> The toggle flips and a toast confirms it, and that is still the whole of it: nothing in the renderer, the input layer or the farm module reads the flag, so there is no drag-to-arrange yet.</figcaption>
   </figure>
 </div>
 `,
@@ -531,7 +531,7 @@ pre-decorated template.</p>
 <figure class="shot">
   <img src="./screenshots/33-panel-tripod.webp" alt="A sliding panel titled Photo Mode reading that the Camera Tripod is being built — check back soon."
        width="896" height="560" loading="lazy" decoding="async">
-  <figcaption><strong>The Camera Tripod.</strong> Photo mode has fields in the decorating module and no panel case yet, so the tripod opens on the placeholder.</figcaption>
+  <figcaption><strong>The Camera Tripod.</strong> Photo mode had fields in the decorating module at that commit and no panel case, so the tripod opens on the placeholder.</figcaption>
 </figure>
 `,
     },

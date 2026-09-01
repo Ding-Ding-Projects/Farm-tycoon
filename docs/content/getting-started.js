@@ -866,6 +866,11 @@ export const article = {
               whole set, and nothing else about them was changed. They are stored beside this page
               and load as you scroll, so opening this section does not fetch all 57 at once.
             </p>
+            <p>
+              They are a record of that commit, not of the build today. Several structure panels
+              were wired to their backing modules after this pass, so a shot showing a generic
+              placeholder shows what that panel did then. Every caption that involves one says so.
+            </p>
           </div>
         </div>
 
@@ -1159,24 +1164,26 @@ export const article = {
 
         <h3>What has no picture, and why</h3>
         <p>
-          Seven surfaces are missing from this gallery because nothing in the build can reach them,
-          not because nobody thought to capture them:
+          Two surfaces are missing from this gallery because nothing in the build could reach them,
+          and one because it does not exist at all:
         </p>
         <ul>
-          <li><strong>The co-op and regatta panel.</strong> Its dock button carries a
-              <code>hidden</code> attribute that no code in the game ever clears.</li>
-          <li><strong>Every per-factory minigame.</strong> The module is written and tested
-              directly, and no panel in the interface opens one.</li>
-          <li><strong>The mine depths, the merge board, a fishing cast and an expedition
-              launch.</strong> Each module is implemented, and each of the four panels shown above
-              falls through to the generic placeholder instead of that content.</li>
+          <li><strong>Every per-factory minigame.</strong> The module is written and covered by the
+              test tools, and no panel in the interface opens one, so there is nothing to
+              photograph.</li>
+          <li><strong>The co-op and regatta panel.</strong> At the captured commit its dock button
+              carried a <code>hidden</code> attribute that nothing cleared. It has since been put
+              behind a level gate instead, so it is reachable now and simply has no capture yet.</li>
           <li><strong>A dark theme.</strong> The game ships one visual palette. Only this
               documentation site has both.</li>
         </ul>
         <p>
-          Panels that do open, but land on the placeholder, are captioned as such throughout: an
-          opening panel is not the same thing as a working screen, and this documentation does not
-          treat them as if they were.
+          A number of the panels above open on a generic placeholder: the order board, the truck,
+          the shop, the market, the boat, the lake, the mine, Merge Meadow, the trains, the airport,
+          the helipad, the town, the zoo, the museum, the laboratory, the expedition camp, the
+          mailbox, the bookshelf and the tripod. That is what those panels did at the commit
+          captured, and each caption says so. They were wired to their real modules afterwards, and
+          this gallery has not been recaptured since.
         </p>
       `,
     },

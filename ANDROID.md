@@ -126,14 +126,22 @@ emulation on, so the page genuinely reports touch points and multiple `pointerId
 behaves, and it caught two things worth having: without it there was no pinch handler at all, so
 the game was unzoomable on any device with no wheel.
 
-It is NOT a device run. It cannot show finger occlusion, palm rejection, WebView scroll
-interception, or how any of it feels. Those stay on the list below.
+It is NOT a device run. It cannot show finger occlusion, palm rejection, or how any of it feels.
+WebView gesture interception has since been addressed directly rather than left to chance (see the
+struck-through `drag` item below), and the `touch-action` layering that does it is asserted as
+computed style, but only a real device proves the WebView honours it. Those stay on the list.
 
 ## Known risks worth checking first
 
-- **`dual` needs two simultaneous touch points.** The shared input layer maps a single pointer to
-  one side by its x position, which works with a mouse and works with one finger, but a phone can
-  send two. If it feels wrong, that normaliser in `src/minigames/input.js` is where to look.
+- ~~**`dual` needs two simultaneous touch points.** The shared input layer maps a single pointer
+  to one side by its x position, which works with a mouse and works with one finger, but a phone
+  can send two.~~ **Done, and the guess above was wrong about why.** Two fingers sitting one per
+  half already worked: each `pointermove` landed in its own half and set its own value. The case
+  that genuinely broke is a finger CROSSING the midline, which silently began driving the other
+  side, clobbering whatever the other finger held and freezing its own. `throw_shuttles` and
+  `blend_notes` both move two values that can pass each other, so it was a real defect. Each touch
+  pointer now keeps the side it landed on; mouse pointers are deliberately excluded, since a mouse
+  has one position and that position is the only thing its side can mean.
 - ~~**`drag` uses `pointerdown` plus `closest('[data-grab]')`.** Touch drag on Android can be
   intercepted by the WebView's own scroll handling; `touch-action` on the stage may be needed.~~
   **Done.** It was needed, and it was worse than a drag problem: only `#world` carried

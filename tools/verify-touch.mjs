@@ -292,6 +292,40 @@ async function main() {
   check('but a tall dialog can still be scrolled on a phone',
     gestures.card === 'pan-y' && gestures.cardScrolls === 'auto', JSON.stringify(gestures));
 
+  // --- the minigame modal must fit the NARROWEST supported phone ----------------------------
+  //
+  // This is a regression guard on a defect that already shipped once: .modal-card had a flat
+  // min-width of 380px, which is wider than a 320px screen, and because the backdrop is
+  // position:fixed the overflow was CLIPPED rather than scrolled, so the edge of every minigame
+  // simply vanished. Checked at 320px, not at the comfortable width, because the comfortable
+  // width is exactly where that bug hid.
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width: 320, height: 720, deviceScaleFactor: 2, mobile: true,
+  });
+  const narrow = await cdp.ev(`(() => {
+    const back = document.createElement('div'); back.className = 'modal-backdrop';
+    const card = document.createElement('div'); card.className = 'modal-card';
+    const stage = document.createElement('div'); stage.className = 'game-stage';
+    stage.textContent = 'x';
+    card.appendChild(stage); back.appendChild(card); document.body.appendChild(back);
+    const cr = card.getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
+    const out = {
+      w: window.innerWidth,
+      cardLeft: Math.round(cr.left), cardRight: Math.round(cr.right),
+      stageRight: Math.round(sr.right),
+      bodyScrollsSideways: document.body.scrollWidth > window.innerWidth + 1,
+    };
+    back.remove();
+    return out;
+  })()`);
+  check('the minigame modal fits inside a 320px screen',
+    narrow.cardLeft >= -1 && narrow.cardRight <= narrow.w + 1, JSON.stringify(narrow));
+  check('and the stage inside it is not clipped off the right edge',
+    narrow.stageRight <= narrow.w + 1, JSON.stringify(narrow));
+  check('a 320px screen still does not scroll sideways',
+    narrow.bodyScrollsSideways === false, JSON.stringify(narrow));
+
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
 

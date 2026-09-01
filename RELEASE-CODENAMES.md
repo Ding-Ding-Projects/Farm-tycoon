@@ -23,3 +23,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `5a18cf70fa4d` | Beef Siu Mai · 牛肉燒賣 | `beef-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0015-beef-siu-mai.png |
 | 0.1.0 | `2b33dec084ee` | Chicken Siu Mai · 雞肉燒賣 | `chicken-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0016-chicken-siu-mai.png |
 | 0.1.0 | `c1b74e4e5bf2` | Mushroom Siu Mai · 北菇燒賣 | `mushroom-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0017-mushroom-siu-mai.png |
+| 0.1.0 | `7b0c17da7831` | Fish Maw Siu Mai · 花膠燒賣 | `fish-maw-siu-mai` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0018-fish-maw-siu-mai.png |

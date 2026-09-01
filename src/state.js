@@ -13,7 +13,7 @@ export const SAVE_KEY = 'farm-tycoon-save';
 // future key added to the shape means bumping this again and adding a migration in
 // MIGRATIONS — otherwise an existing save loads with the new key undefined and every consumer
 // starts branching on absence.
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 // localStorage is a browser/Electron-renderer global. The game itself never runs anywhere
 // else, but tools/test-core.mjs exercises this module under plain Node, which has no such
@@ -37,7 +37,7 @@ const storage = (() => {
  *   farm: { objects: [{id, type, kind, x, y, ...}], unlockedZones: ['start', ...] },
  *   silo: { capacity, items: {cropId: qty} },
  *   barn: { capacity, items: {goodId: qty} },
- *   production: [{objectId, recipeId, readyAt}], // active queue entries
+ *   production: [{objectId, recipeId, readyAt, cid, play}], // active queue entries
  *   orders: { board: [...], truck: {...}, boat: {...} },
  *   shop: { listings: [{item, qty, price, soldAt}] },
  *   market: { dayNum, offers: [{item, qty, price}], bought: [bool...] }, // daily rotating market
@@ -47,11 +47,11 @@ const storage = (() => {
  *   daily: { lastSpinAt, streak },
  *   event: { id, endsAt },
  *   stats: { cropsHarvested, ordersFulfilled, coinsEarned, ... }, // lifetime counters
- *   settings: { sound, autosaveInterval },
+ *   settings: { sound, autosaveInterval, assist, autoFinish },
  *
  *   // --- expansion systems ---
  *   workshop: { queue: [{recipeId, readyAt}], kits: {kitId: qty} },
- *   minigames: { pending, results, played },
+ *   minigames: { results, played, best },
  *   neighbours: { roster: [{id, first, last, farm, level, profile}], seed },
  *   coop: { points, perksUnlocked, dailyTasks, tasksRefreshedAt, requests, ownRequestCooldownUntil },
  *   regatta: { seasonId, endsAt, board, points, rivals, league, seasonsWon, placementClaimed },
@@ -163,12 +163,13 @@ export function newGameState() {
     daily: { lastSpinAt: 0, streak: 0 },
     event: null,
     stats: {},
-    settings: { sound: true, autosaveInterval: 10 },
+    settings: { sound: true, autosaveInterval: 10, assist: false, autoFinish: false },
 
     // Expansion systems. Seeded empty rather than left absent, so Phase B never has to branch
     // on whether a key exists — only on whether it holds anything yet.
     workshop: { queue: [], kits: {} },
-    minigames: { pending: {}, results: {}, played: {} },
+    minigames: { results: {}, played: {}, best: {} },
+    craftSeq: 0,             // monotonic source of production-entry cids (see production.js)
     neighbours: null,        // generated on first use from createdAt, then persisted forever
     coop: null,
     regatta: null,
@@ -218,6 +219,34 @@ const MIGRATIONS = {
     if (!obj.town) obj.town = makeEmptyTown();
     if (!obj.zoo) obj.zoo = makeEmptyZoo();
     if (!obj.market) obj.market = makeEmptyMarket();
+    return obj;
+  },
+  // v3 -> v4: playable crafts. Production entries gained a stable `cid` handle (the array
+  // index is not a safe UI handle once an earlier entry is collected mid-session) and a
+  // `play` record carrying the item's minigame progress. state.minigames.pending is dropped:
+  // it was keyed by buildingId, which cannot address ONE queued craft, and it was transient
+  // (60s) so discarding it can never lose anything durable.
+  //
+  // The load-bearing line is the `play` default. A craft queued under v3 was never gated, so
+  // it must not become gated retroactively by the save being upgraded underneath it — it is
+  // grandfathered as already-played at the floor tier rather than trapped forever.
+  3: (obj) => {
+    let seq = 0;
+    for (const e of obj.production || []) {
+      if (!e.cid) e.cid = `c${seq++}`;
+      if (e.play === undefined) e.play = { seed: 0, stage: 0, scores: [], attempts: 0, done: true, tier: 0 };
+    }
+    if (typeof obj.craftSeq !== 'number') obj.craftSeq = seq;
+    if (!obj.minigames) obj.minigames = { results: {}, played: {}, best: {} };
+    else {
+      delete obj.minigames.pending;
+      if (!obj.minigames.results) obj.minigames.results = {};
+      if (!obj.minigames.played) obj.minigames.played = {};
+      if (!obj.minigames.best) obj.minigames.best = {};
+    }
+    if (!obj.settings) obj.settings = { sound: true, autosaveInterval: 10 };
+    if (obj.settings.assist === undefined) obj.settings.assist = false;
+    if (obj.settings.autoFinish === undefined) obj.settings.autoFinish = false;
     return obj;
   },
 };

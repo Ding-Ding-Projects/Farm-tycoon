@@ -152,7 +152,7 @@ export function unlocksAt(level) {
 /** Base sell value of any item id (crop, good, fish, ore), with active event multipliers applied. */
 export function sellValue(itemId) {
   const base = CROPS[itemId]?.sellPrice ?? GOODS[itemId]?.sellPrice ?? MATERIALS[itemId]?.sellPrice ?? 0;
-  return Math.round(base * combinedMultiplier('sell', itemId));
+  return Math.round(base * combinedMultiplier('sellPriceMult', itemId));
 }
 
 /** Record a lifetime stat increment and check achievements (delegates to extras.js). */

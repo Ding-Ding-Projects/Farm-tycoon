@@ -133,7 +133,7 @@ test('a save from an unknown future version is rejected', () => {
   assert.equal(state.state.coins, 42);
 });
 
-test('a v1 save missing every key from both migrations walks 1->2->3 and comes out complete, preserving every other key exactly', () => {
+test('a v1 save missing every key from every migration walks 1->2->3->4 and comes out complete, preserving every other key exactly', () => {
   const s = freshState();
   // Give the save some real, distinguishing content so "preserved byte-for-byte" is actually
   // being tested, not just a fresh-game object that happens to survive by coincidence.
@@ -160,7 +160,7 @@ test('a v1 save missing every key from both migrations walks 1->2->3 and comes o
   const ok = state.importSave(JSON.stringify(v1));
   assert.equal(ok, true, 'a migrated v1 save must still pass isValidSave and import cleanly');
   assert.equal(state.state.version, state.SAVE_VERSION, 'migration must land exactly on the current version');
-  assert.equal(state.state.version, 3, 'sanity: the current version really is 3');
+  assert.equal(state.state.version, 4, 'sanity: the current version really is 4');
 
   // The v1->v2 keys are present and match the documented/newGameState shape.
   assert.ok(state.state.merge, 'merge must be defaulted by the migration');
@@ -199,7 +199,7 @@ test('a v1 save missing every key from both migrations walks 1->2->3 and comes o
   assert.deepEqual(state.state, beforeReload, 'a migrated save must round-trip through save/load unchanged');
 });
 
-test('a v2 save without town/zoo/market migrates to v3 with them defaulted, preserving every other key exactly', () => {
+test('a v2 save without town/zoo/market migrates forward with them defaulted, preserving every other key exactly', () => {
   const s = freshState();
   s.coins = 1313;
   s.barn.items.egg = 4;
@@ -223,7 +223,7 @@ test('a v2 save without town/zoo/market migrates to v3 with them defaulted, pres
   const ok = state.importSave(JSON.stringify(v2));
   assert.equal(ok, true, 'a migrated v2 save must still pass isValidSave and import cleanly');
   assert.equal(state.state.version, state.SAVE_VERSION, 'migration must land exactly on the current version');
-  assert.equal(state.state.version, 3, 'sanity: the current version really is 3');
+  assert.equal(state.state.version, 4, 'sanity: the current version really is 4');
 
   assert.deepEqual(state.state.town, {
     buildings: [], population: 0, capacity: TOWN.basePopulationCap, claimedMilestones: [],
@@ -499,7 +499,8 @@ test('enqueue consumes inputs exactly once, refunds nothing on failure, and coll
   assert.ok(readiness.readyBuildings.includes(building.id));
 
   const collected = production.collectBuilding(building.id, now);
-  assert.deepEqual(collected, { goodId: 'bread', qty: 1 });
+  assert.deepEqual(collected, { goodId: 'bread', qty: 1, tier: null },
+    'a non-playable recipe collects with a null tier — no quality channel applies to it');
   assert.equal(s.barn.items.bread, 1);
   assert.equal(s.production.length, 0, 'the finished queue entry must be removed once collected');
 });

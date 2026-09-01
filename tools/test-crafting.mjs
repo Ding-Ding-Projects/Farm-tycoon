@@ -125,83 +125,42 @@ test('a buildingId with no kit requirement always reports hasKitFor true', () =>
 // minigames.js
 // ---------------------------------------------------------------------------
 
-test('a minigame score above 1 is clamped rather than paying more than the cap', () => {
-  const s = freshState();
-  s.level = 6;
-  placeWorkshop(s);
-  s.barn.items.slab = 1;
-  s.barn.items.nails = 1;
-  workshop.craft('shingle');
+// The scoring, clamping, determinism and tier rules now live in tools/test-playables.mjs,
+// which drives them through the real production queue. What belongs HERE is the one rule the
+// workshop itself has to uphold.
 
-  minigames.start('workshop_1');
-  const result = minigames.finish('workshop_1', 5); // wildly out of range
-  const game = MINIGAMES[BUILDINGS.build_workshop.minigame];
-  assert.equal(result.effect, game.effect);
-  assert.ok(Math.abs(result.amount - game.cap) < 1e-9, 'a score of 5 must pay exactly the cap, never 5x it');
+test('no build_workshop recipe is playable - a gated kit would be a hard progression block', () => {
+  // The most important of the four never-playable classes. A player who could not finish a
+  // minigame would otherwise never craft a kit, and so could never place a factory again.
+  for (const recipe of BUILDINGS.build_workshop.recipes) {
+    assert.equal(recipe.play, undefined,
+      `${recipe.id} is a workshop recipe and must never be gated behind a minigame`);
+  }
 });
 
-test('a negative minigame score is clamped to zero, not treated as a penalty', () => {
-  const s = freshState();
-  s.level = 6;
-  placeWorkshop(s);
-  s.barn.items.slab = 1;
-  s.barn.items.nails = 1;
-  workshop.craft('shingle');
-
-  minigames.start('workshop_1');
-  const result = minigames.finish('workshop_1', -3);
-  assert.equal(result.amount, 0);
+test('no recipe that is some building placement kit is playable, wherever it is made', () => {
+  const kits = new Set(Object.values(BUILDINGS).map((b) => b.kit).filter(Boolean));
+  for (const def of Object.values(BUILDINGS)) {
+    for (const recipe of def.recipes) {
+      if (kits.has(recipe.id)) {
+        assert.equal(recipe.play, undefined, `${recipe.id} is a placement kit and must not be gated`);
+      }
+    }
+  }
 });
 
-test('the same seed always produces the same round', () => {
+test('a workshop craft carries no play record and collects without any game', () => {
   const s = freshState();
   s.level = 6;
   placeWorkshop(s);
   s.barn.items.slab = 1;
   s.barn.items.nails = 1;
-  workshop.craft('shingle');
+  assert.equal(workshop.craft('shingle'), true);
 
-  const run = minigames.start('workshop_1');
-  assert.ok(Array.isArray(run.round) && run.round.length > 0);
-
-  // Regenerating from the recorded seed (a replay/reconnect) must reproduce the identical
-  // round, never an easier one — this is done by re-deriving the module's internal pure
-  // generator via the public start() contract using a fixed seed round-trip: two finish()
-  // calls with clamped scores must independently reflect the same cap regardless of when
-  // start() was called, and the round itself is asserted deterministic here by pulling the
-  // private generator through two separately-seeded starts on two fresh buildings and
-  // checking that equal seeds (forced) yield equal rounds.
-  s.minigames.pending.workshop_1.seed = 12345;
-  const roundA = minigames.finish('workshop_1', 1); // consumes the pending run
-  assert.ok(roundA);
-
-  // Re-seed a fresh pending run with the identical numeric seed and read back the round via
-  // a second start() call is not directly comparable (start() mixes in wall-clock time), so
-  // assert determinism at the level the contract actually promises: two identical calls to
-  // the same underlying generator produce identical output. Exercised indirectly by
-  // confirming start() never throws and always returns a fixed-length round for a given
-  // buildingId/now pair called twice with the same inputs.
-  s.production.push({ objectId: 'workshop_1', recipeId: 'shingle', readyAt: Date.now() + 999999 });
-  const now = 1700000000000;
-  const runA = minigames.start('workshop_1', now);
-  minigames.cancel('workshop_1');
-  const runB = minigames.start('workshop_1', now);
-  assert.equal(runA.round.length, runB.round.length);
-});
-
-test('finish() consumes the pending run — a second finish on the same building fails', () => {
-  const s = freshState();
-  s.level = 6;
-  placeWorkshop(s);
-  s.barn.items.slab = 1;
-  s.barn.items.nails = 1;
-  workshop.craft('shingle');
-
-  minigames.start('workshop_1');
-  const first = minigames.finish('workshop_1', 0.5);
-  assert.ok(first);
-  const second = minigames.finish('workshop_1', 0.5);
-  assert.equal(second, null);
+  const entry = s.production.find((p) => p.objectId === 'workshop_1');
+  assert.ok(entry, 'the craft must be queued');
+  assert.equal(entry.play, null, 'a workshop craft is never playable');
+  assert.ok(entry.cid, 'but it still gets a stable handle like every other entry');
 });
 
 test('pendingBonus returns a zeroed effect (never null) when nothing is pending', () => {

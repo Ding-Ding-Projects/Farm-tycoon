@@ -332,7 +332,11 @@ export const BUILDINGS = {
     recipes: [
       { id: 'bread',      inputs: { wheat: 3 },            time: 300,   xp: 3, unlockLevel: 3 },
       { id: 'corn_bread', inputs: { corn: 2, egg: 1 },     time: 900,   xp: 4, unlockLevel: 3 },
-      { id: 'cookie',     inputs: { wheat: 2, egg: 2, sugar: 1 }, time: 1800, xp: 6, unlockLevel: 8 },
+      // PLAYABLE. The presence of `play` is the marker that gates the recipe. Authored per
+      // recipe rather than derived from position, so inserting a recipe can never silently
+      // re-gate a different one.
+      { id: 'cookie',     inputs: { wheat: 2, egg: 2, sugar: 1 }, time: 1800, xp: 6, unlockLevel: 8,
+        play: { stages: [{ verb: 'press_cutter' }] } },
       { id: 'muffin',     inputs: { strawberry: 2, wheat: 2, egg: 2 }, time: 3600, xp: 10, unlockLevel: 15 },
     ],
   },
@@ -638,6 +642,42 @@ export const EFFECT_KEYS = [
   // used by co-op perks; kept here so perks, research and minigames share one set
   'truckIntervalMult',
 ];
+
+/**
+ * Quality tiers for PLAYABLE crafts — the recipes carrying a `play` chain, which can only be
+ * collected by playing the item's own game through (see src/minigames/).
+ *
+ * A tier is resolved ONCE, at collect, into things the game already has: how many units land,
+ * an XP multiplier, and a one-off coin tip. Nothing per-unit is stored. state.barn.items is a
+ * flat { id: qty } count read in ~99 places across 24 files, and any parallel per-unit tier
+ * structure would have to stay summed-equal against every one of them — it would drift, and it
+ * would drift silently because nothing would throw. Per-tier good ids (cake / cake_gold) were
+ * the other candidate and were rejected too: they explode GOODS and break both collections.js
+ * derivation and orders.js eligibility.
+ *
+ * `min` is the inclusive floor on a 0..1 quality score. `grantsEffect` awards the BUILDING's
+ * MINIGAMES effect on top — the one place the per-craft channel touches the EFFECT_KEYS channel.
+ *
+ * worstStageCap bounds a chain's aggregate at (weakest stage + this), so a burnt cake cannot be
+ * rescued by nice piping and quality cannot be farmed by sandbagging the hard stage.
+ */
+export const QUALITY = {
+  worstStageCap: 0.25,
+  tiers: [
+    { id: 'plain',  label: 'Plain',       min: 0.00, yield: 1, xpMult: 1.00, tipMult: 1.00 },
+    { id: 'good',   label: 'Good',        min: 0.45, yield: 1, xpMult: 1.25, tipMult: 1.10 },
+    { id: 'fine',   label: 'Fine',        min: 0.70, yield: 2, xpMult: 1.50, tipMult: 1.25 },
+    { id: 'master', label: 'Masterpiece', min: 0.90, yield: 2, xpMult: 2.00, tipMult: 1.50, grantsEffect: true },
+  ],
+};
+
+/** The tier a 0..1 quality score earns. Always returns a tier — tiers[0].min is 0. */
+export function qualityTier(score) {
+  const q = typeof score === 'number' && !Number.isNaN(score) ? Math.max(0, Math.min(1, score)) : 0;
+  let out = QUALITY.tiers[0];
+  for (const t of QUALITY.tiers) if (q >= t.min) out = t;
+  return out;
+}
 
 /** Fishing: species pool weighted by rarity + chest odds. Cast uses a timing minigame. */
 export const FISHING = {

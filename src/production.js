@@ -3,7 +3,7 @@
 // including everything that finished while the game was closed (resolved on load).
 
 import { state } from './state.js';
-import { CROPS, ANIMALS, BUILDINGS } from './data.js';
+import { CROPS, ANIMALS, BUILDINGS, QUALITY } from './data.js';
 import * as economy from './economy.js';
 
 // Materials (data.js MATERIALS) have no dedicated bucket — see the NOTE in state.js. Any
@@ -13,6 +13,22 @@ function stockOf(id) { return isCrop(id) ? state.silo.items : state.barn.items; 
 function totalCount(items) { return Object.values(items).reduce((a, b) => a + b, 0); }
 function siloRoom() { return Math.max(0, state.silo.capacity - totalCount(state.silo.items)); }
 function barnRoom() { return Math.max(0, state.barn.capacity - totalCount(state.barn.items)); }
+
+/**
+ * Can this queue entry be collected? A PLAYABLE craft (one carrying a `play` record) cannot,
+ * until its game has actually been played through. A plain craft always can.
+ *
+ * This is the whole gate, deliberately in one predicate: every caller that decides whether an
+ * entry is takeable asks here, so the rule cannot drift between production, the UI and the tests.
+ */
+export function isCollectable(entry) { return !entry.play || entry.play.done === true; }
+
+/** Stable 32-bit hash of a string — used to derive a craft's play seed from its cid. */
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  return h >>> 0;
+}
 
 function findField(fieldId) {
   return state.farm.objects.find((o) => o.id === fieldId && o.kind === 'field') || null;
@@ -129,13 +145,26 @@ export function enqueue(buildingId, recipeId) {
     stockOf(inputId)[inputId] -= qty;
   }
 
-  state.production.push({ objectId: buildingId, recipeId, readyAt: Date.now() + recipe.time * 1000 });
+  // A PLAYABLE recipe (one carrying a `play` chain in data.js) gets a play record stamped on
+  // the entry itself rather than in a side table. It then lives and dies with the craft, is
+  // removed by the same splice that collects it, and survives a reload for free because it is
+  // inside the one save blob. `cid` exists because the array index stops being a stable UI
+  // handle the moment an earlier entry is collected mid-session.
+  const cid = `c${state.craftSeq = (state.craftSeq || 0) + 1}`;
+  const play = recipe.play
+    ? { seed: (Date.now() ^ hashString(cid)) >>> 0, stage: 0, scores: [], attempts: 0, done: false, tier: null }
+    : null;
+  state.production.push({ objectId: buildingId, recipeId, readyAt: Date.now() + recipe.time * 1000, cid, play });
   return true;
 }
 
 /** Collect a finished queue slot's output into the barn. */
 export function collectBuilding(buildingId, now = Date.now()) {
-  const idx = state.production.findIndex((p) => p.objectId === buildingId && p.readyAt <= now);
+  // findIndex SKIPS a ready-but-unplayed entry rather than stopping at it, so an unplayed cake
+  // never blocks a finished loaf queued behind it. This is the single most important line in
+  // the playable-craft change.
+  const idx = state.production.findIndex(
+    (p) => p.objectId === buildingId && p.readyAt <= now && isCollectable(p));
   if (idx === -1) return null;
   const entry = state.production[idx];
   const building = findBuilding(buildingId);
@@ -143,14 +172,28 @@ export function collectBuilding(buildingId, now = Date.now()) {
   const recipe = def && def.recipes.find((r) => r.id === entry.recipeId);
   if (!recipe) return null;
 
-  const given = Math.min(1, barnRoom()); // one crafted unit per queue slot
+  // A played craft resolves its tier here, once, into things the game already has: how many
+  // units land, an XP multiplier, and a one-off coin tip. Nothing per-unit is stored.
+  const tier = entry.play ? QUALITY.tiers[entry.play.tier] || QUALITY.tiers[0] : null;
+  const want = tier ? tier.yield : 1;
+
+  const given = Math.min(want, barnRoom());
   if (given === 0) return null; // barn full — leave the entry queued, collect once there is room
 
   state.barn.items[entry.recipeId] = (state.barn.items[entry.recipeId] || 0) + given;
-  economy.addXp(recipe.xp);
+  economy.addXp(Math.round(recipe.xp * (tier ? tier.xpMult : 1)));
   economy.trackStat('goodsProduced', given);
+
+  // Room for fewer than the tier earned: pay the shortfall out as coins rather than inventing
+  // a partial-entry state, and rather than silently dropping units the player played for.
+  const short = want - given;
+  if (short > 0) economy.addCoins(economy.sellValue(entry.recipeId) * short);
+  if (tier && tier.tipMult > 1) {
+    economy.addCoins(Math.round(economy.sellValue(entry.recipeId) * (tier.tipMult - 1) * given));
+  }
+
   state.production.splice(idx, 1);
-  return { goodId: entry.recipeId, qty: given };
+  return { goodId: entry.recipeId, qty: given, tier: tier ? tier.id : null };
 }
 
 /** Skip a timer with diamonds (uses economy.skipCost). `target` is any object carrying a

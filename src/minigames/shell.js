@@ -103,6 +103,12 @@ export async function playStage(host, entry, { onClose } = {}) {
   const view = mod.mount(stage, { assist, reducedMotion, announce });
   const input = createInput(meta.family, stage, { lanes: meta.lanes || 3 });
 
+  // Paint one frame BEFORE the loop starts. A view that builds part of its board on first
+  // render (rather than in mount) would otherwise show an empty stage until the first
+  // animation frame arrives - and a throttled or background tab may not deliver one promptly.
+  // Doing it here fixes it for every verb at once instead of constraining how each one is written.
+  try { view.render(model.snapshot()); } catch { /* a broken first paint must not block the game */ }
+
   let raf = 0;
   let last = 0;
   // Audio is driven off progress() and score(), never off a verb's own fields, so the shell needs

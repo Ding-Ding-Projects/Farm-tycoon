@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- viewport-fit=cover is what makes env(safe-area-inset-*) report anything but zero. styles.css
+       already pads the dock with it; without this attribute that padding was silently a no-op, and
+       the dock would sit under the gesture bar on any phone with one. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Farm Tycoon</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚜</text></svg>">
   <link rel="stylesheet" href="styles.css">

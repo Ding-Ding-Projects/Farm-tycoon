@@ -14,6 +14,8 @@ has been built, what has deliberately **not** been done, and the exact steps and
 | Keystore material added to `.gitignore` **before** any key exists | done |
 | Android launcher icons generated in code (10 PNGs, 5 densities) | done |
 | Mobile layout pass, verified at 320x720 and 375x812 | done |
+| Pinch-zoom and two-finger pan in `src/input.js` | done, and verified under emulated touch |
+| `viewport-fit=cover`, so `env(safe-area-inset-*)` reports real values | done |
 | Native `android/` project generated | **not done** (needs the Android SDK) |
 | Release keystore created | **not done** (must be created by the repository owner) |
 | APK built | **not done** |
@@ -97,7 +99,12 @@ apps" enabled.
 - [ ] The app installs and launches
 - [ ] `chrome://inspect` shows zero console errors on boot
 - [ ] The world renders, and pans and zooms by touch
-- [ ] Pinch-zoom and two-finger pan behave
+- [ ] Pinch-zoom and two-finger pan behave *on real glass*. These now exist and are covered by
+      `tools/verify-touch.mjs`, which drives genuine multi-pointer `PointerEvent`s through
+      `input.js`'s own listeners at a 390x844 viewport with `Emulation.setTouchEmulationEnabled`.
+      Nine checks pass, including that an extreme pinch cannot escape the zoom bounds and that a
+      two-finger touch never decays into a stray tap. Emulated touch is still not a finger, so
+      this stays an open device item: what is closed is "the code path does not exist".
 - [ ] A craft can be queued, played through its minigame, and collected
 - [ ] Each of the twelve input families is playable by touch, in particular
       `dual` (two independent values at once) and `drag` (carry and drop), which
@@ -108,7 +115,17 @@ apps" enabled.
 
 **A desktop browser narrowed to phone width is not evidence for any touch item above.** It still
 has a mouse, it has no on-screen keyboard, and it does not report touch points. The layout items
-were checked that way and are marked done above; the touch items were not, and are not.
+were checked that way and are marked done above.
+
+The gesture items now have a middle tier of evidence, and it is worth being exact about what it
+does and does not cover. `tools/verify-touch.mjs` runs against the real built app with CDP touch
+emulation on, so the page genuinely reports touch points and multiple `pointerId`s arrive at
+`input.js` the way they would on a phone. That is strong enough to prove the code path exists and
+behaves, and it caught two things worth having: without it there was no pinch handler at all, so
+the game was unzoomable on any device with no wheel.
+
+It is NOT a device run. It cannot show finger occlusion, palm rejection, WebView scroll
+interception, or how any of it feels. Those stay on the list below.
 
 ## Known risks worth checking first
 

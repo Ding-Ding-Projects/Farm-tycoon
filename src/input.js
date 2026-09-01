@@ -27,6 +27,42 @@ let downTime = 0;
 const TAP_MOVE_THRESHOLD = 6; // px
 const TAP_TIME_MAX = 400; // ms
 
+// Every live pointer, keyed by pointerId. A mouse only ever puts one entry in here, so the
+// single-pointer paths below are completely unchanged by the presence of this map; two entries
+// means a pinch is in progress.
+const pointers = new Map();
+let pinchStartDist = 0;
+let pinchStartZoom = 1;
+let pinchMidX = 0, pinchMidY = 0;
+
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.5;
+/** One clamp for every zoom route, so pinch and wheel cannot drift apart. */
+function setZoom(z) {
+  renderer.cameraTarget.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+}
+
+/** Shift the camera by a screen-space delta, in tile space. Shared by drag-pan and pinch-pan. */
+function panByScreen(dx, dy) {
+  const T = renderer.TILE_BASE * renderer.camera.zoom;
+  // tileToScreen: sx = ox + (tx-ty)*T ; sy = oy + (tx+ty)*T/2, with ox,oy shifted by camera.
+  // Dragging the screen by (dx,dy) should move the camera opposite in tile-space:
+  const dtx = (dx / T + (dy * 2) / T) / 2;
+  const dty = ((dy * 2) / T - dx / T) / 2;
+  renderer.cameraTarget.x -= dtx;
+  renderer.cameraTarget.y -= dty;
+}
+
+/** Distance and midpoint of the first two live pointers. */
+function pinchGeometry() {
+  const [a, b] = [...pointers.values()];
+  return {
+    dist: Math.hypot(a.x - b.x, a.y - b.y),
+    mx: (a.x + b.x) / 2,
+    my: (a.y + b.y) / 2,
+  };
+}
+
 function firstGestureUnlockAudio() {
   audio.init();
   audio.unlock();
@@ -247,6 +283,24 @@ function handleTap(sx, sy) {
 // ---------------------------------------------------------------------------
 function onPointerDown(e) {
   firstGestureUnlockAudio();
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 2) {
+    // A second finger turns the gesture into a pinch. Whatever the first finger was doing is
+    // abandoned rather than completed: without this, lifting out of a pinch fires a tap and
+    // opens a panel nobody asked for.
+    const g = pinchGeometry();
+    pinchStartDist = g.dist;
+    pinchStartZoom = renderer.camera.zoom;
+    pinchMidX = g.mx;
+    pinchMidY = g.my;
+    dragging = true;
+    pointerDown = false;
+    ui.closeRadial();
+    return;
+  }
+  if (pointers.size > 2) return;
+
   pointerDown = true;
   dragging = false;
   downX = lastX = e.clientX;
@@ -258,6 +312,20 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  // Pinch: two fingers zoom by their separation and pan by their midpoint, together, because
+  // that is how one physical gesture actually behaves. Doing only the zoom makes the world feel
+  // nailed down while your hand moves across it.
+  if (pointers.size === 2) {
+    const g = pinchGeometry();
+    if (pinchStartDist > 0) setZoom(pinchStartZoom * (g.dist / pinchStartDist));
+    panByScreen(g.mx - pinchMidX, g.my - pinchMidY);
+    pinchMidX = g.mx;
+    pinchMidY = g.my;
+    return;
+  }
+
   // The ghost follows the pointer whether or not a button is down, so you can see where a
   // building will land before committing to the gesture.
   if (placement.isActive()) {
@@ -274,20 +342,28 @@ function onPointerMove(e) {
     dragging = true;
     ui.closeRadial();
   }
-  if (dragging) {
-    const T = renderer.TILE_BASE * renderer.camera.zoom;
-    // tileToScreen: sx = ox + (tx-ty)*T ; sy = oy + (tx+ty)*T/2, with ox,oy shifted by camera.
-    // Dragging the screen by (dx,dy) should move the camera opposite in tile-space:
-    const dtx = (dx / T + (dy * 2) / T) / 2;
-    const dty = ((dy * 2) / T - dx / T) / 2;
-    renderer.cameraTarget.x -= dtx;
-    renderer.cameraTarget.y -= dty;
-  }
+  if (dragging) panByScreen(dx, dy);
   lastX = e.clientX;
   lastY = e.clientY;
 }
 
 function onPointerUp(e) {
+  pointers.delete(e.pointerId);
+
+  // Coming out of a pinch with one finger still down: re-seed that finger's baseline, or the
+  // camera lurches by however far the two fingers happened to be apart. Deliberately does NOT
+  // resume dragging, because the remaining finger has not started a new gesture yet.
+  if (pointers.size === 1) {
+    const [only] = [...pointers.values()];
+    downX = lastX = only.x;
+    downY = lastY = only.y;
+    downTime = performance.now();
+    pointerDown = true;
+    dragging = true;      // a leftover finger pans, it never taps
+    return;
+  }
+  if (pointers.size > 1) return;
+
   if (!pointerDown) return;
   pointerDown = false;
   const elapsed = performance.now() - downTime;
@@ -304,8 +380,7 @@ function onPointerUp(e) {
 
 function onWheel(e) {
   e.preventDefault();
-  const delta = -Math.sign(e.deltaY) * 0.1;
-  renderer.cameraTarget.zoom = Math.max(0.5, Math.min(2.5, renderer.cameraTarget.zoom + delta));
+  setZoom(renderer.cameraTarget.zoom + -Math.sign(e.deltaY) * 0.1);
 }
 
 /** Attach all listeners to the world canvas. Call once during boot. */

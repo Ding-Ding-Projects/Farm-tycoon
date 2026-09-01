@@ -707,6 +707,9 @@ const BUILDING_CONFIG = {
   tropical_cafe: { roof: '#4f9c26',     form: 'pagoda',   accent: 'steam',  extras: ['awning', 'planter'] },
   smoothie_mixer: { roof: '#f48ab0',    form: 'kiosk',    accent: 'churn',  extras: ['awning'] },
 
+  // apiary
+  honey_extractor: { roof: '#f0b52e',   form: 'barrel',   accent: 'wheel',  extras: ['crates', 'planter'], sign: '#f2c94c' },
+
   // preserves + pressing
   jam_maker:   { roof: '#c9382e',       form: 'barrel',   accent: 'pot',    extras: ['crates'] },
   preservation_station: { roof: '#4a8fd4', form: 'barrel', accent: 'pot',   extras: ['barrels', 'crates'] },

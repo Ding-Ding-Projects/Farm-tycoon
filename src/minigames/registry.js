@@ -91,6 +91,7 @@ export const VERB_LOADERS = {
   read_vortex: () => import('./verbs/read_vortex.js'),
   ride_heat: () => import('./verbs/ride_heat.js'),
   peek_pour: () => import('./verbs/peek_pour.js'),
+  press_luck: () => import('./verbs/press_luck.js'),
 };
 
 /** Load one verb module by id, or null if it is not registered. */

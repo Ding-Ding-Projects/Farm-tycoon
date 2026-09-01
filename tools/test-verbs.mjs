@@ -300,6 +300,10 @@ const OPTIMAL = {
   // Information with a price. The optimal play fills blind for a fixed spell, spends exactly ONE
   // peek to learn the hidden fill rate, then computes the rest. The peek is a single frame on
   // purpose: the cost is charged per opening, so a longer look buys nothing and only drips more.
+  // Judgement, not dexterity: keep pulling while the comb is holding, bank the moment the creak
+  // says it is at its limit. Greedy play shatters and scores 0.000 on every seed; stopping early
+  // banks proportionally less. The dedicated guard below pins that gradient.
+  press_luck: () => (snap) => ({ held: snap.creak !== 'straining' }),
   peek_pour: () => {
     let phase = 'fill';
     let rate = null;
@@ -615,6 +619,55 @@ await testAsync('peek_pour: one peek beats both never looking and constantly loo
       `seed ${seed}: a driver that reads snapshot.fillRate scored ${cheat.toFixed(3)} - the hidden `
       + 'fill rate has been published, which removes any reason to peek and deletes the verb',
     );
+  }
+});
+
+// ---------------------------------------------------------------------------------------
+// press_luck: the risk gradient, pinned.
+//
+// The generic sweep proves the verb is winnable and beats idling. The claim this verb is built
+// on is finer than that: every degree of nerve should be rewarded in order. Taking everything
+// must lose the lot, stopping at the first frame must bank a little, stopping halfway must bank
+// more, and reading the creak to its limit must bank all of it. If any two of those collapse
+// together, the decision the verb exists for has stopped mattering.
+// ---------------------------------------------------------------------------------------
+await testAsync('press_luck: nerve is rewarded in order, and greed loses everything', async () => {
+  const mod = await VERB_LOADERS.press_luck();
+
+  const play = (seed, decide) => {
+    const g = mod.create(seed, {});
+    let t = 0;
+    while (!g.done() && t < 200000) { g.step(16, decide(g.snapshot())); t += 16; }
+    return g.score();
+  };
+
+  // Bank the moment the comb starts straining. This is the sound conservative line, and it
+  // deliberately does NOT reach 1.0: the band spans several frames, so banking on the first
+  // warning always leaves something in the comb. Topping the scale means taking the extra pull
+  // and being right, which is the entire point of a press-your-luck verb.
+  const bankOnWarning = (s) => ({ held: s.creak !== 'straining' });
+  const greedy = () => ({ held: true });
+  const timid = (s) => ({ held: s.pulled < 1 });
+  const cautious = (s) => ({ held: s.creak === 'solid' });
+
+  for (const seed of [1, 42, 555, 9001, 31337, 777, 2024, 4242]) {
+    const read = play(seed, bankOnWarning);
+    const grab = play(seed, greedy);
+    const one = play(seed, timid);
+    const half = play(seed, cautious);
+
+    assert.equal(grab, 0,
+      `seed ${seed}: pulling every frame must shatter the comb and bank nothing, got ${grab.toFixed(3)}`);
+    assert.ok(read >= 0.7,
+      `seed ${seed}: banking on the first warning should still take most of the comb, got ${read.toFixed(3)}`);
+    assert.ok(read < 1,
+      `seed ${seed}: the safe line must NOT top the scale (${read.toFixed(3)}) - if playing it safe `
+      + 'scores full marks there is no reason to ever risk a frame, and the verb has no gamble in it');
+    assert.ok(read > half && half >= one,
+      `seed ${seed}: nerve must pay in order - warning ${read.toFixed(3)} > cautious ${half.toFixed(3)} `
+      + `>= timid ${one.toFixed(3)}. If any two collapse together there is no decision left`);
+    assert.ok(one > 0,
+      `seed ${seed}: stopping at the first frame should still bank something, got ${one.toFixed(3)}`);
   }
 });
 

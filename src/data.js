@@ -273,6 +273,10 @@ export const GOODS = {
   plain_yogurt:     { icon: '🥛', name: 'Plain Yogurt',         sellPrice: 1350 },
   berry_yogurt:     { icon: '🫐', name: 'Berry Yogurt',         sellPrice: 2000 },
   mint_yogurt:      { icon: '🍃', name: 'Mint Yogurt',          sellPrice: 4310 },
+  // honey_extractor
+  beeswax:          { icon: '🕯️', name: 'Beeswax',              sellPrice: 640 },
+  honeycomb:        { icon: '🍯', name: 'Honeycomb',            sellPrice: 980 },
+  royal_jelly:      { icon: '👑', name: 'Royal Jelly',          sellPrice: 1720 },
   // milkshake_bar
   vanilla_shake:    { icon: '🥤', name: 'Vanilla Shake',        sellPrice: 1420 },
   choco_shake:      { icon: '🍫', name: 'Chocolate Shake',      sellPrice: 1880 },
@@ -293,6 +297,7 @@ export const GOODS = {
   lamb_skewer:      { icon: '🍢', name: 'Lamb Skewer',          sellPrice: 820 },
   alpaca_scarf:     { icon: '🧣', name: 'Alpaca Scarf',         sellPrice: 420 },
   // kits for the ten buildings above
+  kit_honey_extractor:      { icon: '🐝', name: 'Honey Extractor Kit',  sellPrice: 560 },
   kit_milkshake_bar:        { icon: '🥤', name: 'Milkshake Bar Kit',     sellPrice: 840 },
   kit_omelet_station:       { icon: '🍳', name: 'Omelet Station Kit',    sellPrice: 800 },
   kit_hot_dog_stand:        { icon: '🌭', name: 'Hot Dog Stand Kit',     sellPrice: 780 },
@@ -570,6 +575,15 @@ export const BUILDINGS = {
       { id: 'honey_tea',      inputs: { tea_leaf: 2, honey: 1 },                      time: 3600,  xp: 36, unlockLevel: 62 },
       { id: 'mint_tea',       inputs: { tea_leaf: 2, mint: 2 },                       time: 4500,  xp: 44, unlockLevel: 84,
         play: { stages: [{ verb: 'arc_pour' }] } },
+    ],
+  },
+  honey_extractor: {
+    name: 'Honey Extractor', unlockLevel: 39, cost: 15000, size: [2, 2], kit: 'kit_honey_extractor', minigame: 'comb_nerve', queueSlots: 3,
+    recipes: [
+      { id: 'beeswax',        inputs: { honey: 3 },                                    time: 2400,  xp: 26, unlockLevel: 39 },
+      { id: 'honeycomb',      inputs: { honey: 4, sugar: 1 },                          time: 3600,  xp: 34, unlockLevel: 39 },
+      { id: 'royal_jelly',    inputs: { honey: 6, cream: 1 },                          time: 6300,  xp: 56, unlockLevel: 44,
+        play: { stages: [{ verb: 'press_luck' }] } },
     ],
   },
   milkshake_bar: {
@@ -879,6 +893,7 @@ export const BUILDINGS = {
       { id: 'kit_hot_dog_stand',      inputs: { panel: 6, glazing: 3, fitting: 4 },           time: 43900, xp: 124, unlockLevel: 21, sink: true },
       { id: 'kit_omelet_station',     inputs: { panel: 6, glazing: 4, fitting: 4 },           time: 45200, xp: 128, unlockLevel: 21, sink: true },
       { id: 'kit_milkshake_bar',      inputs: { panel: 6, glazing: 5, fitting: 4 },           time: 46800, xp: 132, unlockLevel: 21, sink: true },
+      { id: 'kit_honey_extractor',    inputs: { panel: 4, glazing: 2, fitting: 3 },           time: 33600, xp: 96,  unlockLevel: 21, sink: true },
       { id: 'kit_perfumery',          inputs: { glazing: 5, fitting: 4, wiring_loom: 2 },     time: 45540, xp: 129, unlockLevel: 21, sink: true },
       { id: 'kit_salad_bar',          inputs: { frame: 5, panel: 5, plumbing: 2 },            time: 51000, xp: 144, unlockLevel: 21, sink: true },
       { id: 'kit_pasta_kitchen',      inputs: { beam: 5, fitting: 4, plumbing: 3 },           time: 57120, xp: 161, unlockLevel: 21, sink: true },
@@ -922,6 +937,7 @@ export const MINIGAMES = {
   workshop_fit:    { name: 'Fit the Frame',      building: 'build_workshop',  effect: 'materialRefund',     cap: 0.25, purpose: 'Line the joints up before fixing. A tight fit leaves offcuts over.' },
   press_flow:      { name: 'Watch the Flow',     building: 'oil_press',              effect: 'oilClarity',         cap: 0.25, purpose: 'Keep the flow steady. Cloudy oil is worth less than clear.' },
   steep_timer:     { name: 'Steep the Leaves',   building: 'tea_house',              effect: 'steepQuality',       cap: 0.3,  purpose: 'Pull the leaves at the right moment. Over-steeped tea turns bitter.' },
+  comb_nerve:      { name: 'Work the Frames',    building: 'honey_extractor',        effect: 'combNerve',          cap: 0.25, purpose: 'Every frame you pull is more honey and more risk. Knowing when to stop is the whole job.' },
   peek_judge:      { name: 'Peek and Pour',      building: 'milkshake_bar',          effect: 'pourJudgement',      cap: 0.25, purpose: 'A steel tin tells you nothing until you tip it, and tipping it costs you shake.' },
   pan_ride:        { name: 'Ride the Heat',      building: 'omelet_station',         effect: 'panControl',         cap: 0.25, purpose: 'One pan, one temperature. Cook near what it is already at and the service flies.' },
   rush_hour:       { name: 'Work the Rush',      building: 'hot_dog_stand',          effect: 'rushComposure',      cap: 0.25, purpose: 'A lunch rush is about what you give up. Take whichever is closest to burning.' },
@@ -962,7 +978,7 @@ export const EFFECT_KEYS = [
   'doughStretch', 'meltEvenness', 'sealTightness', 'settingAccuracy', 'cultureVigour',
   'crumbEvenness', 'swirlSmooth', 'seasoningEdge', 'bloomLife', 'sauceBalance',
   'stackNeatness', 'shellCrispness', 'brimTrueness', 'glazeEvenness',
-  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl', 'pourJudgement',
+  'sheetEvenness', 'latexPurity', 'wickTrueness', 'blendFineness', 'rushComposure', 'panControl', 'pourJudgement', 'combNerve',
   // reserved for Laboratory research (step 7); listed now so both consumers share one set
   'cropGrowMult', 'productionTimeMult', 'animalProduceMult',
   'siloCapBonus', 'barnCapBonus', 'orderPayoutMult',
@@ -1210,6 +1226,12 @@ export const VERBS = {
     purpose: 'A seam that carries through holds the garment together.',
     hint: 'A seam continues the piece BEFORE it - not the one falling. Keys 1-3.',
     stageClass: 'stage-route', durationMs: 14000,
+  },
+  press_luck: {
+    name: 'Work the Frames', verbWord: 'work', family: 'release',
+    purpose: 'Every frame out is more honey and a comb closer to shattering.',
+    hint: 'Hold to pull another frame, let go to bank what you have. Listen to the creak - a shattered comb loses the lot.',
+    stageClass: 'stage-gauge', durationMs: 15000,
   },
   peek_pour: {
     name: 'Peek and Pour', verbWord: 'peek', family: 'balance',
@@ -1493,7 +1515,7 @@ export const LEVELS = {
     36: ['golden_fields', 'islands', 'isle_palm', 'tropical_cafe'],
     37: ['expansion_8'],
     38: ['master_orders', 'donut_maker'],
-    39: ['expansion_9'],
+    39: ['expansion_9', 'honey_extractor'],
     40: ['golden_windmill', 'pine'],
     41: ['zoo_penguin'],
     42: ['zoo_flamingo', 'paper_mill'],

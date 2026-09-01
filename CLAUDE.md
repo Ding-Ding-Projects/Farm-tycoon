@@ -13,8 +13,8 @@ remaining textual "Phase B" mentions in `main.js`, `state.js`, `ui.js`, and
 world for whoever picks this up next (full detail and verification evidence in
 `HANDOFF.md`):
 
-- `src/data.js` is **complete, final content** (validated by `npm test`): 22 crops,
-  12 animals, 26 buildings / 128 recipes, 192 goods, 23 construction materials in four
+- `src/data.js` is **complete, final content** (validated by `npm test`): 24 crops,
+  12 animals, 44 buildings / 195 recipes, 259 goods, 23 construction materials in four
   purpose-scoped sets, Merge Meadow, full event system (weekend/mini/Farm Fair/holidays),
   Township layer (town, trains, airport, zoo, islands, market), the expansion subsystems
   (workshop kits, per-factory minigames, mine depths, artifacts + museum, expeditions,
@@ -93,7 +93,8 @@ world for whoever picks this up next (full detail and verification evidence in
 | `src/render/sprites.js` | ALL vector art draw functions (no image assets, ever) |
 | `src/render/effects.js` | particles: coin bursts, XP floaters, sparkles |
 | `src/ui.js` | all DOM: HUD, dock, sheet panels, radial menu, toasts, modals |
-| `src/input.js` | pointer handling: pick/pan/zoom/drag-plant/placement ghost |
+| `src/input.js` | pointer handling: pick/pan/pinch-zoom/drag-plant, drives the placement ghost |
+| `src/placement.js` | the placement ghost: choosing WHERE a building goes, and moving placed ones |
 | `src/audio.js` | WebAudio-synthesized SFX (no audio files) |
 | `src/tutorial.js` | guided-intro step machine |
 | `src/workshop.js` | Building Workshop: materials → components → kits → placeable buildings |

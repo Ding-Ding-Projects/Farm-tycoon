@@ -17,13 +17,13 @@ seeded silo, an empty barn, and six farm objects, not a static HUD reading `0`.
 `npm test` runs the content validator plus eight gameplay-logic suites — camera, core
 economy, logistics, crafting, township, research, dead-time systems, and the
 neighbours/co-op/regatta social layer — for **147 passing assertions across nine files**,
-with zero failures. The content layer, unchanged since the last handoff and re-validated by
-that same run:
+with zero failures. The content layer, re-validated by that same run:
 
-> data.js OK — 22 crops, 12 animals, 26 buildings, 128 recipes, 192 goods, 3 merge
-> chains, 39 achievements, 95 levels all with unlocks, 10 weekend events + 6
+> data.js OK - 24 crops, 12 animals, 44 buildings, 195 recipes, 259 goods, 3 merge
+> chains, 43 achievements, 95 levels all with unlocks, 10 weekend events + 6
 > mini-events + 25 fair tasks + 6 holidays, town: 16 houses + 10 community, 14 zoo
 > enclosures, 8 islands, 23 materials
+> playable share: 39/136 recipes (1 in 3.5), 41 verbs - at the 1-in-3 target
 
 All 22 world structures are placed with zero overlaps across their occupied tiles, and
 every panel id is unique. Twenty of the twenty-two are locked at level 1 — and, per the
@@ -343,7 +343,14 @@ roughly thirty other rule families in total — followed by eight gameplay-logic
 `test-township.mjs`, `test-research.mjs`, `test-deadtime.mjs`, `test-social.mjs`) that
 exercise the actual running modules: planting and harvesting, offline catch-up, save/load
 round-trips, the merge board, workshop crafting, trains/town/zoo, research, and the
-simulated-neighbours social layer. 147 assertions, all passing, as of this checkout.
+simulated-neighbours social layer, the playable-item gate and all 41 verbs. 592 assertions
+across 13 suites, all passing, as of this checkout.
+
+Three further suites run against a REAL built artifact rather than the source tree and are not
+counted in that figure, because they need an app to drive: `tools/verify-placement.mjs` (10
+checks), `tools/verify-touch.mjs` (26, run against the Android WebView over a forwarded
+devtools socket) and `tools/verify-persistence.mjs` (9, across two separate app launches so a
+force-quit is actually tested rather than a page reload).
 
 </details>
 

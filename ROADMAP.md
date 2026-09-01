@@ -21,8 +21,10 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       (`grep -r "/\* Phase B \*/" src/` returns nothing)
 - [x] Game boots in a browser with zero console errors; `window.__farmDebug` exposes real,
       mutating state (not a static HUD)
-- [x] `npm test` passes: content validator + eight gameplay-logic suites, 147 assertions
-      across nine files, 0 failures
+- [x] `npm test` passes: content validator + twelve gameplay-logic suites, 592 assertions
+      across 13 files, 0 failures. Three further suites drive a real built artifact and are not
+      in that count: `verify-placement.mjs` (10), `verify-touch.mjs` (26, against the Android
+      WebView) and `verify-persistence.mjs` (9, across two app launches)
 - [x] Save format round-trips: `SAVE_VERSION` 3, with migrations from both prior shapes
       (`1→2` for `merge`/`trains`/`airport`, `2→3` for `town`/`zoo`/`market`)
 - [x] All 22 world structures placed with zero overlaps across their occupied tiles; every
@@ -80,12 +82,16 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
       discardable for half its inputs back
 - [x] Verified in the packaged Windows app, including that dynamic `import()` resolves over
       `file://` - without which every playable craft would be unreachable once installed
-- [ ] The remaining wiki factories. 35 of roughly 67 exist; Township and Hay Day between them
-      still have about 32 absent
-- [ ] **The playable share is 1 in 7.5, and the design target is 1 in 3.** 15 of 112 eligible
-      recipes are playable; reaching the target needs 23 more, each wanting a verb that is a
-      genuinely new mechanic rather than a re-skin. `npm test` prints the real figure on every
-      run so the gap cannot drift out of sight
+- [ ] The remaining wiki factories. 44 of roughly 67 exist; five named ones are still absent -
+      doner kebab stand, duck salon, lobster pool, net maker, pasta maker
+- [x] **The playable share reached its 1-in-3 design target.** 39 of 136 recipes are playable
+      across 41 verbs in 12 input families. `npm test` prints the real figure on every run, so
+      the ratio cannot drift out of sight in either direction
+- [ ] Two verbs were designed, measured and CUT rather than shipped thin, and their reasons are
+      recorded in `src/minigames/registry.js` so nobody rebuilds them: `work_rush`, because with
+      uniform item value and a capped number of actions triage is mathematically irrelevant, and
+      `steady_spindle`, because a saturating actuator makes high-gain reaction beat anticipation
+      on an inverted pendulum. A third, `test_set`, was cut earlier for the same class of reason
 - [ ] Per-family audio, a Bake Book from `state.minigames.best`, Masterpiece achievements
 
 ## Android
@@ -93,9 +99,18 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 - [x] Capacitor declared, config written, npm scripts, keystore lines in `.gitignore`
 - [x] Launcher icons generated in code across five densities, verified by PNG signature
 - [x] Mobile layout pass: the minigame modal was clipped on a 320px phone and is not now
-- [ ] Android SDK on the build machine (needs Google's licences accepted by the owner)
-- [ ] Release keystore, created by the owner and never by an agent or CI
-- [ ] A built APK, and any device testing at all. See `ANDROID.md`
+- [x] Android SDK, JDK 21 and a Pixel 6 / Android 14 emulator installed user-scoped, with the
+      owner's explicit authorisation for Google's SDK licence
+- [x] **A debug APK built, installed and PLAYED on an emulator.** `tools/build-android.mjs` is
+      one command; `tools/build-web.mjs` stages 1.8 MB instead of the 639 MB the original
+      `webDir: "."` would have shipped
+- [x] Pinch-zoom and two-finger pan, without which the game could not zoom at all on a phone
+- [x] A gated craft queued, its minigame played by real touch, and the goods collected
+- [x] 26 touch checks run against the REAL Android WebView over a forwarded devtools socket
+- [ ] Release keystore, created by the owner and never by an agent or CI. The Gradle signing
+      config is already wired and injected by the build script; only the key is missing
+- [ ] A signed release APK, and testing on real hardware. Emulated touch proves the code path,
+      not finger occlusion, palm rejection or feel. See `ANDROID.md`
 
 ## Open items
 

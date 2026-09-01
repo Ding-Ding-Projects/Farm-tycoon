@@ -46,10 +46,11 @@ browser, at `http://127.0.0.1:8123`** (use the loopback address — a stale serv
 suites. Real output from this checkout:
 
 ```
-data.js OK — 22 crops, 12 animals, 26 buildings, 128 recipes, 192 goods, 3 merge
-chains, 39 achievements, 95 levels all with unlocks, 10 weekend events + 6
+data.js OK - 24 crops, 12 animals, 44 buildings, 195 recipes, 259 goods, 3 merge
+chains, 43 achievements, 95 levels all with unlocks, 10 weekend events + 6
 mini-events + 25 fair tasks + 6 holidays, town: 16 houses + 10 community, 14 zoo
 enclosures, 8 islands, 23 materials
+playable share: 39/136 recipes (1 in 3.5), 41 verbs - at the 1-in-3 target
 ```
 
 followed by eight suites (`test-camera`, `test-core`, `test-logistics`, `test-crafting`,
@@ -189,9 +190,13 @@ messages:
    covered by any guard. This narrower point is real, current, and small; it is not the "70
    recipes" problem, which is closed.
 6. **Non-positive recipe margins.** Recomputed directly against the current data with the same
-   sell-value logic the validator uses: **0 of 128 recipes now have a non-positive margin among
+   sell-value logic the validator uses **as of the 128-recipe content set**: 0 of 128 had a
+   non-positive margin among
    non-sink recipes** (was 45). Every Building Workshop component and kit recipe (41 of them) is
    now explicitly tagged `sink: true` and exempted from the margin check by design — a sink is a
+   (The corpus has since grown to 195 recipes across 44 buildings. That audit has NOT been re-run
+   over the newer content, so treat the figure above as a result about the set it was measured
+   on, not a standing property of the game.)
    good meant to be consumed, not resold, exactly like feed. Checking those 41 sink recipes
    directly against a single-hop raw-input-cost comparison (cost to buy the recipe's direct inputs
    at their own sell price, vs. the recipe's own sell price), 40 of 41 now cost more to craft than
@@ -206,6 +211,81 @@ Verified TRUE by the original audit and unaffected by any of the above: the 16 r
 to exactly 100% with zero gaps and zero overlaps; 22 structures; every crop has a sink; 26
 factories with 26 distinct minigame effects; no duplicate ids; no recipe input cycles;
 `unlockLevel` agrees with `LEVELS.unlocks` everywhere.
+
+## The building system, and Android
+
+Two large pieces landed after the content expansion above. Both are described here because neither
+is discoverable from the code alone: each fixed something that looked correct in source and was
+wrong in the running application.
+
+### Buildings are placed by the player now
+
+`ui.js`'s `buildAt()` used to call `findFreeTile()` and drop each new building on the first fitting
+tile it scanned. Nobody chose. Once the start zone filled front-to-back you got "No free space" with
+no way to rearrange, because `decorate.js` had shipped `select`/`move`/`rotate`/`undo`/`redo` with
+**zero callers** while the dock toggled a mode and toasted "drag decorations to arrange your farm".
+
+`src/placement.js` is the missing half. It is DOM-free, so `input.js` drives it and `renderer.js`
+draws its ghost, and nothing in it touches the document. Legality is never colour-only: the
+footprint tints, the outline goes dashed, and a cross paints over a blocked one. Arrow keys nudge,
+Enter places, Escape cancels, which matters more than usual because the automatic path it replaced
+is gone. A blocked tile is a no-op rather than a failure, so a mis-tap cannot throw away a crafted
+kit.
+
+`tools/verify-placement.mjs` drives the real running app for this, because a rules module tested
+through its own API says nothing about whether anything calls it.
+
+### Buildings look different, and look busy
+
+All 44 factories used to be one box, one gable roof and one of five accents, keyed only by roof
+colour. They now pick a roof form (gable, hip, flat, domed, sawtooth, pagoda, barrel, kiosk, tower)
+and hang real furniture off it, and `drawBuilding` takes `{ working, now }` so a factory animates
+ONLY while a craft is genuinely running. An idle one is completely still, which makes "is that one
+busy?" answerable from across the farm without opening a panel.
+
+`tools/capture-buildings.mjs` renders all 44 idle and working side by side. That contact sheet is
+what found floating flat roofs, detached silos, spike towers and crescent pagodas, none of which
+were visible from the code.
+
+### Android
+
+The app builds, installs, launches and plays on an emulator. `node tools/build-android.mjs` is one
+command; add `--release` once a keystore exists. Read `ANDROID.md` before touching any of it: its
+header records three traps that each cost real time because the error message pointed elsewhere,
+and one dead end (a spaced repository path) that was suspected, investigated and turned out to be
+innocent.
+
+The single largest fix there is invisible from the game: `capacitor.config.json` had `webDir` set
+to `"."`, the repository root, so the APK would have shipped `node_modules` (639 MB), `.git`,
+`design/` and `screenshots/` to anyone who installed it. `tools/build-web.mjs` stages the four
+things the game actually loads, at 1.8 MB, and refuses to continue if either ever reappears.
+
+Three defects were found only by running it on a device, because `env(safe-area-inset-*)` is zero
+everywhere else and a desktop window narrowed to phone width still has a mouse:
+
+- There was **no pinch handler at all**, and a phone has no wheel, so the camera could not be
+  zoomed by any means on an isometric world that does not fit a 390px screen.
+- The HUD counters overflowed at six-digit coin values, which is ordinary mid-game play.
+- Every minigame stage was exposed to the WebView's own scroll and pinch, either of which fires
+  `pointercancel` and ENDS a run. Drag, path, balance and steer verbs are all "a finger dragging
+  across a stage", so that was most of the library.
+
+### What the verification tools are for
+
+Three suites run against a real built artifact rather than the source tree, and are deliberately not
+counted in the `npm test` total because they need an app to drive:
+
+| tool | what it proves |
+|---|---|
+| `verify-placement.mjs` | the ghost is wired into ui/input/renderer, not merely implemented |
+| `verify-touch.mjs` | 26 gesture and layout checks, run against the real Android WebView |
+| `verify-persistence.mjs` | the save survives the process being killed, across two app launches |
+
+`verify-persistence.mjs` is deliberately not a page reload: a reload keeps the renderer and its
+storage cache alive and therefore proves nothing about a kill. Writing it turned up that
+`localStorage` commits lazily, so a force-quit seconds after a save loses it and the game reloads
+the previous one. `main.js` now saves on `pagehide` and `visibilitychange` as well as
+`beforeunload`, which is documented as frequently never firing on Android at all.
 
 ## Newly closed since the last handoff
 
@@ -226,9 +306,10 @@ Two items that were open problems in the previous version of this document:
 
 ## Not done — the honest list
 
-- **Screenshots and recordings.** None exist in this README or on the GitHub Pages site yet. A
-  separate pass is capturing the real, running, built application now; this document and the
-  README gain their capture matrix once that lands. Do not add image references ahead of that —
+- **Screenshots exist now, and a recording still does not.** `screenshots/` holds real captures
+  from the built artifacts: the 44-building contact sheet, the placement ghost mid-drag, and four
+  taken straight off an Android device with `adb exec-out screencap`. A screen RECORDING is still
+  missing and is still required. The old text below is kept because its warning has not expired -
   a reference to a file that isn't in the tree is worse than no image.
 - **The two open audit points above** (tea_house/oil_press unlock-inert gap; unverified multi-hop
   kit arbitrage) are real, small, and unaddressed.

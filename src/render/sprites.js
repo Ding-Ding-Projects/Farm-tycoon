@@ -650,100 +650,144 @@ const CROP_CONFIG = {
 };
 
 /** Shared stem/head routine for every crop. growProgress: 0 planted → 1 ready. */
+/**
+ * One routine for every crop (CROP_CONFIG gives the head/leaf colours and head shape). Plants
+ * stand in rows along the soil plot's furrows (constant v, the same five offsets drawSoilPlot
+ * uses), each stem with its own height, lean and hue from a stable per-stem hash; heads are
+ * two-tone with a sun-side highlight and a contact shadow at the base. Growth is continuous:
+ * seeds, then sprouts filling in row by row, then stems that rise toward full height at g = 1.
+ */
 export function drawCropStage(ctx, x, y, size, growProgress, config) {
   const T = 104 * size;
   const g = Math.max(0, Math.min(1, growProgress || 0));
   const { head = PALETTE.wheatGold, leaf = '#5fae2e', shape = 'round' } = config || {};
+  const pt = (u, v) => [x + (u - v) * T, y + (u + v) * (T / 2)];
+  const rows = [0.16, 0.33, 0.5, 0.67, 0.84];
+  // Fewer stems when the plot is small on screen: nothing under a few pixels is worth drawing.
+  const cols = size < 0.75 ? 3 : 4;
+  const stems = [];
+  rows.forEach((v, r) => {
+    for (let c = 0; c < cols; c++) {
+      const h = prand(r * 7 + c * 13 + 1, 3), h2 = prand(r * 7 + c * 13 + 2, 3), h3 = prand(r * 7 + c * 13 + 3, 3);
+      const u = 0.12 + ((c + 0.5) / cols) * 0.76 + (h - 0.5) * 0.06;
+      const [px, py] = pt(u, v + (h2 - 0.5) * 0.04);
+      stems.push({ px, py, i: r * cols + c, hv: h, lean: (h2 - 0.5) * 0.09, hue: (h3 - 0.5) * 0.3 });
+    }
+  });
 
   if (g <= 0) {
-    // Planted: 6-8 dark seed dots scattered in the furrows
+    // Planted: a seed at every stem position, sitting in its furrow.
     ctx.fillStyle = PALETTE.soilDark;
-    for (let i = 0; i < 7; i++) {
-      const px = x + Math.sin(i * 2.6) * T * 0.5;
-      const py = y + T * 0.3 + ((i % 3) / 3) * T * 0.45;
-      ctx.beginPath(); ctx.arc(px, py, 2.4 * size, 0, Math.PI * 2); ctx.fill();
-    }
+    for (const st of stems) { ctx.beginPath(); ctx.arc(st.px, st.py, T * 0.022, 0, Math.PI * 2); ctx.fill(); }
     return;
   }
 
   if (g < 0.5) {
-    // Sprout: two small leaf ellipses per dot
-    const n = Math.round(6 + g * 4);
-    for (let i = 0; i < n; i++) {
-      const px = x + Math.sin(i * 2.4) * T * 0.5;
-      const py = y + T * 0.36 + ((i % 3) / 3) * T * 0.36;
+    // Sprouts fill in row by row: two leaves and a nub of stem each.
+    const n = Math.max(2, Math.round(stems.length * (0.3 + g * 1.4)));
+    for (const st of stems.slice(0, n)) {
+      const k = (0.6 + st.hv * 0.4) * (0.6 + g * 0.8);
       ctx.fillStyle = leaf;
-      ctx.beginPath(); ctx.ellipse(px - 4 * size, py, 5.5 * size, 3.4 * size, -0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(px + 4 * size, py, 5.5 * size, 3.4 * size, 0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = leaf; ctx.lineWidth = 2.2 * size;
-      ctx.beginPath(); ctx.moveTo(px, py + 7 * size); ctx.lineTo(px, py - 1 * size); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(st.px - T * 0.036 * k, st.py - T * 0.02 * k, T * 0.05 * k, T * 0.03 * k, -0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(st.px + T * 0.036 * k, st.py - T * 0.02 * k, T * 0.05 * k, T * 0.03 * k, 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = leaf; ctx.lineWidth = Math.max(1, T * 0.02 * k);
+      ctx.beginPath(); ctx.moveTo(st.px, st.py + T * 0.04 * k); ctx.lineTo(st.px, st.py - T * 0.05 * k); ctx.stroke();
     }
     return;
   }
 
-  // Growing (0.5-1) and Ready (1): stem + head, height scales toward full at g==1.
-  const heightScale = g >= 1 ? 1 : 0.7;
   if (shape === 'conifer' || shape === 'tree') {
     // Three young trees on the plot, growing to a little over half a tile tall when ready.
     const s = size * (g >= 1 ? 0.5 : 0.36);
     for (const [u, v, k] of [[0.5, 0.35, 0.3], [0.22, 0.62, 0.7], [0.74, 0.66, 0.5]]) {
-      const px = x + (u - v) * T, py = y + (u + v) * (T / 2);
+      const [px, py] = pt(u, v);
       drawTree(ctx, px, py - 104 * s * 0.5, s, { kind: shape === 'conifer' ? 'pine' : (g >= 1 ? 'fruit' : 'oak'), variant: k });
     }
     return;
   }
-  const n = 9;
-  for (let i = 0; i < n; i++) {
-    const px = x + Math.sin(i * 2.7) * T * 0.6;
-    const py = y + T * 0.28 + ((i % 4) / 4) * T * 0.5;
-    const stemLen = 16 * size * heightScale;
-    ctx.strokeStyle = leaf; ctx.lineWidth = 3.2 * size;
-    ctx.beginPath();
-    ctx.moveTo(px, py + 12 * size);
-    ctx.quadraticCurveTo(px + 3 * size, py + 2 * size, px, py - stemLen);
-    ctx.stroke();
 
-    const headColor = g >= 1 ? head : mix(head, leaf, 0.45);
-    ctx.fillStyle = headColor;
+  // Growing (0.5..1) and ready: stems rise toward full height, heads ripen from leaf-green.
+  const rise = 0.55 + 0.45 * ((g - 0.5) / 0.5);
+  const ripe = g >= 1;
+  const headColor = ripe ? head : mix(head, leaf, 0.45 * (1 - (g - 0.5) / 0.5) + 0.1);
+  const detail = size >= 0.8;   // highlights and contact shadows only when they can be seen
+  for (const st of stems) {
+    const hs = rise * (0.85 + st.hv * 0.3);
+    const stemLen = T * 0.16 * hs;
+    const lean = st.lean * T;
+    const topX = st.px + lean, topY = st.py - stemLen;
+    if (detail) {
+      ctx.fillStyle = 'rgba(58,37,16,0.16)';
+      ctx.beginPath(); ctx.ellipse(st.px - T * 0.01, st.py + T * 0.018, T * 0.05, T * 0.018, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = leaf; ctx.lineWidth = Math.max(1, T * 0.028);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(st.px, st.py + T * 0.02);
+    ctx.quadraticCurveTo(st.px + lean * 0.3, st.py - stemLen * 0.5, topX, topY);
+    ctx.stroke();
+    if (shape === 'tall' || shape === 'blade' || shape === 'spike') {
+      // A leaf blade off the stem, on alternating sides.
+      ctx.lineWidth = Math.max(1, T * 0.02);
+      ctx.beginPath();
+      const side = st.i % 2 ? 1 : -1;
+      ctx.moveTo(st.px + lean * 0.2, st.py - stemLen * 0.35);
+      ctx.quadraticCurveTo(st.px + side * T * 0.05, st.py - stemLen * 0.55, st.px + side * T * 0.07, st.py - stemLen * 0.85);
+      ctx.stroke();
+    }
+
+    const hueShift = st.hue;
+    const hc = hueShift > 0 ? lighten(headColor, hueShift * 0.5) : shade(headColor, -hueShift * 0.5);
+    ctx.fillStyle = hc;
+    const hy = topY - T * 0.04;
+    const rH = T * 0.077 * (0.85 + st.hv * 0.3);
     ctx.beginPath();
     switch (shape) {
       case 'blade':
       case 'root':
       case 'spike':
-        ctx.ellipse(px, py - stemLen - 4 * size, 3.6 * size, 8 * size, 0.15, 0, Math.PI * 2);
+        ctx.ellipse(topX, hy, T * 0.035, rH, 0.15 + st.lean, 0, Math.PI * 2);
+        break;
+      case 'tall':
+        ctx.ellipse(topX, hy - T * 0.02, T * 0.03, rH * 1.15, 0.05 + st.lean, 0, Math.PI * 2);
         break;
       case 'ear':
-        ctx.ellipse(px, py - stemLen - 6 * size, 4.4 * size, 9 * size, 0, 0, Math.PI * 2);
+        ctx.ellipse(topX, hy - T * 0.02, T * 0.042, rH * 1.15, st.lean * 0.5, 0, Math.PI * 2);
         break;
       case 'cluster':
       case 'berry':
-        for (const [ox, oy] of [[0, 0], [-3, 4], [3, 4]]) {
-          ctx.moveTo(px + (ox + 4) * size, (py - stemLen - 4 * size) + oy * size);
-          ctx.arc(px + ox * size, (py - stemLen - 4 * size) + oy * size, 3.6 * size, 0, Math.PI * 2);
+        for (const [ox, oy] of [[0, 0], [-0.03, 0.04], [0.03, 0.04]]) {
+          ctx.moveTo(topX + (ox + 0.035) * T, hy + oy * T);
+          ctx.arc(topX + ox * T, hy + oy * T, T * 0.035, 0, Math.PI * 2);
         }
         break;
       case 'orb':
-        ctx.arc(px, py - stemLen + 2 * size, 8 * size * heightScale, 0, Math.PI * 2);
+        ctx.arc(topX, topY + T * 0.02, rH * rise, 0, Math.PI * 2);
         break;
       case 'pod':
-        ctx.ellipse(px, py - stemLen - 2 * size, 3.2 * size, 9 * size, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(topX, hy + T * 0.02, T * 0.031, rH * 1.1, -0.2 + st.lean, 0, Math.PI * 2);
         break;
       case 'puff':
-        ctx.arc(px, py - stemLen - 4 * size, 5.5 * size, 0, Math.PI * 2);
+        ctx.arc(topX, hy, T * 0.053 * (0.85 + st.hv * 0.3), 0, Math.PI * 2);
         break;
       case 'star':
         for (let k = 0; k < 5; k++) {
           const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
-          const hx = px + Math.cos(a) * 5 * size, hy = (py - stemLen - 4 * size) + Math.sin(a) * 5 * size;
-          if (k === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+          const sx = topX + Math.cos(a) * T * 0.048, sy = hy + Math.sin(a) * T * 0.048;
+          if (k === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
         }
         ctx.closePath();
         break;
       default:
-        ctx.ellipse(px, py - stemLen - 4 * size, 4 * size, 8 * size, 0.15, 0, Math.PI * 2);
+        ctx.ellipse(topX, hy, T * 0.04, rH, 0.15 + st.lean, 0, Math.PI * 2);
     }
     ctx.fill();
     if (g >= 0.85) outline(ctx, T, 0.32);
+    if (detail && ripe) {
+      // Sun-side highlight (upper right, where the light comes from).
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.beginPath(); ctx.ellipse(topX + T * 0.018, hy - rH * 0.35, T * 0.014, rH * 0.3, -0.5, 0, Math.PI * 2); ctx.fill();
+    }
   }
 }
 

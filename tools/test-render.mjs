@@ -585,6 +585,39 @@ test('after dusk the lamp post and the string lights glow brighter and the facto
   assert.ok(/joins: obj\.joins, night: frameLight\.night \|\| 0,/.test(src), 'decorations receive the frame\'s night');
 });
 
+test('crops stand in rows on their plot: every stem base is inside the tile, growth is continuous, ripe reads differently', () => {
+  const T = 104;
+  const seq = (id, g, size = 1) => {
+    const ctx = recorder();
+    sprites.CROP_DRAW[id](ctx, 200, 200, size, g);
+    return ctx.__calls;
+  };
+  // Stem bases (the moveTo that starts each stem) lie inside the plot diamond whose top vertex is (200, 200).
+  const inside = (px, py) => {
+    const dx = Math.abs(px - 200) / T, dy = Math.abs(py - (200 + T / 2)) / (T / 2);
+    return dx + dy <= 1.02;
+  };
+  const ripe = seq('wheat', 1);
+  const bases = ripe.filter((c) => c.startsWith('moveTo(')).map((c) => c.slice(7, -1).split(',').map(Number));
+  assert.ok(bases.length >= 12, `a ripe wheat plot draws a full stand of stems, not ${bases.length}`);
+  for (const [px, py] of bases) assert.ok(inside(px, py), `a stem base at ${px},${py} is off the plot`);
+  const stems = (calls) => calls.filter((c) => c.startsWith('quadraticCurveTo(')).length;
+  assert.ok(stems(seq('wheat', 1, 0.5)) < stems(seq('wheat', 1, 1)), 'a small plot draws fewer stems');
+  // Growth: seeds, then sprouts filling in, then stems rising; each stage differs from the last.
+  const stages = [0, 0.2, 0.4, 0.6, 0.8, 1].map((g) => seq('corn', g).join('|'));
+  for (let i = 1; i < stages.length; i++) assert.notEqual(stages[i - 1], stages[i], `growth ${i} must change the drawing`);
+  assert.ok(stems(seq('corn', 0.9)) > 0 && stems(seq('corn', 0.2)) === 0, 'sprouts have no stems yet');
+  // Every crop id draws at every stage, and two different crops never draw the same ripe plot.
+  const ripeById = {};
+  for (const id of Object.keys(sprites.CROP_DRAW)) {
+    for (const g of [0, 0.3, 0.7, 1]) assert.ok(seq(id, g).length > 0, `${id} draws at g=${g}`);
+    ripeById[id] = seq(id, 1).join('|');
+  }
+  assert.notEqual(ripeById.wheat, ripeById.corn);
+  assert.notEqual(ripeById.tomato, ripeById.pumpkin);
+  assert.notEqual(ripeById.pine, ripeById.wheat);
+});
+
 test('sprites.js sizes nothing in raw pixels: no `lineWidth = <number>;` literal survives', () => {
   const src = readFileSync(new URL('../src/render/sprites.js', import.meta.url), 'utf8');
   const literal = src.match(/lineWidth = \d+(\.\d+)?;/g) || [];

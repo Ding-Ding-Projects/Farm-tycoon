@@ -10,20 +10,13 @@
 //        state.photo { frame, stickers: [{ id, x, y }] }
 
 import { state } from './state.js';
-import { DECORATE, PHOTO, FARM, BUILDINGS, DECORATIONS, ANIMALS, STRUCTURES } from './data.js';
+import { DECORATE, PHOTO, FARM } from './data.js';
 import * as farm from './farm.js';
 
-// Mirrors farm.js's private footprintOf() — needed here because a multi-select move must
-// validate every moved object against the others IN the selection being ignored at once,
-// which farm.js's single-object move()/canPlace() cannot express.
-function footprintOf(kind, type) {
-  if (kind === 'field') return [1, 1];
-  if (kind === 'building') return BUILDINGS[type]?.size ?? [1, 1];
-  if (kind === 'decoration') return DECORATIONS[type]?.size ?? [1, 1];
-  if (kind === 'pen') return ANIMALS[type]?.size ?? [2, 2];
-  if (STRUCTURES[type]) return STRUCTURES[type].size;
-  return [1, 1];
-}
+// farm.js's footprintOf(), shared — a multi-select move must validate every moved object against
+// the others IN the selection being ignored at once, which farm.js's single-object move()/
+// canPlace() cannot express, but the footprint itself must be the same answer everywhere.
+const footprintOf = farm.footprintOf;
 
 function rectFree(x, y, w, h, ignoreIds) {
   if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
@@ -75,11 +68,31 @@ export function enter() {
   return true;
 }
 
-/** Leave it, committing placements. */
+/** Leave it, committing placements. (ui.js also cancels any live placement.beginMove() session
+ *  on the way out, so the next world tap cannot teleport the object that was being carried.) */
 export function exit() {
   state.decorate.active = false;
   state.decorate.selection = [];
   return true;
+}
+
+/**
+ * Grant an owned decoration - a reward from the regatta, a weekend event, the museum or the Fair
+ * Pass. Owned decorations are placed for free from the Workshop's decorations list; they are NOT
+ * barn stock (a decoration in the barn occupied a slot for ever and sold for nothing). Tolerates
+ * an id data.js has no sprite for yet: the grant is still recorded.
+ */
+export function grant(decoId, qty = 1) {
+  if (!decoId || !(qty > 0)) return 0;
+  if (!state.decorate) state.decorate = { active: false, selection: [], history: [], historyIndex: 0 };
+  if (!state.decorate.owned) state.decorate.owned = {};
+  state.decorate.owned[decoId] = (state.decorate.owned[decoId] || 0) + qty;
+  return state.decorate.owned[decoId];
+}
+
+/** How many of a decoration the player owns but has not placed. */
+export function ownedCount(decoId) {
+  return state.decorate?.owned?.[decoId] || 0;
 }
 
 /** Select an object, optionally adding to the current selection. */

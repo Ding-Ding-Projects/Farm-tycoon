@@ -9,6 +9,7 @@
 import { state } from './state.js';
 import { LAB, EFFECT_KEYS } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 /**
  * Neutral value for an effect key: 1 for every *Mult key (a no-op multiplier), 0 for
@@ -48,11 +49,9 @@ function consumeItems(items) {
 
 function refundItems(items) {
   if (!items) return;
-  for (const [id, qty] of Object.entries(items)) {
-    // Items came from wherever they were consumed; the barn is the safe universal home for a
-    // refund since every item id (crop, good, ore) is storable there per state.js's note.
-    state.barn.items[id] = (state.barn.items[id] || 0) + qty;
-  }
+  // Back to the store each id actually lives in (crops to the silo - a crop refunded into the
+  // barn can neither be planted nor spent), capped there, with any shortfall paid out as coins.
+  for (const [id, qty] of Object.entries(items)) storage.addOrPay(id, qty);
 }
 
 function hasMaterials(materials) {
@@ -72,9 +71,7 @@ function consumeMaterials(materials) {
 
 function refundMaterials(materials) {
   if (!materials) return;
-  for (const [id, qty] of Object.entries(materials)) {
-    state.barn.items[id] = (state.barn.items[id] || 0) + qty;
-  }
+  for (const [id, qty] of Object.entries(materials)) storage.addOrPay(id, qty);
 }
 
 /** Build the laboratory; consumes LAB.buildCost. */
@@ -166,7 +163,7 @@ export function researchedEffect() {
 }
 
 /** Complete finished research; called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   const active = state.lab.active;
   if (!active) return;
   if (now < active.readyAt) return;
@@ -179,6 +176,12 @@ export function tick(now) {
 // combinedMultiplier(kind, id) picks up research automatically without a hard import cycle.
 // kind is treated as an EFFECT_KEYS name; id is unused (research is global, not per-item).
 economy.registerMultiplierEffect((kind) => {
-  if (!EFFECT_KEYS.includes(kind) || !kind.endsWith('Mult')) return 1;
+  if (!state?.lab || !EFFECT_KEYS.includes(kind) || !kind.endsWith('Mult')) return 1;
   return researchedEffect()[kind];
+});
+// ...and the additive keys (siloCapBonus, barnCapBonus, mineYieldBonus, fishRareChance) through
+// the additive merge point, which storage.js, mine.js and fishing.js read.
+economy.registerBonusEffect((key) => {
+  if (!state?.lab || !EFFECT_KEYS.includes(key) || key.endsWith('Mult')) return 0;
+  return researchedEffect()[key] || 0;
 });

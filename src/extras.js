@@ -3,6 +3,8 @@
 import { state } from './state.js';
 import { ACHIEVEMENTS, DAILY_WHEEL, PETS, EVENTS, MUSEUM } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
+import * as decorate from './decorate.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -67,8 +69,9 @@ export function spin() {
     economy.addCoins(result.coins);
   }
   if (result.diamonds) state.diamonds += result.diamonds;
-  if (result.item) state.barn.items[result.item] = (state.barn.items[result.item] || 0) + (result.qty || 1);
-  if (result.material) state.barn.items[result.material] = (state.barn.items[result.material] || 0) + (result.qty || 1);
+  // Never past the barn cap: what fits is stored, the rest is paid out as coins.
+  if (result.item) result.paidOut = storage.addOrPay(result.item, result.qty || 1).paidOut;
+  if (result.material) result.paidOut = storage.addOrPay(result.material, result.qty || 1).paidOut;
 
   return result;
 }
@@ -82,7 +85,11 @@ const VISITOR_PREMIUM = 1.5;
 
 /** Maybe spawn an NPC visitor offering to buy an owned item at a premium (from shop.tick). */
 export function maybeSpawnVisitor(now = Date.now()) {
-  if (state.visitor) return null;
+  if (state.visitor) {
+    // An offer nobody answered goes away after its window; nothing else ever cleared one.
+    if (state.visitor.expiresAt && now > state.visitor.expiresAt) state.visitor = null;
+    else return null;
+  }
   const owned = Object.entries(state.barn.items).filter(([, qty]) => qty > 0);
   if (owned.length === 0) return null;
   if (Math.random() >= VISITOR_CHANCE_PER_TICK) return null;
@@ -193,7 +200,12 @@ function startMiniEvent(now) {
 
 /** Advance/settle the event calendar; starts and expires events. Called from the game loop. */
 export function tickEvents(now = Date.now()) {
-  if (state.event && now >= state.event.endsAt) state.event = null; // unclaimed tiers are lost
+  if (state.event && now >= state.event.endsAt) {
+    // A tier that was reached but never claimed is paid out on the way out, never lost: the
+    // player who hit gold on Sunday afternoon and next opened the game on Monday gets the gold.
+    settleEvent();
+    state.event = null;
+  }
 
   if (!state.event) {
     const wknd = weekendWindow(now);
@@ -239,22 +251,52 @@ export function addEventPoints(stat, amount) {
   return gained;
 }
 
-/** Claim a reached tier ('bronze'|'silver'|'gold') of the active event; idempotent. */
-export function claimEventTier(tier) {
+/**
+ * Tiers of the active event, for the banner and the event panel:
+ * [{ tier, index, threshold, reached, claimed, reward }], empty when nothing is running. A
+ * weekend event has bronze/silver/gold with level-scaled thresholds; a mini-event has the one
+ * tier its data lists, unscaled - it used to have no claim path at all.
+ */
+export function eventTiers() {
   const entry = findEventEntry();
-  if (!entry || !state.event || state.event.kind !== 'weekend') return false;
-  if (state.event.claimedTiers.includes(tier)) return false;
-  const tierIdx = EVENTS.weekend.tiers.indexOf(tier);
-  if (tierIdx === -1) return false;
-  const baseThreshold = entry.thresholds[tierIdx];
-  const scaledThreshold = baseThreshold * (state.event.levelScaleAt ?? EVENTS.weekend.levelScale(state.level));
-  if (state.event.points < scaledThreshold) return false;
+  if (!entry || !state.event) return [];
+  const names = EVENTS.weekend.tiers;
+  const scale = state.event.kind === 'weekend'
+    ? (state.event.levelScaleAt ?? EVENTS.weekend.levelScale(state.level))
+    : 1;
+  return (entry.thresholds || []).map((base, index) => {
+    const threshold = Math.max(1, Math.round(base * scale));
+    const tier = names[index] || `tier_${index}`;
+    return {
+      tier, index, threshold,
+      reached: state.event.points >= threshold,
+      claimed: state.event.claimedTiers.includes(tier),
+      reward: entry.rewards?.[index] || {},
+    };
+  });
+}
 
-  const reward = entry.rewards[tierIdx] || {};
+function payEventReward(reward) {
   if (reward.coins) economy.addCoins(reward.coins);
   if (reward.diamonds) state.diamonds += reward.diamonds;
+  if (reward.vouchers) state.vouchers = (state.vouchers || 0) + reward.vouchers;
+  if (reward.item) storage.addOrPay(reward.item, reward.qty || 1);   // never past the barn cap
+  if (reward.decoration) decorate.grant(reward.decoration);          // owned, not barn stock
+}
+
+/** Claim a reached tier ('bronze'|'silver'|'gold'; a mini-event's single tier is 'bronze') of the
+ *  active event; idempotent. */
+export function claimEventTier(tier) {
+  const t = eventTiers().find((x) => x.tier === tier);
+  if (!t || t.claimed || !t.reached) return false;
+  payEventReward(t.reward);
   state.event.claimedTiers.push(tier);
   return true;
+}
+
+/** Pay out every reached, unclaimed tier of the active event (called as it expires). */
+function settleEvent() {
+  for (const t of eventTiers()) if (t.reached && !t.claimed) claimEventTier(t.tier);
 }
 
 // ---- Farm Fair ----
@@ -344,6 +386,15 @@ export function claimFairRibbon() {
 
   if (!state.fairPass) state.fairPass = { goldRibbons: 0 };
   if (ribbon === 'gold') state.fairPass.goldRibbons += 1;
+  // The Fair Pass: lifetime gold ribbons unlock the trophy line, each granted once as an owned
+  // decoration the moment its count is reached.
+  if (!Array.isArray(state.fairPass.granted)) state.fairPass.granted = [];
+  for (const step of EVENTS.fair.fairPass || []) {
+    if (state.fairPass.goldRibbons >= step.goldRibbons && !state.fairPass.granted.includes(step.decoration)) {
+      state.fairPass.granted.push(step.decoration);
+      decorate.grant(step.decoration);
+    }
+  }
   return { ribbon, totalPoints };
 }
 

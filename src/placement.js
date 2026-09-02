@@ -14,18 +14,14 @@
 
 import * as state from './state.js';
 import * as farm from './farm.js';
-import { BUILDINGS, ANIMALS, DECORATIONS, STRUCTURES, FARM } from './data.js';
+import * as workshop from './workshop.js';
+import { STRUCTURES, FARM } from './data.js';
 
 let session = null;
 
-/** Footprint for a kind/type pair, matching farm.js's own footprintOf(). */
-function footprintOf(kind, type) {
-  if (kind === 'field') return [1, 1];
-  if (kind === 'building') return BUILDINGS[type]?.size || [2, 2];
-  if (kind === 'pen') return ANIMALS[type]?.penSize || [2, 2];
-  if (kind === 'decoration') return DECORATIONS[type]?.size || [1, 1];
-  return [1, 1];
-}
+/** Footprint for a kind/type pair — farm.js's own footprintOf(), so the ghost can never disagree
+ *  with the placement check about how big a thing is. */
+const footprintOf = farm.footprintOf;
 
 /**
  * The world's fixed systems (order board, barn, lake, mine entrance...) are NOT in
@@ -146,6 +142,11 @@ export function confirm() {
     return { ok: true, reason: 'moved', object: state.state.farm.objects.find((o) => o.id === done.objectId) };
   }
 
+  // A kit-gated building needs its kit HELD at the moment of placing, not only when the ghost
+  // was started: the kit is an ordinary barn good and can leave (a shop listing, a helicopter
+  // crate, a request) while the ghost is up. Checked before coins are charged, so a missing kit
+  // costs nothing and the ghost stays up.
+  if (session.kind === 'building' && !workshop.hasKitFor(session.type)) return { ok: false, reason: 'nokit' };
   const obj = farm.place(session.kind, session.type, tx, ty);
   if (!obj) return { ok: false, reason: 'refused' };
   const cb = session.onPlaced;

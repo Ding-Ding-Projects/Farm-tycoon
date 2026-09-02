@@ -15,17 +15,13 @@
 // the persisted state.helicopter object the same way, so it survives a reload.
 
 import { state } from './state.js';
-import { HELICOPTER } from './data.js';
+import { HELICOPTER, MATERIALS } from './data.js';
 import * as economy from './economy.js';
 import * as neighbours from './neighbours.js';
+import * as storage from './storage.js';
 
-function totalCount(items) { return Object.values(items).reduce((a, b) => a + b, 0); }
-function barnRoom() { return Math.max(0, state.barn.capacity - totalCount(state.barn.items)); }
-function addToBarn(id, qty) {
-  const given = Math.max(0, Math.min(qty, barnRoom()));
-  if (given > 0) state.barn.items[id] = (state.barn.items[id] || 0) + given;
-  return given;
-}
+function barnRoom() { return storage.room('barn'); }
+function addToBarn(id, qty) { return storage.add(id, qty); }
 
 function ensure() {
   const h = state.helicopter;
@@ -65,8 +61,11 @@ export function fillCrate(index) {
   if (!(index >= 0 && index < HELICOPTER.crates)) return false;
   if (h.loading[index]) return false; // already filled
 
+  // The most plentiful barn GOOD. Never a Workshop component or kit (the crafting spine), and
+  // never a construction material (that is what the flight brings BACK) - the old pick was
+  // simply the biggest stack, which could quietly be a building kit.
   const stocked = Object.entries(state.barn.items)
-    .filter(([, qty]) => qty > 0)
+    .filter(([id, qty]) => qty > 0 && !economy.isWorkshopCraft(id) && !MATERIALS[id])
     .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   if (!stocked.length) return false;
   const [goodId] = stocked[0];

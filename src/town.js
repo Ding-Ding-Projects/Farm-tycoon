@@ -7,6 +7,7 @@
 import { state } from './state.js';
 import { TOWN } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 // See trains.js for why this lazy-seed pattern exists: state.js does not yet carry a `town`
 // key, and touching state.js is out of this lane's ownership.
@@ -33,9 +34,8 @@ function barnSpend(materials) {
 }
 
 function barnRefund(materials) {
-  for (const [id, qty] of Object.entries(materials || {})) {
-    state.barn.items[id] = (state.barn.items[id] || 0) + qty;
-  }
+  // Capped at the barn, with any shortfall paid out as coins rather than piled past the cap.
+  for (const [id, qty] of Object.entries(materials || {})) storage.addOrPay(id, qty);
 }
 
 /** Highest unlocked house/community tier (from claimed milestones). */

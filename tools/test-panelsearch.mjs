@@ -16,7 +16,7 @@
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { makeMatcher, searchTextOf } from '../src/panelsearch.js';
+import { makeMatcher, searchTextOf, attach, forget } from '../src/panelsearch.js';
 
 let passed = 0;
 const failures = [];
@@ -168,6 +168,102 @@ test('text nodes with no class or attributes are kept', () => {
 // The wiring
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// attach() remembers a query across a re-render
+// ---------------------------------------------------------------------------
+// refreshPanel() rebuilds the whole panel after every action, which used to wipe the box, its
+// toggles and the caret. The smallest DOM that attach() needs: elements with children, classes,
+// attributes, listeners, insertBefore and a comma-tolerant querySelectorAll.
+function makeDoc() {
+  const focused = [];
+  function element(tag) {
+    const listeners = {};
+    const node = {
+      tagName: tag, nodeType: 1, className: '', textContent: '', hidden: false, value: '',
+      children: [], childNodes: [], parentNode: null, attributes: {}, ownerDocument: null,
+      selectionStart: null, selectionEnd: null,
+      classList: {
+        add(...c) { const s = new Set(node.className.split(/\s+/).filter(Boolean)); c.forEach((x) => s.add(x)); node.className = [...s].join(' '); },
+        remove(...c) { node.className = node.className.split(/\s+/).filter((x) => x && !c.includes(x)).join(' '); },
+        contains(c) { return node.className.split(/\s+/).includes(c); },
+        toggle(c, force) { const on = force === undefined ? !node.classList.contains(c) : !!force; if (on) node.classList.add(c); else node.classList.remove(c); return on; },
+      },
+      setAttribute(k, v) { node.attributes[k] = String(v); },
+      getAttribute(k) { return k in node.attributes ? node.attributes[k] : null; },
+      appendChild(child) { node.children.push(child); node.childNodes.push(child); child.parentNode = node; return child; },
+      append(...kids) { kids.forEach((k) => node.appendChild(k)); },
+      insertBefore(child, ref) { const i = node.children.indexOf(ref); if (i === -1) return node.appendChild(child); node.children.splice(i, 0, child); node.childNodes.splice(i, 0, child); child.parentNode = node; return child; },
+      get firstChild() { return node.children[0] || null; },
+      querySelectorAll(sel) {
+        const wanted = sel.split(',').map((s) => s.trim().replace(/^\./, ''));
+        const out = [];
+        (function walk(n) { for (const c of n.children) { if (wanted.some((w) => c.classList.contains(w))) out.push(c); walk(c); } })(node);
+        return out;
+      },
+      addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
+      dispatchEvent(evt) { for (const fn of listeners[evt.type] || []) fn(evt); return true; },
+      click() { node.dispatchEvent({ type: 'click' }); },
+      focus() { focused.push(node); node.dispatchEvent({ type: 'focus' }); },
+      setSelectionRange() {},
+    };
+    return node;
+  }
+  const doc = { createElement: (tag) => { const n = element(tag); n.ownerDocument = doc; return n; }, focused };
+  return doc;
+}
+
+/** A panel with `n` cards named Card 1..n, the way renderPanelContent leaves one. */
+function panel(doc, n = 8) {
+  const container = doc.createElement('div');
+  container.ownerDocument = doc;
+  const grid = doc.createElement('div'); grid.classList.add('slot-grid');
+  for (let i = 1; i <= n; i++) {
+    const card = doc.createElement('div'); card.classList.add('build-card');
+    const label = doc.createElement('strong'); label.textContent = i === 3 ? 'Oak Tree' : `Card ${i}`;
+    card.appendChild(label);
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+  return container;
+}
+
+test('a query, its toggles and its focus survive a re-render of the same panel; another panel starts clean', () => {
+  forget();
+  const doc = makeDoc();
+  const first = attach(panel(doc), { key: 'workshop' });
+  assert.ok(first, 'eight cards is enough to search');
+  first.field.value = 'oak';
+  first.field.dispatchEvent({ type: 'input' });
+  first.field.focus();
+  const reBtn = first.field.parentNode.querySelectorAll('.panel-search-toggle')[0];
+  reBtn.click();                                    // regex on
+  assert.equal(first.items.filter((it) => !it.hidden).length, 1, 'the filter is live before the re-render');
+
+  const again = attach(panel(doc), { key: 'workshop' });   // refreshPanel() rebuilt the panel
+  assert.equal(again.field.value, 'oak', 'the query came back');
+  assert.equal(again.field.parentNode.querySelectorAll('.panel-search-toggle')[0].getAttribute('aria-pressed'), 'true', 'so did regex mode');
+  assert.equal(again.items.filter((it) => !it.hidden).length, 1, 'and it is applied to the new cards');
+  assert.ok(doc.focused.includes(again.field), 'focus went back to the box because it was there before');
+
+  const other = attach(panel(doc), { key: 'settings' });
+  assert.equal(other.field.value, '', 'a different panel does not inherit the query');
+
+  forget('workshop');
+  const cleared = attach(panel(doc), { key: 'workshop' });
+  assert.equal(cleared.field.value, '', 'forget() drops it (closePanel/openPanel call this)');
+  assert.equal(cleared.items.filter((it) => !it.hidden).length, 8);
+});
+
+test('attach() without a key remembers nothing, so a nameless caller can never leak a query', () => {
+  forget();
+  const doc = makeDoc();
+  const a = attach(panel(doc));
+  a.field.value = 'zzz';
+  a.field.dispatchEvent({ type: 'input' });
+  const b = attach(panel(doc));
+  assert.equal(b.field.value, '');
+});
+
 test('renderPanelContent attaches the bar, so every panel gets one from a single line', () => {
   const src = fs.readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
   const start = src.indexOf('function renderPanelContent');
@@ -176,7 +272,8 @@ test('renderPanelContent attaches the bar, so every panel gets one from a single
   // Anchored to the start of a line so a commented-out call cannot satisfy it. A plain
   // includes('panelsearch.attach(') would pass on "// panelsearch.attach(container);", which is
   // exactly how this wiring would most likely die - somebody disabling it while debugging.
-  assert.match(body, /^\s*panelsearch\.attach\(container\);/m,
+  // The call may carry an options object (the per-panel key that keeps a query across re-renders).
+  assert.match(body, /^\s*panelsearch\.attach\(container(?:,\s*\{[^}]*\})?\);/m,
     'renderPanelContent must call panelsearch.attach(container) on a live line - losing it removes '
     + 'search from every panel at once, with nothing on screen to say so');
   assert.match(src, /^import \* as panelsearch from '\.\/panelsearch\.js';$/m);

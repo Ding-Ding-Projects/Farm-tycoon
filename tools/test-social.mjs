@@ -16,7 +16,8 @@ import * as neighbours from '../src/neighbours.js';
 import * as coop from '../src/coop.js';
 import * as regatta from '../src/regatta.js';
 import * as helicopter from '../src/helicopter.js';
-import { NEIGHBOURS, COOP, REGATTA, HELICOPTER, EFFECT_KEYS, LEVELS, CROPS } from '../src/data.js';
+import { NEIGHBOURS, COOP, REGATTA, HELICOPTER, EFFECT_KEYS, LEVELS, CROPS, BUILDINGS } from '../src/data.js';
+import * as economy from '../src/economy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -385,6 +386,82 @@ test('fillCrate/dispatch/collectDelivery: a full round trip refunds nothing extr
 // ---------------------------------------------------------------------------
 // summary
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// regatta.js — absence is not a win, ties go against the player, rewards land where they belong
+// ---------------------------------------------------------------------------
+
+test('a season the player never scored in is not entered: no win, no promotion, nothing to claim', () => {
+  const s = freshState();
+  const now0 = Date.now();
+  regatta.activeSeason(now0);
+  const league0 = s.regatta.league;
+  const missed = 5;
+  regatta.activeSeason(now0 + missed * REGATTA.seasonDurationDays * 86400 * 1000 + 3600 * 1000);
+  assert.equal(s.regatta.seasonsWon, 0, 'an absent crew wins nothing');
+  assert.equal(s.regatta.league, league0, 'the league is decided by racing, not by absence');
+  assert.equal(s.regatta.lastPlace, null);
+  assert.equal(s.regatta.lastRewards, null);
+  assert.equal(regatta.claimPlacement(), false, 'nothing to claim');
+});
+
+test('a tie on points goes against the player: you must beat a crew to place above it', () => {
+  const s = freshState();
+  regatta.activeSeason(Date.now());
+  s.regatta.points = 500;
+  for (const r of s.regatta.rivals) { r.points = 500; r.lastTickAt = s.regatta.endsAt; } // a dead heat, frozen
+  const place = () => regatta.standings().findIndex((r) => r.isPlayer) + 1;
+  assert.equal(place(), REGATTA.laneCount, 'level on points, the player sits last');
+  s.regatta.points = 501;
+  assert.equal(place(), 1, 'one point clear takes first');
+});
+
+test('claimPlacement grants a decoration reward as an owned decoration, never a barn item, and pays out what a full barn cannot hold', () => {
+  const s = freshState();
+  const now0 = Date.now();
+  regatta.activeSeason(now0);
+  s.regatta.points = 999999;
+  const settled = regatta.settleSeason(now0 + REGATTA.seasonDurationDays * 86400 * 1000 + 1000);
+  assert.equal(settled.place, 1);
+  const first = REGATTA.rewards.placement[0];
+  assert.ok(first.decoration, 'first place carries a decoration in data.js');
+
+  s.barn.capacity = 0; // no room at all: the material reward must become coins, not vanish
+  const coins = s.coins;
+  assert.equal(regatta.claimPlacement(), true);
+  assert.equal(s.decorate.owned[first.decoration], 1, 'the decoration is owned, ready to place for free');
+  assert.equal(s.barn.items[first.decoration], undefined, 'a decoration is not stock');
+  const materialCoins = Object.entries(first.materials)
+    .reduce((sum, [id, q]) => sum + Math.round(economy.sellValue(id) * q), 0);
+  assert.equal(s.coins, coins + first.coins + materialCoins);
+  assert.equal(s.regatta.placementClaimed, true);
+  assert.equal(regatta.claimPlacement(), false);
+});
+
+test('completeTask feeds the regattaPoints counter the Crew Hand achievements read', () => {
+  const s = freshState();
+  regatta.activeSeason(Date.now());
+  const entry = regatta.board()[0];
+  regatta.claimTask(entry.id);
+  s.stats[entry.stat] = entry.target;
+  assert.equal(regatta.completeTask(entry.id), true);
+  assert.ok(s.regatta.points > 0);
+  assert.equal(s.stats.regattaPoints, s.regatta.points);
+});
+
+test('helicopter.fillCrate never loads a Workshop kit or a construction material', () => {
+  const s = freshState();
+  s.helicopter.fuel = HELICOPTER.fuel.max;
+  s.helicopter.fuelUpdatedAt = Date.now();
+  const kit = BUILDINGS.build_workshop.recipes.find((r) => r.id.startsWith('kit_')).id;
+  s.barn.items = { [kit]: 50, plank: 40 };
+  assert.equal(helicopter.fillCrate(0), false, 'kits and materials are not cargo, so nothing is loadable');
+  assert.equal(s.barn.items[kit], 50, 'the kit is untouched');
+  assert.equal(s.barn.items.plank, 40);
+  s.barn.items.bread = 1;
+  assert.equal(helicopter.fillCrate(0), true);
+  assert.equal(s.helicopter.loading[0].item, 'bread', 'the one real good is what flies');
+});
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) {

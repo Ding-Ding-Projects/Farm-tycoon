@@ -6,6 +6,7 @@
 import { state } from './state.js';
 import { ISLANDS } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
 
 function randomInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
 function randomQty(qty) { return Array.isArray(qty) ? randomInt(qty[0], qty[1]) : qty; }
@@ -68,10 +69,7 @@ export function pendingCargo() {
   return s.voyage.cargo;
 }
 
-function barnRoom() {
-  const used = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  return Math.max(0, state.barn.capacity - used);
-}
+function barnRoom() { return storage.room('barn'); }
 
 /** Collect the cargo into the barn. */
 export function collect() {
@@ -90,7 +88,7 @@ export function collect() {
 }
 
 /** Advance the voyage timer; called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   // Timers are absolute wall-clock readyAt values; nothing to advance here beyond letting
   // pendingCargo()/collect() compare against `now` themselves once readyAt has passed —
   // arbitrary elapsed (including days offline) resolves correctly with no extra bookkeeping.

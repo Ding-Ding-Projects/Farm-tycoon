@@ -29,7 +29,7 @@ function el(doc, tag, cls, text) {
  * Returns { committed, abandoned, result } — `result` is minigames.commitStage's return, so the
  * caller learns whether the whole chain just finished and at what tier.
  */
-export async function playStage(host, entry, { onClose } = {}) {
+export async function playStage(host, entry, { onClose, controls = null } = {}) {
   const doc = host.ownerDocument;
   const stages = minigames.chainFor(entry);
   const index = entry.play.stage;
@@ -142,11 +142,17 @@ export async function playStage(host, entry, { onClose } = {}) {
     // Leaving mid-stage keeps every COMMITTED stage and loses only the partial run. The derived
     // seed means re-entering rebuilds the identical board, so this is not a reroll.
     const leave = el(doc, 'button', 'btn quiet', 'Leave for now');
-    leave.addEventListener('click', () => {
+    const leaveNow = () => {
       minigames.abandon(entry);
       save();
       finish({ committed: false, abandoned: true, result: null });
-    });
+    };
+    leave.addEventListener('click', leaveNow);
+    // The SAME way out for the modal's backdrop and Escape (ui.js routes them here through
+    // `controls`): closing the modal around a running stage used to orphan this loop - the audio
+    // kept playing, the document listeners leaked, and the stage later committed a score into a
+    // craft nobody was looking at.
+    if (controls) controls.leave = leaveNow;
     actions.appendChild(leave);
 
     if (state.settings && state.settings.autoFinish) {

@@ -18,6 +18,9 @@
 
 import assert from 'node:assert/strict';
 import * as d from '../src/data.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 let passed = 0;
 const failures = [];
@@ -151,6 +154,44 @@ test('the expansion rectangles do not overlap each other', () => {
       assert.ok(!hit, `${zones[i].id} and ${zones[j].id} claim the same ground`);
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// Stat coverage: a task that scores a counter nothing increments can never complete
+// ---------------------------------------------------------------------------
+
+const SRC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
+
+function sourceFiles(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...sourceFiles(full));
+    else if (entry.name.endsWith('.js')) out.push(full);
+  }
+  return out;
+}
+
+test('every stat an achievement, task or event scores against is tracked somewhere in src/', () => {
+  const dataText = fs.readFileSync(path.join(SRC_DIR, 'data.js'), 'utf8');
+  const wanted = new Set();
+  for (const m of dataText.matchAll(/\bstat:\s*'([a-zA-Z_]+)'/g)) wanted.add(m[1]);
+  for (const m of dataText.matchAll(/pointsFor:\s*\{([^}]*)\}/g)) {
+    for (const k of m[1].matchAll(/([a-zA-Z_]+)\s*:/g)) wanted.add(k[1]);
+  }
+  assert.ok(wanted.size >= 25, `only ${wanted.size} stat keys found - the pattern no longer matches data.js`);
+
+  // `level` is read straight off state.level by extras.js rather than counted, so it is the one
+  // key that is legitimately never passed to trackStat.
+  const tracked = new Set(['level']);
+  for (const file of sourceFiles(SRC_DIR)) {
+    const text = fs.readFileSync(file, 'utf8');
+    for (const m of text.matchAll(/\b(?:trackStat|setStat)\(\s*'([a-zA-Z_]+)'/g)) tracked.add(m[1]);
+  }
+  const missing = [...wanted].filter((k) => !tracked.has(k)).sort();
+  assert.deepEqual(missing, [],
+    `scored in data.js but never counted in src/: ${missing.join(', ')} - every achievement, co-op `
+    + 'task, regatta task and event that reads one of these is a goal no play can ever reach');
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

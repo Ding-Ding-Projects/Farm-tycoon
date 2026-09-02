@@ -1,7 +1,157 @@
 # Handoff
 
-State of the repository as of commit `013509a` on `main`. Written to be read by whoever picks
+State of the repository as of commit `a220e43` on `main` (the 2026-09-02 section is the newest; older sections are kept as written). Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
+
+## Session of 2026-09-02 — bug hunt, realistic graphics, Hay Day drags
+
+Eight commits on `claude/bug-fixes-realistic-graphics-j7gg1j`, each pushed to `main` as it
+landed (the user asked for that cadence; see "Git" below for the release bot's part in it).
+Every figure below was read out of a real run at `a220e43`.
+
+**State: `SAVE_VERSION` 5 · 771 assertions across 19 suites plus the validator and the economy
+audit, zero failures · game boots with zero console errors · median `drawFrame` 4.7 ms at zoom
+0.5 on a 609-object farm in headless Chromium, 1.8 ms at zoom 1.7.**
+
+### What landed, in order
+
+1. **Renderer foundations** (`9a0c94c`). Every render object carries its footprint; a 2x2 bakery
+   fills its plot instead of sitting as an 89 px hut on its north-west tile. One shared
+   `farm.footprintOf`. The ground is a world-anchored pattern (`src/render/ground.js`, an 8x8-tile
+   noise patch mapped through the iso transform) with per-tile tufts and flowers, so panning moves
+   the meadow. Locked land is woodland with a for-sale signpost per expansion. Pens emit animals
+   (`min(capacity, 5)`), owned pets appear by the barn. Effects fire on one clock. The placement
+   ghost tints the tile it validates. Frustum culling, save/restore around each sprite, measured
+   frame delta into the camera glide.
+2. **Economy, storage, counters** (`e52e749`). `src/storage.js` is the one door into the silo and
+   barn: capacity with research/co-op bonuses, room, add-or-pay-the-shortfall, take, and the
+   `STORAGE` upgrade ladder with an Upgrade card in each panel. Every "no room" path refuses
+   before consuming (harvest keeps the crop, merge keeps the cell, the mine keeps the tool,
+   foraging keeps the node, fishing keeps the cast). Newspaper and market charge per unit (the
+   6.6x coin exploit is closed) and never list kits or components; orders, boat, trains and
+   planes never demand them. Mine depths respect their level gates. Pens cost
+   `penCost + animalCost × capacity`. A player who misses regatta seasons no longer wins them.
+   Eleven dead stat counters are incremented at their real action points, collection books fill
+   from real actions, every research and event effect has a consumer, and the event banner is
+   wired with a per-tier claim panel. `tools/test-tables.mjs` guards that every `stat:` and
+   `pointsFor:` key in `data.js` is tracked somewhere in `src/`.
+3. **Reachability, UI and input** (`0314780`). Land expansions are bought by tapping the woodland
+   or its signpost; decorations are sold from a grid in the workshop panel; every unlocked crop
+   is plantable (radial shows seven plus "More…", which opens the `plant` sheet); the workshop
+   yard opens at level 2 with pens and coin-only buildings always offered, so the chicken coop,
+   bakery and feed mill are buildable when they unlock; the tutorial targets world objects and
+   describes the real interactions, with a guarded finish and a Skip in Settings. `openModal`
+   has `role=dialog`, Escape closes the top-most modal first, and leaving a minigame mid-stage
+   tears it down through its own shell. `pointercancel` never commits a placement, the key
+   handler ignores editable targets, a third-finger lift re-seeds the pinch. The XP ring is
+   live (`--xp`), fishing has a steady mode under reduced motion, mastery cards show building
+   names, the panel search box survives `refreshPanel`. `load()` default-fills every key a v1
+   save lacks; `debugTimeSkip` shifts the real timer fields of every system.
+4. **Hay Day drags** (`bb6193c`). See "The drag model" below.
+5. **Art, four commits.** `7493b5b`: one light over the farm — raised slabs under buildings and
+   structures, lit and shaded wall faces, ambient occlusion at the base, roof gradients, glass
+   with a reflection, loam soil with wavy furrows and clods, water with depth, ripples and a
+   specular streak on the frame clock. `9465bc9`: every one of the 54 decoration ids has its own
+   sprite family, fountains and windmills and carousels animate, fences join their same-type
+   neighbours into continuous runs. `028ada2`: the day follows the player's clock
+   (`src/render/daylight.js`: dawn, noon, dusk, a night bounded at 0.3 alpha with lit windows
+   and glowing lamps; the Settings toggle off restores the fixed golden hour exactly), a cool
+   distance haze, and three cloud shadows drifting in world space, frozen under reduced motion.
+   `a220e43`: crops stand in rows along the furrows, each stem with its own height, lean and hue,
+   two-tone ripe heads, continuous growth.
+
+### The drag model
+
+`src/drag.js` is one layer for three kinds of drag, fed by the existing `window` pointer
+handlers in `src/input.js` (`input.handlers` is exported so the contract suite can feed it
+synthetic events):
+
+- **`place`** — a catalog card in the workshop panel (`ui.draggablePlaceCard`). A press that
+  never moves past the tap threshold (6 px) is the card's own click, so tap-to-place still works.
+  Once it moves, `placement.begin` runs, the sheet closes and the canvas ghost follows the
+  pointer. Release on a legal tile commits (charged exactly there, with a bounce); release on a
+  blocked tile leaves the ghost up for tap-to-place and charges nothing, so a crafted kit is
+  never lost. `pointercancel` abandons with nothing spent.
+- **`item`** — a recipe card dragged onto its own factory (`ui.recipeDragSpec`), or the pen
+  ring's Feed/Collect dragged onto a pen (`actions.feedDragSpec` / `collectDragSpec`). A floating
+  DOM icon (`#drag-ghost`) follows the finger; the renderer tints the footprint under it green or
+  red exactly as the placement ghost does (`world.dropTarget`). Factories draw their queue as
+  slot pips above them so there is a visible slot to drop into.
+- **`sweep`** — a seed or the basket pulled off a field's ring (`actions.plantSweepSpec` /
+  `harvestSweepSpec`): every eligible field the stroke crosses is sown or harvested, one toast
+  and sparkle per field; release does nothing by itself, so a stroke that crossed nothing costs
+  nothing. A plain tap on the ring option still acts on that one field.
+
+Nine gesture tests in `tools/test-ui-contracts.mjs` pin all of it (press/move/release helpers at
+the top of that block). The tutorial texts in `data.js` describe the drags with the tap
+alternative in the same sentence.
+
+### Verification
+
+- `npm test` at `a220e43`: validator + economy audit + 19 suites, **771 passed, 0 failed**
+  (`test-ui-contracts` 148, `test-render` 32, `test-core` 40, the rest as printed). Two suites
+  are new this session: `tools/test-render.mjs` (footprints, sorting, the ghost, ground fallbacks,
+  scenery, effects clock, every sprite on the fake context, decoration families and joins, the
+  day/night cycle, cloud shadows, water, crops, and two source guards) and the WS3/WS5 blocks
+  in `test-ui-contracts`.
+- Headless Chromium probes, all with zero console errors, live in the session scratchpad and
+  are not committed (they need a running `python3 -m http.server 8123` and the preinstalled
+  Chromium): harvest → effects → reload; land offer, plant sheet, silo upgrade, workshop at L3,
+  event banner, tutorial anchoring; the four drags; art screenshots at three zooms plus a
+  building contact sheet, a decorations contact sheet (all 54 at two clock values), nine crops
+  at three stages, noon/dawn/dusk/night and a pinned cloud (grass under it 14% darker); and
+  the timing probe quoted above (3–4 gradient allocations per frame; the p95 spikes are
+  headless rasterizer flushes, not drawing).
+
+### Git, and the release bot
+
+`.github/workflows/release.yml` runs on every push to `main`, builds the Windows installer, and
+then **commits a line to `RELEASE-CODENAMES.md` on `main`**. So every push to main is followed
+minutes later by a bot commit, and the next `git push origin HEAD:main` is rejected as
+non-fast-forward until that commit is merged into the branch. The sequence that works: commit
+→ `git fetch origin main` → `git merge --no-edit origin/main` → quick test → push the branch →
+push `HEAD:main`. Three such merges are in this branch's history. Earlier in the session two
+pushes to main were rejected this way and misread as successful; check `origin/main` after
+every push rather than trusting the local ref.
+
+### Traps worth not rediscovering
+
+- `npm test` run from any other directory (the scratchpad has its own `package.json`) reports
+  "no test specified" with exit 1 — that is not a failing suite.
+- `tools/test-motion.mjs` drives `drawBuilding` through a Proxy context whose every method
+  returns `undefined`; every gradient must go through `linearGradient` / `radialGradient` /
+  `fillUnit`, which fall back to a flat colour. `test-render` guards that no bare
+  `createLinearGradient` survives in `sprites.js`, and that no `lineWidth = <number>;` literal
+  does either (sizes are in `T` units so they scale with zoom).
+- `tools/test-placement.mjs` parses `BUILDING_CONFIG` as text: one line per entry, and a new
+  `form`/`accent` name has to be added to its lists.
+- `tools/test-ui-contracts.mjs` fakes the DOM by hand: `innerHTML` is a string, and the selector
+  fake only resolves a single `.class`, `#id` or tag, so `panelsearch` never attaches there.
+  Search-memory tests live in `tools/test-panelsearch.mjs` with their own DOM fake.
+- In a probe, `renderer.focusTile` alone is undone by the camera glide on the next frame; set
+  `renderer.cameraTarget` instead. `window.__farmDebug.setHour(h)` pins the day/night cycle.
+- The daylight keyframes are sampled at whole minutes so the cached lighting layer repaints
+  once a minute; interpolating per frame would repaint a full-canvas offscreen layer every frame.
+
+### Not done — deliberately
+
+- `decorate.js` rotate/undo/redo/stickers: no UI reaches them and `rotation` is not rendered.
+- `farm.remove()` kit refund: no caller.
+- The verb-load failure button in `minigames/shell.js`: defence in depth, all 46 verbs load.
+- A per-crate helicopter manifest UI: only the exclusion fix (never auto-load a kit) landed.
+- Crops are not clipped to their plot; like Hay Day's they overhang the north edge a little.
+- The haze and cloud shadows have no toggle; only the day/night cycle does.
+- The white-on-green button contrast finding from the previous session is unchanged.
+- Balance of the new prices (pens at `penCost + animalCost × capacity`, per-unit market and
+  newspaper) follows `data.js`'s documented intent and was not re-tuned against progression.
+
+### Suggested order for the next session
+
+1. Play it by hand on a touch device. Every drag was verified with synthetic pointer events in
+   headless Chromium; a thumb on a phone is the real test of the 6 px threshold and the sheet
+   closing mid-drag.
+2. Re-tune the prices above against the level curve if they feel wrong in play.
+3. The items in "Not done", in the order listed.
 
 ## Session of 2026-09-01 — content completion, then an accessibility sweep
 

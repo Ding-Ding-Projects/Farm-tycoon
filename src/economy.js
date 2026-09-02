@@ -29,6 +29,46 @@ function combinedMultiplier(kind, id) {
   return mult;
 }
 
+/**
+ * The merged multiplier for an EFFECT_KEYS `*Mult` name (cropGrowMult, productionTimeMult,
+ * animalProduceMult, orderPayoutMult, zooIncomeMult, truckIntervalMult, sellPriceMult...),
+ * across research, co-op perks, mastery and factory bonuses. Every consumer of a research or
+ * perk effect reads it through here; until this was exported only sellPriceMult had a reader
+ * and every other researched effect was computed and applied to nothing.
+ */
+export function multiplier(kind, id) { return combinedMultiplier(kind, id); }
+
+// Additive effects (siloCapBonus, barnCapBonus, mineYieldBonus, fishRareChance...) merge the
+// same way, by summing every registered provider. Research and co-op perks register here at
+// their own module load, so storage.js, mine.js and fishing.js read one merged number.
+const bonusProviders = [];
+/** Register a fn(key, id) => additive bonus for a non-Mult EFFECT_KEYS name. */
+export function registerBonusEffect(fn) { bonusProviders.push(fn); }
+export function bonus(key, id) {
+  let total = 0;
+  for (const fn of bonusProviders) {
+    try {
+      const v = fn(key, id);
+      if (typeof v === 'number' && Number.isFinite(v)) total += v;
+    } catch { /* a broken provider must never break the economy */ }
+  }
+  return total;
+}
+
+/**
+ * Outputs of the Building Workshop: components and kits. They are GOODS with a sell price so
+ * they can sit in the barn, but they are the crafting spine, never trade goods - orders, boats,
+ * trains, planes, the market and the newspaper must not ask for them or sell them.
+ */
+let workshopCraftCache = null;
+export function isWorkshopCraft(id) {
+  if (!workshopCraftCache) {
+    workshopCraftCache = new Set();
+    for (const r of DATA.BUILDINGS?.build_workshop?.recipes || []) workshopCraftCache.add(r.id);
+  }
+  return workshopCraftCache.has(id);
+}
+
 const statHooks = [];
 /** Register a fn(stat, total, delta) called after every trackStat increment (achievements). */
 export function registerStatHook(fn) { statHooks.push(fn); }
@@ -107,22 +147,26 @@ function buildUnlockLevelMap() {
     for (const [id, def] of Object.entries(table)) {
       if (!def || typeof def !== 'object') continue;
       if (typeof def.unlockLevel === 'number' && !map.has(id)) map.set(id, def.unlockLevel);
-      // Nested per-id dicts that carry their own unlockLevel: building recipes, zoo
-      // enclosures, island destinations, mine depths.
+      // Nested per-id dicts that carry their own unlockLevel: building recipes.
       if (Array.isArray(def.recipes)) {
         for (const r of def.recipes) {
           if (r && typeof r.unlockLevel === 'number' && !map.has(r.id)) map.set(r.id, r.unlockLevel);
         }
       }
-      for (const nestedKey of ['enclosures', 'destinations', 'depths']) {
-        const nested = def[nestedKey];
-        if (!nested) continue;
-        const entries = Array.isArray(nested)
-          ? nested.map((v) => [v.id, v])
-          : Object.entries(nested);
-        for (const [nid, ndef] of entries) {
-          if (ndef && typeof ndef.unlockLevel === 'number' && !map.has(nid)) map.set(nid, ndef.unlockLevel);
-        }
+    }
+    // Per-id dicts/arrays that hang off a system table at its TOP level: ZOO.enclosures,
+    // ISLANDS.destinations, MINE.depths. These used to be looked for one level too deep (on each
+    // entry rather than on the table), so none was ever registered - zoo and islands were saved
+    // only by their duplicate entries in LEVELS.unlocks, while MINE.depths had none, and the
+    // level-90 seam was "unlocked" from level 1.
+    for (const nestedKey of ['enclosures', 'destinations', 'depths']) {
+      const nested = table[nestedKey];
+      if (!nested || typeof nested !== 'object') continue;
+      const entries = Array.isArray(nested)
+        ? nested.map((v) => [v?.id, v])
+        : Object.entries(nested);
+      for (const [nid, ndef] of entries) {
+        if (nid && ndef && typeof ndef.unlockLevel === 'number' && !map.has(nid)) map.set(nid, ndef.unlockLevel);
       }
     }
   }
@@ -161,4 +205,20 @@ export function trackStat(stat, amount = 1) {
   for (const fn of statHooks) {
     try { fn(stat, state.stats[stat], amount); } catch { /* a broken hook must never break the economy */ }
   }
+}
+
+/**
+ * Set a stat to an absolute value (a count derived from something else, e.g. the number of
+ * distinct fish species caught). Fires the same hooks as trackStat with the delta, so
+ * achievements and event points see it exactly once.
+ */
+export function setStat(stat, value) {
+  const prev = state.stats[stat] || 0;
+  const next = Math.max(0, value);
+  if (next === prev) return prev;
+  state.stats[stat] = next;
+  for (const fn of statHooks) {
+    try { fn(stat, next, next - prev); } catch { /* a broken hook must never break the economy */ }
+  }
+  return next;
 }

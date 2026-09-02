@@ -7,6 +7,7 @@ import { state } from './state.js';
 import { ZOO, CROPS, GOODS } from './data.js';
 import * as economy from './economy.js';
 import * as town from './town.js';
+import * as storage from './storage.js';
 
 const VISITOR_CAP_MS = 12 * 3600 * 1000; // 12h — a fortnight away must not print a fortune
 
@@ -39,7 +40,7 @@ function removeItem(id, qty) {
 }
 
 function addToBarn(id, qty) {
-  state.barn.items[id] = (state.barn.items[id] || 0) + qty;
+  return storage.add(id, qty);
 }
 
 /** Buy an enclosure (level-gated, consumes coins + materials). */
@@ -83,8 +84,10 @@ export function collect(id) {
   const owned = z.enclosures[id];
   if (!def || !owned) return false;
   if (!(owned.readyAt > 0) || Date.now() < owned.readyAt) return false;
+  if (storage.room('barn') <= 0) return false; // barn full — the souvenir waits in the enclosure
 
   addToBarn(def.product, 1);
+  economy.trackStat('zooSouvenirs', 1);   // the counter the Zookeeper achievement and regatta read
   owned.fedAt = 0;
   owned.readyAt = 0;
   return true;
@@ -96,7 +99,8 @@ export function pendingIncome(now = Date.now()) {
   if (state.level < ZOO.unlockLevel) return 0;
   const elapsedMs = Math.min(VISITOR_CAP_MS, Math.max(0, now - z.lastIncomeAt));
   const population = town.populationInfo().population;
-  const perHour = ZOO.visitorIncomePerHour(population);
+  // Research (marketing) raises visitor income through the shared multiplier merge point.
+  const perHour = ZOO.visitorIncomePerHour(population) * economy.multiplier('zooIncomeMult', 'zoo');
   return Math.floor(perHour * (elapsedMs / 3600000));
 }
 
@@ -154,7 +158,7 @@ function generateOrder() {
 }
 
 /** Advance timers + regenerate zoo orders; called from the game loop. */
-export function tick(now) {
+export function tick(now = Date.now()) {
   const z = ensureState();
   if (state.level < ZOO.unlockLevel) return;
   while (z.orders.length < ZOO.orderSlots) {

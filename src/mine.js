@@ -15,6 +15,8 @@ import { state } from './state.js';
 import { MINE } from './data.js';
 import * as economy from './economy.js';
 import * as museum from './museum.js';
+import * as storage from './storage.js';
+import * as extras from './extras.js';
 
 function depthDef(depthId) {
   return MINE.depths.find((d) => d.id === depthId) || null;
@@ -44,15 +46,13 @@ function randomQty(qty) {
   return qty;
 }
 
-/** Whether an event doubling ore/gem yields (e.g. gold_rush) is currently active. */
+/** Whether an event doubling ore/gem yields (Mining Madness, or a gold_rush id) is active. */
 function goldRushActive() {
-  return !!(state.event && state.event.id === 'gold_rush' && state.event.endsAt > Date.now());
+  if (state.event && state.event.id === 'gold_rush' && state.event.endsAt > Date.now()) return true;
+  try { return !!extras.activeEventEffect()?.mineDouble; } catch { return false; }
 }
 
-function barnRoom() {
-  const used = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  return Math.max(0, state.barn.capacity - used);
-}
+function barnRoom() { return storage.room('barn'); }
 
 /** Dig with a tool ('pickaxe'|'dynamite') at the surface seam. Sugar for digAt(depth 1). */
 export function dig(tool) {
@@ -71,19 +71,21 @@ export function digAt(depthId, tool) {
   if (have < 1) return null;
 
   // Consume the tool up front, exactly once, only after every check above has passed —
-  // nothing below this line can fail in a way that would need refunding it.
+  // nothing below this line can fail in a way that would need refunding it. The tool's own
+  // barn slot is freed by that, so the ore always has at least one slot to land in; whatever
+  // exceeds the barn is paid out as coins (storage.addOrPay) rather than lost, as it used to be.
   state.barn.items[tool] = have - 1;
 
   const picked = weightedPick(toolTable.yields);
   let qty = picked ? randomQty(picked.qty) : 0;
   if (picked && goldRushActive()) qty *= 2;
+  // Research (deep drilling) and the co-op's Deep Contacts add a share to every dig.
+  if (picked && qty > 0) qty = Math.max(1, Math.round(qty * (1 + economy.bonus('mineYieldBonus'))));
 
   let given = 0;
+  let paidOut = 0;
   if (picked && qty > 0) {
-    given = Math.min(qty, barnRoom());
-    if (given > 0) {
-      state.barn.items[picked.item] = (state.barn.items[picked.item] || 0) + given;
-    }
+    ({ given, paidOut } = storage.addOrPay(picked.item, qty));
   }
 
   let artifact = null;
@@ -97,7 +99,7 @@ export function digAt(depthId, tool) {
   state.mine.digs += 1;
   economy.trackStat('mineDigs', 1);
 
-  return { depthId, tool, item: picked ? picked.item : null, qty: given, artifact };
+  return { depthId, tool, item: picked ? picked.item : null, qty: given, paidOut, artifact };
 }
 
 /** Every depth, with its unlock state and requirements (for the mine panel). */

@@ -6,6 +6,9 @@
 import { state } from './state.js';
 import { FISHING } from './data.js';
 import * as economy from './economy.js';
+import * as storage from './storage.js';
+import * as extras from './extras.js';
+import * as collections from './collections.js';
 
 function ensureFishingState() {
   if (!state.fishing || typeof state.fishing !== 'object') state.fishing = { cast: null };
@@ -53,7 +56,14 @@ function rollWeighted(weightMap) {
 }
 
 function pickSpecies() {
-  const tier = rollWeighted(FISHING.rarityWeights);
+  // Research (sonar) adds to the rare bucket's share of the roll.
+  const weights = { ...FISHING.rarityWeights };
+  const rareBonus = economy.bonus('fishRareChance');
+  if (rareBonus > 0) {
+    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    weights.rare = (weights.rare || 0) + rareBonus * total;
+  }
+  const tier = rollWeighted(weights);
   const tiers = speciesTiers();
   const candidates = tiers[tier] && tiers[tier].length > 0 ? tiers[tier] : FISHING.species;
   return candidates[Math.floor(Math.random() * candidates.length)];
@@ -61,8 +71,11 @@ function pickSpecies() {
 
 function siloBarnRoomFor() {
   // Fish are goods (barn stock), never crops.
-  const total = Object.values(state.barn.items).reduce((a, b) => a + b, 0);
-  return Math.max(0, state.barn.capacity - total);
+  return storage.room('barn');
+}
+
+function eventEffect() {
+  try { return extras.activeEventEffect() || {}; } catch { return {}; }
 }
 
 /** Roll a treasure chest's contents against FISHING.chestLoot. Does not open it. */
@@ -82,6 +95,8 @@ export function reel(accuracy) {
   if (!fishing.cast) return null;
   const now = Date.now();
   if (now < fishing.cast.readyAt) return null; // not ready yet
+  // A full barn keeps the line in the water: the cast is NOT spent until the catch has a home.
+  if (siloBarnRoomFor() <= 0) return null;
 
   fishing.cast = null; // the cast is consumed regardless of outcome
   const clampedAccuracy = Math.min(1, Math.max(0, accuracy));
@@ -91,13 +106,18 @@ export function reel(accuracy) {
   }
 
   const speciesId = pickSpecies();
-  // Better timing yields a chance at an extra fish (1 normally, up to 2 on a near-perfect reel),
-  // capped by remaining barn room like every other production output.
-  const qty = clampedAccuracy > 0.9 && Math.random() < 0.25 ? 2 : 1;
-  const given = Math.min(qty, siloBarnRoomFor());
-  if (given > 0) state.barn.items[speciesId] = (state.barn.items[speciesId] || 0) + given;
+  // Better timing yields a chance at an extra fish (1 normally, up to 2 on a near-perfect reel);
+  // Fishing Frenzy doubles every catch. What the barn cannot hold is paid out as coins.
+  let qty = clampedAccuracy > 0.9 && Math.random() < 0.25 ? 2 : 1;
+  if (eventEffect().fishDouble) qty *= 2;
+  const { given, paidOut } = storage.addOrPay(speciesId, qty);
   economy.trackStat('fishCaught', given);
-  return { item: speciesId, qty: given };
+  // The Fishing Log and the Compleat Angler achievement both count distinct species.
+  fishing.caught = fishing.caught || {};
+  fishing.caught[speciesId] = (fishing.caught[speciesId] || 0) + 1;
+  economy.setStat('uniqueFishCaught', Object.keys(fishing.caught).length);
+  collections.record('fish_book', speciesId);
+  return { item: speciesId, qty: given, paidOut };
 }
 
 /** Open a treasure chest: rolls FISHING.chestLoot. */
@@ -120,18 +140,18 @@ export function openChest() {
   if (entry.item) {
     const [min, max] = entry.qty;
     const qty = min + Math.floor(Math.random() * (max - min + 1));
-    const given = Math.min(qty, siloBarnRoomFor());
-    if (given > 0) state.barn.items[entry.item] = (state.barn.items[entry.item] || 0) + given;
+    const { given, paidOut } = storage.addOrPay(entry.item, qty);   // never lost to a full barn
     result.item = entry.item;
     result.qty = given;
+    result.paidOut = paidOut;
   }
   if (entry.material) {
     const [min, max] = entry.qty;
     const qty = min + Math.floor(Math.random() * (max - min + 1));
-    const given = Math.min(qty, siloBarnRoomFor());
-    if (given > 0) state.barn.items[entry.material] = (state.barn.items[entry.material] || 0) + given;
+    const { given, paidOut } = storage.addOrPay(entry.material, qty);
     result.material = entry.material;
     result.qty = given;
+    result.paidOut = paidOut;
   }
   economy.trackStat('chestsOpened', 1);
   return result;

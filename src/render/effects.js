@@ -7,7 +7,15 @@ import * as motion from '../motion.js';
 const particles = []; // { kind, x, y, born, life, ...kind-specific }
 const bounces = new Map(); // objectId -> { born, life }
 
-const now_ = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+// ONE clock, shared with the frame loop. renderer.drawFrame hands tickAndDraw() main.js's
+// Date.now(); particles used to be stamped with performance.now() instead, so every one of them
+// was born ~1.7e12 ms "ago" and pruned on its first frame - which is why no coin burst was ever
+// seen. Both sides now read Date.now().
+const now_ = () => Date.now();
+
+// Glyph size follows the camera so a burst over a zoomed-out farm is not a hail of boulders.
+let zoomRef = 1;
+export function setZoom(z) { zoomRef = Math.max(0.5, Math.min(2.5, z || 1)); }
 
 function push(p) { particles.push(p); }
 
@@ -80,6 +88,7 @@ export function tickAndDraw(ctx, now) {
     if (age >= p.life) { particles.splice(i, 1); continue; }
     const f = age / p.life;
 
+    const z = 0.7 + zoomRef * 0.3;   // glyphs follow zoom gently, never shrinking below 0.85x
     if (p.kind === 'coin') {
       const dt = age / 1000;
       const px = p.x + p.vx * dt;
@@ -87,22 +96,27 @@ export function tickAndDraw(ctx, now) {
       ctx.save();
       ctx.globalAlpha = 1 - easeOutCubic(f);
       ctx.fillStyle = '#f0b52e';
-      ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#a87c1e'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, 6 * z, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a87c1e'; ctx.lineWidth = 1.5 * z; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,240,180,0.7)';
+      ctx.beginPath(); ctx.arc(px - 2 * z, py - 2 * z, 2 * z, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     } else if (p.kind === 'xp') {
       ctx.save();
       ctx.globalAlpha = 1 - easeOutCubic(f);
-      ctx.fillStyle = '#7fd4f0';
-      ctx.font = 'bold 15px sans-serif';
+      ctx.font = `bold ${Math.round(15 * z)}px sans-serif`;
       ctx.textAlign = 'center';
+      ctx.lineWidth = 3 * z;
+      ctx.strokeStyle = 'rgba(40,24,8,0.75)';
+      ctx.strokeText(`+${p.amount} XP`, p.x, p.y - f * 34);
+      ctx.fillStyle = '#9fe8ff';
       ctx.fillText(`+${p.amount} XP`, p.x, p.y - f * 34);
       ctx.restore();
     } else if (p.kind === 'sparkle') {
       ctx.save();
       ctx.globalAlpha = 1 - f;
       ctx.fillStyle = '#fffaea';
-      const r = 3 * (1 - f) + 1;
+      const r = (3 * (1 - f) + 1) * z;
       ctx.beginPath();
       for (let k = 0; k < 4; k++) {
         const a = (k / 4) * Math.PI * 2;

@@ -124,11 +124,46 @@ implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind e
 - [ ] A signed release APK, and testing on real hardware. Emulated touch proves the code path,
       not finger occlusion, palm rejection or feel. See `ANDROID.md`
 
+## Bug hunt and realism pass (2026-09-02)
+
+Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evidence.
+
+- [x] **Objects stand on their plots.** Footprint-aware anchors, scale and depth sort; a 2x2
+      building fills its 2x2; pens draw a fenced floor with animals in it; the placement ghost
+      tints the tiles it validates.
+- [x] **The ground belongs to the world.** A tileable noise pattern mapped through the iso
+      transform, per-tile tufts and flowers, woodland and a signpost on unowned land.
+- [x] **Storage caps refuse instead of destroying.** `src/storage.js`; every claim path stores
+      what fits and pays the rest, or refuses before consuming; silo and barn upgrades reachable.
+- [x] **Exploits closed.** Newspaper and market per unit; kits and components never in orders,
+      shops, trains or planes; mine depths gated; pens charge for their animals; a missed regatta
+      season is not a won one.
+- [x] **Every counter counts.** Eleven dead stats tracked, collection books fill, research and
+      event effects consumed, the event banner and its claims wired; a table guard pins it.
+- [x] **Everything data.js describes is reachable.** Expansions, decorations, every crop, the
+      early build gate, the tutorial's targets and texts, modal and gesture correctness, the XP
+      ring, reduced-motion fishing, v1 saves loading complete, `timeSkip` over the real timers.
+- [x] **Hay Day interactions.** Drag a building out of the catalog, a recipe onto its factory,
+      feed or the basket onto a pen, a seed or the basket across the fields. Tap paths remain.
+- [x] **Realism on the art.** One light over the farm with slabs, shaded faces, glass, loam and
+      living water; a sprite for every decoration with joining fences; the day following the
+      clock with a bounded night, haze and drifting cloud shadows; crops in rows with per-stem
+      variation.
+- [x] `npm test`: validator + economy audit + 19 suites, **771 passed, 0 failed**;
+      `tools/test-render.mjs` is new.
+
 ## Open items
 
 - [x] **Every control is at least 44x44.** A sweep of all 25 panels found 33 below it, and every
       single one was in the panel search bar added earlier this session - the rest of the game was
       already clean. Fixed there; the sweep now returns zero.
+
+- [ ] **Deliberately left after the 2026-09-02 pass** (details in `HANDOFF.md`): decorate.js
+      rotate/undo/redo/stickers have no UI; `farm.remove()` has no caller for its kit refund; the
+      helicopter has no per-crate manifest UI; crops overhang their plot's north edge; the haze
+      and cloud shadows have no toggle; the new pen and market prices follow `data.js`'s intent
+      and are untuned against the level curve; every drag was verified with synthetic pointer
+      events, not a thumb.
 
 - [ ] **White button text sits at 1.5 to 2.6 against its own fill, where AA wants 4.5.** Measured
       against the real gradients rather than guessed, worst stop per variant: default green

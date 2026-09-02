@@ -191,9 +191,18 @@ export function pendingBonus(buildingId) {
 // Wire into economy's single merge point, mirroring lab.js:181 — so a factory bonus, a lab node
 // and building mastery all reach economy.combinedMultiplier through one path rather than three.
 // Effects are read without consuming: pendingBonus() is the consuming path, used at collect.
+//
+// `results` is keyed by the BUILDING object id the game was played at, while economy asks about
+// an ITEM id (economy.sellValue(itemId) -> combinedMultiplier('sellPriceMult', itemId)), so the
+// lookup used to be by the wrong key and no factory sell bonus ever applied. Resolve the item
+// to the buildings that can make it: a pending bonus on any such building counts.
 economy.registerMultiplierEffect((kind, id) => {
-  if (!kind || !kind.endsWith('Mult')) return 1;
-  const result = id ? state.minigames.results[id] : null;
-  if (!result || result.effect !== kind) return 1;
-  return 1 + result.amount;
+  if (!kind || !kind.endsWith('Mult') || !id || !state?.minigames?.results) return 1;
+  for (const [objectId, result] of Object.entries(state.minigames.results)) {
+    if (!result || result.effect !== kind) continue;
+    const obj = state.farm?.objects?.find((o) => o.id === objectId);
+    const def = obj && BUILDINGS[obj.type];
+    if (def?.recipes?.some((r) => r.id === id)) return 1 + result.amount;
+  }
+  return 1;
 });

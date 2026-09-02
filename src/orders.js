@@ -5,6 +5,11 @@
 import { state } from './state.js';
 import { ORDERS, CROPS, GOODS, ANIMALS, BUILDINGS } from './data.js';
 import * as economy from './economy.js';
+import * as extras from './extras.js';
+
+function eventEffect() {
+  try { return extras.activeEventEffect() || {}; } catch { return {}; }
+}
 
 // ---------------------------------------------------------------------------------------------
 // Item eligibility. An order must never ask for something the player cannot plausibly produce
@@ -45,11 +50,16 @@ function itemUnlockLevel(itemId) {
   return 1; // unmapped good — never block on something we cannot classify
 }
 
-/** Every crop/good id obtainable at or below `level`, deduped, in a stable order. */
+/**
+ * Every crop/good id obtainable at or below `level`, deduped, in a stable order. Building
+ * Workshop components and kits are GOODS too (they sit in the barn with a sell price), but they
+ * are the crafting spine, not trade goods: an order that asked for a pasta-kitchen kit would
+ * swallow seven hours of material chain for sellPrice x 1.35, so they are never eligible.
+ */
 export function eligibleItemIds(level) {
   const ids = [];
   for (const id of Object.keys(CROPS)) if (itemUnlockLevel(id) <= level) ids.push(id);
-  for (const id of Object.keys(GOODS)) if (itemUnlockLevel(id) <= level) ids.push(id);
+  for (const id of Object.keys(GOODS)) if (itemUnlockLevel(id) <= level && !economy.isWorkshopCraft(id)) ids.push(id);
   return ids;
 }
 
@@ -60,11 +70,22 @@ function baseSellValue(itemId) {
   return CROPS[itemId]?.sellPrice ?? GOODS[itemId]?.sellPrice ?? 0;
 }
 
-/** Build one order's item list from the eligible pool at the player's level. */
+/** How many units of one item an order asks for at this level: 1-2 early, up to 8 later. */
+export function quantityBand(level) {
+  return [1, Math.min(8, 2 + Math.floor(Math.max(1, level) / 8))];
+}
+
+/**
+ * Build one order's item list from the eligible pool at the player's level. `countRange` is
+ * ORDERS.board.itemsPerOrder: how many DISTINCT items the order asks for (the tuning knob's
+ * documented meaning - it used to be read as the per-item quantity while the item count sat
+ * hard-coded at 1-2). Quantities scale with level through quantityBand().
+ */
 function generateItems(level, countRange = ORDERS.board.itemsPerOrder) {
   const pool = eligibleItemIds(level);
   if (pool.length === 0) return []; // no eligible content yet (very low level) — caught by callers
-  const n = Math.min(pool.length, randomInt(1, 2));
+  const n = Math.min(pool.length, randomInt(countRange[0], countRange[1]));
+  const [qLo, qHi] = quantityBand(level);
   const usedIds = new Set();
   const items = [];
   for (let i = 0; i < n; i++) {
@@ -72,7 +93,7 @@ function generateItems(level, countRange = ORDERS.board.itemsPerOrder) {
     if (remaining.length === 0) break;
     const itemId = pickRandom(remaining);
     usedIds.add(itemId);
-    items.push({ itemId, qty: randomInt(countRange[0], countRange[1]) });
+    items.push({ itemId, qty: randomInt(qLo, qHi) });
   }
   return items;
 }
@@ -143,13 +164,15 @@ export function fulfillOrder(orderId) {
     const bucket = CROPS[itemId] ? state.silo.items : state.barn.items;
     bucket[itemId] -= qty;
   }
-  economy.addCoins(order.rewardCoins);
+  // Research (accounting) and the co-op's Fair Dealing raise the payout at hand-in time.
+  const coins = Math.round(order.rewardCoins * economy.multiplier('orderPayoutMult', order.id));
+  economy.addCoins(coins);
   economy.addXp(order.rewardXp);
   economy.trackStat('ordersFulfilled', 1);
 
   const now = Date.now();
   state.orders.board[index] = { empty: true, readyAt: now + ORDERS.board.refreshCooldown * 1000 };
-  return { coins: order.rewardCoins, xp: order.rewardXp };
+  return { coins, xp: order.rewardXp };
 }
 
 /** Discard an order (replacement arrives after refreshCooldown). */
@@ -198,9 +221,11 @@ export function fillTruckBundle(index) {
   bundle.filled = true;
 
   const base = baseSellValue(bundle.itemId) * bundle.qty;
-  economy.addCoins(Math.round(base * ORDERS.board.payoutMultiplier));
+  // Truck Bonanza (a weekend event) pays extra per bundle; research/perks raise every order.
+  const coinMult = ORDERS.board.payoutMultiplier * (eventEffect().truckCoinMult || 1) * economy.multiplier('orderPayoutMult', bundle.itemId);
+  economy.addCoins(Math.round(base * coinMult));
   economy.addXp(Math.round(bundle.qty * ORDERS.board.xpMultiplier));
-  economy.trackStat('truckBundlesFilled', 1);
+  economy.trackStat('truckBundles', 1);   // the name the Truck Bonanza event scores
 
   if (truck.bundles.length > 0 && truck.bundles.every((b) => b.filled)) {
     const totalBase = truck.bundles.reduce((sum, b) => sum + baseSellValue(b.itemId) * b.qty, 0);
@@ -210,7 +235,8 @@ export function fillTruckBundle(index) {
     economy.trackStat('trucksCompleted', 1);
     const now = Date.now();
     truck.departed = true;
-    truck.nextSpawnAt = now + ORDERS.truck.interval * 1000;
+    // The co-op's Standing Orders perk (truckIntervalMult) brings the next truck sooner.
+    truck.nextSpawnAt = now + Math.round(ORDERS.truck.interval * 1000 * economy.multiplier('truckIntervalMult', 'truck'));
   }
   return true;
 }

@@ -14,10 +14,11 @@ checkout (`grep -r "/\* Phase B \*/" src/` returns nothing). Loaded in a browser
 hook exposing real, mutating game state — a starting farm with real coins, diamonds, a
 seeded silo, an empty barn, and six farm objects, not a static HUD reading `0`.
 
-`npm test` runs the content validator plus eight gameplay-logic suites — camera, core
-economy, logistics, crafting, township, research, dead-time systems, and the
-neighbours/co-op/regatta social layer — for **147 passing assertions across nine files**,
-with zero failures. The content layer, re-validated by that same run:
+`npm test` runs the content validator, the economy audit and nineteen suites — camera, core
+economy, logistics, crafting, township, research, dead-time systems, the neighbours/co-op/regatta
+social layer, playables and verbs, the UI contracts (including the drag gestures) and the
+renderer — for **771 passing assertions**, with zero failures. The content layer, re-validated
+by that same run:
 
 > data.js OK - 24 crops, 12 animals, 49 buildings, 215 recipes, 279 goods, 3 merge
 > chains, 43 achievements, 95 levels all with unlocks, 10 weekend events + 6
@@ -374,9 +375,10 @@ Runs `tools/validate-data.mjs` — which checks `src/data.js` for internal consi
 every unlock references a level that exists, every recipe references goods that exist,
 every recipe's `unlockLevel` sits at or after the true earliest availability of its own
 inputs, non-sink recipes clear a positive margin, every good/animal/crop id is unique, and
-roughly thirty other rule families in total — followed by eight gameplay-logic suites
-(`tools/test-camera.mjs`, `test-core.mjs`, `test-logistics.mjs`, `test-crafting.mjs`,
-`test-township.mjs`, `test-research.mjs`, `test-deadtime.mjs`, `test-social.mjs`) that
+roughly thirty other rule families in total — followed by the economy audit and nineteen
+suites (`tools/test-camera.mjs`, `test-core.mjs`, `test-logistics.mjs`, `test-crafting.mjs`,
+`test-township.mjs`, `test-research.mjs`, `test-deadtime.mjs`, `test-social.mjs`,
+`test-ui-contracts.mjs`, `test-render.mjs` and the rest listed in `package.json`) that
 exercise the actual running modules: planting and harvesting, offline catch-up, save/load
 round-trips, the merge board, workshop crafting, trains/town/zoo, research, and the
 simulated-neighbours social layer, the playable-item gate and all 46 verbs. 674 assertions

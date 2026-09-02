@@ -11,7 +11,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { state, resetGame } from '../src/state.js';
-import { FORAGING, NEWSPAPER, COLLECTIONS, MASTERY, DECORATE, PHOTO, EFFECT_KEYS, GOODS } from '../src/data.js';
+import { FORAGING, NEWSPAPER, COLLECTIONS, MASTERY, DECORATE, PHOTO, EFFECT_KEYS, GOODS, CROPS, FARM, BUILDINGS } from '../src/data.js';
+import * as production from '../src/production.js';
+import * as farm from '../src/farm.js';
+import * as economy from '../src/economy.js';
 import * as foraging from '../src/foraging.js';
 import * as newspaper from '../src/newspaper.js';
 import * as neighbours from '../src/neighbours.js';
@@ -127,29 +130,39 @@ test('a bargain listing is genuinely cheaper than the ordinary price floor', () 
   assert.ok(worstBargainPrice < cheapestOrdinaryPrice, 'even the priciest bargain must undercut the cheapest ordinary price');
 });
 
-test('newspaper.buy respects barn capacity and never overdraws coins when the barn is full', () => {
+test('newspaper.buy refuses outright when the item\'s own store is full, and never touches coins', () => {
   const s = freshState(20);
   s.coins = 100000;
-  s.barn.capacity = 5;
-  s.barn.items = { wheat: 5 };
+  s.silo.capacity = 5;
+  s.silo.items = { wheat: 5 }; // corn is a crop: it is the SILO that has to have room
   state.newspaper.listings = [{ id: 'test_listing_full', neighbourId: 'n1', item: 'corn', qty: 10, price: 500, bargain: false }];
   const before = s.coins;
-  const ok = newspaper.buy('test_listing_full');
-  assert.equal(ok, false, 'a full barn must refuse the purchase entirely');
+  assert.equal(newspaper.buy('test_listing_full'), false, 'a full silo must refuse the purchase entirely');
   assert.equal(s.coins, before, 'a refused purchase must not touch coins');
+  assert.equal(s.barn.items.corn, undefined, 'a crop never lands in the barn');
+
+  s.barn.capacity = 5;
+  s.barn.items = { bread: 5 };
+  state.newspaper.listings = [{ id: 'test_listing_full_barn', neighbourId: 'n1', item: 'bread', qty: 2, price: 100, bargain: false }];
+  assert.equal(newspaper.buy('test_listing_full_barn'), false, 'a full barn refuses a good the same way');
+  assert.equal(s.coins, before);
 });
 
-test('newspaper.buy partially fills to the available barn room and charges only for what fit', () => {
+test('newspaper.buy partially fills to the room in the item\'s own store and charges only for what fit', () => {
   const s = freshState(20);
   s.coins = 100000;
-  s.barn.capacity = 10;
-  s.barn.items = { wheat: 7 }; // 3 slots of room
+  s.silo.capacity = 10;
+  s.silo.items = { wheat: 7 }; // 3 slots of room
   state.newspaper.listings = [{ id: 'test_listing_partial', neighbourId: 'n1', item: 'corn', qty: 6, price: 60, bargain: false }];
   const before = s.coins;
   const ok = newspaper.buy('test_listing_partial');
   assert.equal(ok, true);
-  assert.equal(state.barn.items.corn, 3, 'must fill only the 3 free slots');
+  assert.equal(state.silo.items.corn, 3, 'must fill only the 3 free silo slots');
+  assert.equal(state.barn.items.corn, undefined, 'a crop bought from a neighbour goes to the silo, where it can be planted');
   assert.equal(before - s.coins, 30, 'must charge exactly the pro-rated price for what fit');
+  const rest = state.newspaper.listings.find((l) => l.id === 'test_listing_partial');
+  assert.equal(rest.qty, 3, 'the unbought remainder stays listed');
+  assert.equal(rest.price, 30, 'at the remainder\'s share of the lot price');
 });
 
 // ---------------------------------------------------------------------------
@@ -262,6 +275,95 @@ test('photo mode validates frames, bounds stickers to PHOTO.maxStickers, and cap
 });
 
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// the "no room" rule for foraging, lot pricing in the newspaper, and books filled by real play
+// ---------------------------------------------------------------------------
+
+test('a full barn leaves a forage node standing: no XP, no reset, nothing counted', () => {
+  const s = freshState(1);
+  const now = Date.now();
+  const node = { id: 'n_full', type: 'berry_bush', x: 11, y: 14, readyAt: now - 1000 };
+  s.foraging.nodes = [node];
+  s.barn.capacity = 0;
+  const xp = s.xp;
+  assert.equal(foraging.collectNode('n_full', now), null);
+  assert.equal(node.readyAt, now - 1000, 'the node is still ready');
+  assert.equal(s.xp, xp, 'no XP for a pick that did not happen');
+  assert.equal(s.stats.foraged || 0, 0);
+});
+
+test('a forage pick fills the Forage Journal and the foraged counter', () => {
+  const s = freshState(1);
+  const now = Date.now();
+  s.foraging.nodes = [{ id: 'n_one', type: 'berry_bush', x: 11, y: 14, readyAt: now - 1000 }];
+  const result = foraging.collectNode('n_one', now);
+  assert.ok(result, 'a ready node with room must be collectable');
+  assert.equal(s.stats.foraged, 1);
+  if (result.itemId) assert.ok(collections.found('forage_journal').includes(result.itemId), 'the find is in the journal');
+});
+
+test('newspaper listings are priced for the whole lot (per unit x qty) and never offer Workshop crafts', () => {
+  const s = freshState(NEWSPAPER.unlockLevel);
+  const minMult = Math.min(NEWSPAPER.priceBand[0], NEWSPAPER.bargainBand[0]);
+  let seen = 0;
+  for (let i = 0; i < 5; i++) {
+    const issue = newspaper.refresh(Date.now() + i * 1000);
+    for (const l of issue.listings) {
+      seen++;
+      assert.ok(!economy.isWorkshopCraft(l.item), `the newspaper lists ${l.item}`);
+      const unit = economy.sellValue(l.item);
+      assert.ok(unit > 0, `${l.item} has no sell value`);
+      assert.ok(l.price >= Math.floor(unit * minMult * l.qty), `${l.item} x${l.qty} at ${l.price}: below the floor for the LOT`);
+      if (!l.bargain) assert.ok(l.price >= Math.floor(unit * NEWSPAPER.priceBand[0] * l.qty), `${l.item}: an ordinary listing under the ordinary floor`);
+      assert.ok(l.price >= l.qty);
+    }
+  }
+  assert.ok(seen > 20, 'five issues must produce a real sample');
+
+  // Buying a whole lot charges exactly its lot price and lands it in its own store.
+  const l = s.newspaper.listings.find((x) => x.qty > 1) || s.newspaper.listings[0];
+  s.coins = l.price;
+  s.silo.capacity = 999999;
+  s.barn.capacity = 999999;
+  assert.equal(newspaper.buy(l.id), true);
+  assert.equal(s.coins, 0, 'the lot price, once');
+  const bucket = CROPS[l.item] ? s.silo.items : s.barn.items;
+  assert.equal(bucket[l.item], l.qty);
+});
+
+test('the Crop Almanac and the Recipe Book fill from a real harvest and a real collect', () => {
+  const s = freshState(1);
+  s.coins = 100000;
+  const fieldId = s.farm.objects.find((o) => o.kind === 'field').id;
+  s.silo.items.wheat = CROPS.wheat.seedCost;
+  assert.equal(production.plant(fieldId, 'wheat'), true);
+  s.farm.objects.find((o) => o.id === fieldId).readyAt = Date.now() - 1;
+  assert.ok(production.harvest(fieldId, Date.now()));
+  assert.deepEqual(collections.found('crop_almanac'), ['wheat']);
+
+  const bakery = farm.place('building', 'bakery', FARM.startZone.x + 5, FARM.startZone.y + 7);
+  assert.ok(bakery);
+  const recipe = BUILDINGS.bakery.recipes.find((r) => r.id === 'bread');
+  s.silo.items.wheat = recipe.inputs.wheat;
+  assert.equal(production.enqueue(bakery.id, 'bread'), true);
+  const now = Date.now() + (recipe.time + 5) * 1000;
+  production.tick(now);
+  const made = production.collectBuilding(bakery.id, now);
+  assert.equal(made.goodId, 'bread');
+  assert.deepEqual(collections.found('recipe_book'), ['bread']);
+  assert.equal(collections.found('crop_almanac').length, 1, 'a second wheat harvest would not add a page');
+});
+
+test('decorate.grant records an owned decoration that farm.place can spend, never a barn item', () => {
+  const s = freshState(1);
+  assert.equal(decorate.ownedCount('festival_tent'), 0);
+  assert.equal(decorate.grant('festival_tent'), 1);
+  assert.equal(decorate.grant('festival_tent', 2), 3);
+  assert.equal(decorate.ownedCount('festival_tent'), 3);
+  assert.equal(s.barn.items.festival_tent, undefined);
+  assert.equal(decorate.grant('', 1), 0, 'a missing id grants nothing');
+});
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) {

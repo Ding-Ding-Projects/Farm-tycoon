@@ -6,7 +6,9 @@
 
 import assert from 'node:assert/strict';
 import { state, newGameState } from '../src/state.js';
-import { ORDERS, SHOP, FISHING, CROPS, GOODS } from '../src/data.js';
+import { ORDERS, SHOP, FISHING, CROPS, GOODS, MARKET, BUILDINGS } from '../src/data.js';
+import * as economy from '../src/economy.js';
+import * as collections from '../src/collections.js';
 import * as orders from '../src/orders.js';
 import * as shop from '../src/shop.js';
 import * as fishing from '../src/fishing.js';
@@ -347,6 +349,124 @@ test('fishing: openChest never exceeds barn capacity for item/material rewards',
 // -------------------------------------------------------------------------------------------
 // summary
 // -------------------------------------------------------------------------------------------
+
+// -------------------------------------------------------------------------------------------
+// pricing, pools and counters (the newspaper/market exploits, kit exclusion, order shape)
+// -------------------------------------------------------------------------------------------
+
+test('market: offers are priced per unit (base x priceMultiplier x qty) and never sell Workshop crafts', () => {
+  setState(freshState(MARKET.unlockLevel));
+  let seen = 0;
+  for (let day = 0; day < 20; day++) {
+    const offers = shop.marketOffers(Date.now() + day * 86400 * 1000);
+    assert.equal(offers.length, MARKET.slots);
+    for (const o of offers) {
+      seen++;
+      assert.ok(!economy.isWorkshopCraft(o.item), `the market must not sell ${o.item}`);
+      const unit = economy.sellValue(o.item);
+      assert.ok(unit > 0, `${o.item} has no sell value`);
+      assert.ok(o.price >= Math.floor(unit * MARKET.priceMultiplier * o.qty),
+        `${o.item} x${o.qty} for ${o.price}: below the stall's own per-unit price for the bundle`);
+      assert.ok(o.price >= o.qty);
+    }
+  }
+  assert.equal(seen, 20 * MARKET.slots);
+});
+
+test('market: buyOffer charges the whole bundle price once and delivers the whole bundle', () => {
+  setState(freshState(MARKET.unlockLevel));
+  const o = shop.marketOffers(Date.now())[0];
+  const coinsBefore = state.coins;
+  const bucket = CROPS[o.item] ? state.silo.items : state.barn.items;
+  const had = bucket[o.item] || 0;
+  assert.equal(shop.buyOffer(0), true);
+  assert.equal(state.coins, coinsBefore - o.price, 'the bundle price, exactly once');
+  assert.equal(bucket[o.item], had + o.qty, 'every unit of the bundle lands in its own store');
+  assert.equal(shop.buyOffer(0), false, 'once per day per slot');
+  assert.equal(state.coins, coinsBefore - o.price, 'a refused re-buy charges nothing');
+});
+
+test('orders: no order, boat crate or truck bundle ever asks for a Workshop component or kit', () => {
+  const ids = orders.eligibleItemIds(95);
+  assert.ok(ids.length > 50, 'the level-95 pool covers most of the catalogue');
+  for (const id of ids) assert.ok(!economy.isWorkshopCraft(id), `${id} is eligible for orders`);
+  const crafts = BUILDINGS.build_workshop.recipes.map((r) => r.id);
+  assert.ok(crafts.every((id) => !ids.includes(id)));
+
+  setState(freshState(60));
+  boat.tick(Date.now());
+  assert.ok(state.orders.boat.crates.length > 0);
+  for (const c of state.orders.boat.crates) assert.ok(!economy.isWorkshopCraft(c.itemId), `the boat asks for ${c.itemId}`);
+  orders.tickTruck(Date.now());
+  assert.ok(state.orders.truck.bundles.length > 0);
+  for (const b of state.orders.truck.bundles) assert.ok(!economy.isWorkshopCraft(b.itemId), `the truck asks for ${b.itemId}`);
+  orders.refreshBoard(Date.now());
+  for (const o of state.orders.board) {
+    for (const it of o.items || []) assert.ok(!economy.isWorkshopCraft(it.itemId), `the board asks for ${it.itemId}`);
+  }
+});
+
+test('orders: an order asks for itemsPerOrder distinct items in level-scaled quantities', () => {
+  const [nLo, nHi] = ORDERS.board.itemsPerOrder;
+  for (const level of [ORDERS.board.unlockLevel, 20, 60, 95]) {
+    setState(freshState(level));
+    orders.refreshBoard(Date.now());
+    const [qLo, qHi] = orders.quantityBand(level);
+    const live = state.orders.board.filter((o) => o && !o.empty);
+    assert.equal(live.length, ORDERS.board.slots);
+    for (const o of live) {
+      assert.ok(o.items.length >= nLo && o.items.length <= nHi, `level ${level}: ${o.items.length} items`);
+      assert.equal(new Set(o.items.map((it) => it.itemId)).size, o.items.length, 'items are distinct');
+      for (const it of o.items) assert.ok(it.qty >= qLo && it.qty <= qHi, `level ${level}: qty ${it.qty} outside [${qLo}, ${qHi}]`);
+    }
+  }
+  assert.deepEqual(orders.quantityBand(1), [1, 2], 'the first orders ask for one or two');
+  assert.ok(orders.quantityBand(95)[1] > orders.quantityBand(1)[1], 'later orders ask for more');
+  assert.ok(orders.quantityBand(95)[1] <= 8, 'never a wall of one item');
+});
+
+test('orders: a filled truck bundle counts toward truckBundles, the stat the Truck Bonanza event scores', () => {
+  setState(freshState(ORDERS.truck.unlockLevel));
+  orders.tickTruck(Date.now());
+  const b = state.orders.truck.bundles[0];
+  const bucket = CROPS[b.itemId] ? state.silo.items : state.barn.items;
+  bucket[b.itemId] = b.qty;
+  assert.equal(orders.fillTruckBundle(0), true);
+  assert.equal(state.stats.truckBundles, 1);
+  assert.equal(orders.fillTruckBundle(0), false, 'a bundle fills once');
+  assert.equal(state.stats.truckBundles, 1);
+});
+
+test('boat: a filled crate counts toward boatCrates', () => {
+  setState(freshState(ORDERS.boat.unlockLevel));
+  boat.tick(Date.now());
+  const c = state.orders.boat.crates[0];
+  const bucket = CROPS[c.itemId] ? state.silo.items : state.barn.items;
+  bucket[c.itemId] = c.qty;
+  assert.equal(boat.fillCrate(0), true);
+  assert.equal(state.stats.boatCrates, 1);
+});
+
+test('fishing: a full barn keeps the cast; a catch fills the Fishing Log and the unique-species stat', () => {
+  setState(freshState(FISHING.unlockLevel));
+  assert.equal(fishing.cast(), true);
+  state.fishing.cast.readyAt = Date.now() - 1;
+  state.barn.capacity = 0;
+  assert.equal(fishing.reel(1), null, 'no room: the line stays in the water');
+  assert.ok(state.fishing.cast, 'the cast must not be spent by a refused reel');
+
+  state.barn.capacity = 999999;
+  const realRandom = Math.random;
+  Math.random = () => 0.999; // never a chest, never the bonus fish
+  let result;
+  try { result = fishing.reel(1); } finally { Math.random = realRandom; }
+  assert.ok(result && result.item, 'a fish must land');
+  assert.equal(result.qty, 1);
+  assert.equal(state.fishing.cast, null, 'the cast is spent by the catch');
+  assert.equal(state.stats.fishCaught, 1);
+  assert.equal(state.stats.uniqueFishCaught, 1);
+  assert.deepEqual(collections.found('fish_book'), [result.item]);
+});
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length > 0) process.exit(1);

@@ -5,6 +5,7 @@
 import { state } from './state.js';
 import { ORDERS, CROPS, GOODS } from './data.js';
 import * as economy from './economy.js';
+import * as extras from './extras.js';
 import { eligibleItemIds } from './orders.js';
 
 function randomInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -60,6 +61,7 @@ export function fillCrate(index) {
   if ((bucket[crate.itemId] || 0) < crate.qty) return false;
   bucket[crate.itemId] -= crate.qty;
   crate.filled = true;
+  economy.trackStat('boatCrates', 1);   // the counter the Boat Race event and fair tasks score
   return true;
 }
 
@@ -75,7 +77,9 @@ export function claimBonus() {
   const coins = Math.round(totalBase * ORDERS.boat.bonusMultiplier);
   const xp = Math.round(boat.crates.length * ORDERS.boat.bonusMultiplier * 2);
   const [voucherMin, voucherMax] = ORDERS.boat.vouchersPerBoat;
-  const vouchers = randomInt(voucherMin, voucherMax);
+  let bonusVouchers = 0;
+  try { bonusVouchers = Math.max(0, Math.round(extras.activeEventEffect()?.boatVoucherBonus || 0)); } catch { bonusVouchers = 0; }
+  const vouchers = randomInt(voucherMin, voucherMax) + bonusVouchers;   // Boat Race weekend bonus
 
   economy.addCoins(coins);
   economy.addXp(xp);

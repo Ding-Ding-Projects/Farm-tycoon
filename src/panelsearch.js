@@ -19,6 +19,17 @@
 // box mean the letters they typed. `a.b` should find "a.b" until somebody says otherwise.
 
 const MIN_ITEMS = 6;                 // below this everything is on screen already; see attach()
+
+// What was typed, per panel, so a re-render does not wipe it. refreshPanel() rebuilds the whole
+// panel after every action - sell one item and the box, its toggles and the caret were gone. The
+// query survives here until the panel is closed or another one opens (ui.js calls forget()).
+const memory = new Map();
+
+/** Drop the remembered query for one panel key, or for every panel when no key is given. */
+export function forget(key) {
+  if (key === undefined) memory.clear();
+  else memory.delete(key);
+}
 const ITEM_SELECTOR = '.build-card, .order-card';
 
 /**
@@ -95,7 +106,7 @@ export function searchTextOf(item) {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-export function attach(container, { minItems = MIN_ITEMS } = {}) {
+export function attach(container, { minItems = MIN_ITEMS, key = null } = {}) {
   const doc = container.ownerDocument;
   const items = [...container.querySelectorAll(ITEM_SELECTOR)];
   if (items.length < minItems) return null;
@@ -216,12 +227,33 @@ export function attach(container, { minItems = MIN_ITEMS } = {}) {
     empty.textContent = none ? `Nothing here matches "${field.value}".` : '';
   }
 
-  const toggle = (btn) => {
-    btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
-    btn.classList.toggle('on', btn.getAttribute('aria-pressed') === 'true');
+  const setPressed = (btn, on) => {
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) btn.classList.add('on'); else btn.classList.remove('on');
   };
+  const toggle = (btn) => setPressed(btn, btn.getAttribute('aria-pressed') !== 'true');
 
-  field.addEventListener('input', apply);
+  let focused = false;
+  function remember() {
+    if (key === null) return;
+    memory.set(key, {
+      value: field.value,
+      regex: reBtn.getAttribute('aria-pressed') === 'true',
+      cased: caseBtn.getAttribute('aria-pressed') === 'true',
+      focused,
+    });
+  }
+  const remembered = key === null ? null : memory.get(key);
+  if (remembered) {
+    field.value = remembered.value || '';
+    setPressed(reBtn, !!remembered.regex);
+    setPressed(caseBtn, !!remembered.cased);
+    help.hidden = !remembered.regex;
+  }
+
+  field.addEventListener('focus', () => { focused = true; remember(); });
+  field.addEventListener('blur', () => { focused = false; remember(); });
+  field.addEventListener('input', () => { apply(); remember(); });
   field.addEventListener('keydown', (ev) => {
     // Escape clears rather than closing the panel, so a filter is never something the user has to
     // hunt for a way out of.
@@ -239,13 +271,17 @@ export function attach(container, { minItems = MIN_ITEMS } = {}) {
     if (!on) { palette.hidden = true; help.setAttribute('aria-expanded', 'false'); }
     field.focus();
     apply();
+    remember();
   });
-  caseBtn.addEventListener('click', () => { toggle(caseBtn); field.focus(); apply(); });
+  caseBtn.addEventListener('click', () => { toggle(caseBtn); field.focus(); apply(); remember(); });
   help.addEventListener('click', () => {
     palette.hidden = !palette.hidden;
     help.setAttribute('aria-expanded', palette.hidden ? 'false' : 'true');
   });
 
   apply();
+  // Focus comes back to the box after a re-render only if it was there before it: a panel that
+  // grabs focus on open fights the user, one that drops it mid-word loses their place.
+  if (remembered && remembered.focused) { focused = true; field.focus(); }
   return { field, apply, items };
 }

@@ -20,10 +20,19 @@ world for whoever picks this up next (full detail and verification evidence in
   (workshop kits, per-factory minigames, mine depths, artifacts + museum, expeditions,
   laboratory, helicopter, co-op, regatta, foraging, newspaper, collections, mastery),
   22 placed world structures, tutorial steps, and **95 levels** with an unlock at every one.
-- **Every other module is now implemented, not stubbed.** `npm test` runs the validator
-  plus eight gameplay-logic suites (camera, core, logistics, crafting, township, research,
-  dead-time, social) for 147 passing assertions, 0 failed. The game boots in a browser with
-  zero console errors; `window.__farmDebug` exposes real, mutating state.
+- **Every other module is now implemented, not stubbed.** `npm test` runs the validator, the
+  economy audit and nineteen suites (camera, core, logistics, crafting, township, research,
+  dead-time, social, playables, verbs, UI contracts, renderer, and more) for 771 passing
+  assertions, 0 failed. The game boots in a browser with zero console errors;
+  `window.__farmDebug` exposes real, mutating state (`timeSkip`, `give`, `setHour`).
+- **2026-09-02 pass (branch `claude/bug-fixes-realistic-graphics-j7gg1j`, also on `main`):**
+  bug hunt across storage caps, exploits, dead counters and unreachable systems; Hay Day drags
+  (`src/drag.js`, `src/actions.js`: catalog → world, recipe → factory, feed → pen, seed/basket
+  sweeps across fields); and the realism pass on the art (footprint slabs and shading, a
+  world-anchored ground, a sprite per decoration, `src/render/daylight.js` day/night behind
+  `settings.dayCycle`, haze and cloud shadows, crops in rows). `SAVE_VERSION` is 5. The release
+  workflow commits a code-name line to `main` after every push, so merge `origin/main` before
+  pushing again. Full evidence and the deliberately-unfixed list: `HANDOFF.md`.
 - **Two mechanics distinguish this from its sources.** Buildings are *crafted*, not bought:
   the Building Workshop turns materials into components, components into a kit, and the kit
   places the factory. Every production building has *its own* minigame with an effect only

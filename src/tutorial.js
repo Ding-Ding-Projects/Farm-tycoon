@@ -35,7 +35,19 @@ function render() {
   }
   const step = TUTORIAL.steps[currentIndex];
   overlay.hidden = false;
-  bubble.innerHTML = `<div class="speaker"><span class="avatar" aria-hidden="true"></span><span>Farmhand Ellie</span></div><p>${step.text}</p>`;
+  // Every step gets a real Next button and a Skip, ALWAYS — including the steps that are
+  // waiting on a game event. The tutorial is guidance, never a gate: if a player cannot find
+  // the thing being pointed at, or simply wants to get on with it, the bubble must never be
+  // the reason they are stuck staring at the same sentence.
+  bubble.innerHTML = `<div class="speaker"><span class="avatar" aria-hidden="true"></span><span>Farmhand Ellie</span>`
+    + `<span class="tutorial-step-count">${currentIndex + 1}/${TUTORIAL.steps.length}</span></div>`
+    + `<p>${step.text}</p>`
+    + `<div class="tutorial-actions">`
+    + `<button type="button" class="tutorial-skip" id="tutorial-skip">Skip tutorial</button>`
+    + `<button type="button" class="tutorial-next" id="tutorial-next">${currentIndex + 1 >= TUTORIAL.steps.length ? "Finish" : "Next"}</button>`
+    + `</div>`;
+  bubble.querySelector("#tutorial-next").addEventListener("click", (e) => { e.stopPropagation(); advance(); });
+  bubble.querySelector("#tutorial-skip").addEventListener("click", (e) => { e.stopPropagation(); skip(); });
   // Position the bubble/arrow near the described target if it resolves to a live DOM node;
   // otherwise center it — every step still reads fine centered, this is a nicety only.
   let anchor = null;

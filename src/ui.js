@@ -2255,6 +2255,13 @@ export function init() {
     eventBanner: q('event-banner'),
   };
 
+  // The silo and barn pills are the thing a player reaches for when they want to see (and
+  // sell) what they are holding - reading a number and not being able to open it is the whole
+  // complaint. The world structures still open the same panels; this is a second door, not a
+  // replacement for the click-the-world rule.
+  q('silo-pill')?.addEventListener('click', () => { audio.click(); if (isPanelOpen() && openPanelId === 'silo') closePanel(); else openPanel('silo'); });
+  q('barn-pill')?.addEventListener('click', () => { audio.click(); if (isPanelOpen() && openPanelId === 'barn') closePanel(); else openPanel('barn'); });
+
   el.sheet.querySelector('.sheet-handle')?.addEventListener('click', closePanel);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePanel(); closeRadial(); } });
 

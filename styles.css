@@ -138,6 +138,9 @@ a:hover { color: var(--color-primary); }
   color: #6d3f14; text-shadow: none;
   box-shadow: var(--shadow-pop), var(--bevel-top);
 }
+/* The silo/barn pills are real buttons now (they open their panels); keep the pill look. */
+button.pill-counter { font: inherit; color: inherit; cursor: pointer; }
+button.pill-counter:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .pill-counter.warn { animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(1.06); } }
 
@@ -850,6 +853,16 @@ a:hover { color: var(--color-primary); }
 }
 .tutorial-bubble .speaker { display: flex; align-items: center; gap: 9px; margin-bottom: var(--sp-2); font-family: var(--font-display); font-weight: 800; font-size: 16px; color: #5b3a1e; }
 .tutorial-bubble .avatar { width: 30px; height: 30px; border-radius: 50%; background: #f2b8a0; border: 2px solid var(--color-wood-dark); }
+.tutorial-step-count { margin-left: auto; font-size: 12px; font-weight: 700; opacity: 0.7; }
+.tutorial-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-3); }
+.tutorial-next, .tutorial-skip {
+  font: inherit; font-weight: 800; cursor: pointer;
+  min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 12px;
+}
+.tutorial-next { background: var(--color-leaf, #5aa02c); color: #fff; border: 3px solid var(--color-outline, #3d2a12); box-shadow: 0 3px 0 rgba(0,0,0,0.35); }
+.tutorial-skip { background: transparent; border: 0; color: #6d3f14; text-decoration: underline; }
+.tutorial-next:focus-visible, .tutorial-skip:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
 .tutorial-arrow {
   position: absolute; font-size: 40px; color: var(--color-cream); pointer-events: none;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));

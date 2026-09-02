@@ -235,7 +235,34 @@ export function worldBounds(unlockedExpansionIds = [], structures = []) {
  * not approximated.
  */
 export function clampCamera(viewportW = 1280, viewportH = 800, bounds = worldBounds()) {
-  const T = TILE_BASE * camera.zoom;
+  const p = clampPoint(camera.x, camera.y, camera.zoom, viewportW, viewportH, bounds);
+  camera.x = p.x;
+  camera.y = p.y;
+  return camera;
+}
+
+/**
+ * Clamp the PAN TARGET too, not just the eased camera.
+ *
+ * input.js pans by moving cameraTarget; only camera was ever clamped. So a drag that ran into
+ * an edge kept pushing the target further and further outside the legal box while the camera
+ * stood still — and then dragging back the other way did nothing at all until the target had
+ * travelled all the way back inside. That dead zone is exactly what "the map will not drag"
+ * feels like from the player side. Clamping the target keeps the two in the same world.
+ */
+export function clampCameraTarget(viewportW = 1280, viewportH = 800, bounds = worldBounds()) {
+  // Clamp against the TARGET zoom, not the current one: a pan and a zoom-in often arrive
+  // together, and judging the destination by the zoom being left behind pins the target to the
+  // wide view's tighter box, so the camera can never reach where a zoomed-in view could legally go.
+  const p = clampPoint(cameraTarget.x, cameraTarget.y, cameraTarget.zoom, viewportW, viewportH, bounds);
+  cameraTarget.x = p.x;
+  cameraTarget.y = p.y;
+  return cameraTarget;
+}
+
+/** The shared geometry behind both clamps: where may a camera point sit, given this zoom? */
+function clampPoint(x, y, zoom, viewportW, viewportH, bounds) {
+  const T = TILE_BASE * zoom;
   // Half-range of (tx - ty) visible: symmetric, because tileToScreen centres the camera
   // target horizontally (ox = viewportW/2 - ...).
   const dx = (viewportW / 2) / T;
@@ -266,19 +293,15 @@ export function clampCamera(viewportW = 1280, viewportH = 800, bounds = worldBou
   // further south on screen than the asymmetric projection can afford to spare, so content
   // north of centre (again: the starting fields) can end up hidden even when the whole bounds
   // box would technically "fit".
-  if (worldW <= halfNorth + halfSouth) {
-    camera.x = (bounds.minX + bounds.maxX) / 2 + (halfNorth - halfSouth) / 2;
-  } else {
-    camera.x = Math.min(Math.max(camera.x, bounds.minX + halfNorth), bounds.maxX - halfSouth);
-  }
+  const outX = worldW <= halfNorth + halfSouth
+    ? (bounds.minX + bounds.maxX) / 2 + (halfNorth - halfSouth) / 2
+    : Math.min(Math.max(x, bounds.minX + halfNorth), bounds.maxX - halfSouth);
 
-  if (worldH <= halfNorth + halfSouth) {
-    camera.y = (bounds.minY + bounds.maxY) / 2 + (halfNorth - halfSouth) / 2;
-  } else {
-    camera.y = Math.min(Math.max(camera.y, bounds.minY + halfNorth), bounds.maxY - halfSouth);
-  }
+  const outY = worldH <= halfNorth + halfSouth
+    ? (bounds.minY + bounds.maxY) / 2 + (halfNorth - halfSouth) / 2
+    : Math.min(Math.max(y, bounds.minY + halfNorth), bounds.maxY - halfSouth);
 
-  return camera;
+  return { x: outX, y: outY };
 }
 
 /**
@@ -507,9 +530,10 @@ export function tickCamera(dt) {
   // player still arrives exactly where they asked to; they just do not travel there. A camera that
   // eases is one of the largest sustained movements in the game and no stylesheet can reach it.
   const t = motion.ease(Math.min(1, (dt ?? 1 / 60) * EASE));
+  cameraTarget.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cameraTarget.zoom));
+  clampCameraTarget(viewportW, viewportH, liveBounds());
   camera.x += (cameraTarget.x - camera.x) * t;
   camera.y += (cameraTarget.y - camera.y) * t;
-  cameraTarget.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cameraTarget.zoom));
   camera.zoom += (cameraTarget.zoom - camera.zoom) * t;
   clampCamera(viewportW, viewportH, liveBounds());
   return camera;

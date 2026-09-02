@@ -243,6 +243,14 @@ function boot() {
     : startCenterY;
 
   const vp = renderer.getViewport();
+  // Open zoomed out far enough to see the farm you are being asked to use. At zoom 1 a 1280x800
+  // viewport shows barely a dozen tiles, so the barn filled the screen and the six starting
+  // fields the tutorial immediately points at sat off the bottom edge. clampCamera's own algebra
+  // says the visible tile span is (w + 2h) / (2 * TILE_BASE * zoom); solving that for a ~20-tile
+  // span gives a framing where the whole start zone and its neighbours are on screen at once.
+  const FIT_SPAN_TILES = 20;
+  const fitZoom = Math.max(0.5, Math.min(1, (vp.w + 2 * vp.h) / (2 * renderer.TILE_BASE * FIT_SPAN_TILES)));
+  renderer.camera.zoom = fitZoom;
   safeCall(renderer.focusTile, focusX, focusY, vp.w, vp.h, bounds);
   renderer.cameraTarget.x = renderer.camera.x;
   renderer.cameraTarget.y = renderer.camera.y;

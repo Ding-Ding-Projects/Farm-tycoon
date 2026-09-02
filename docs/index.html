@@ -132,6 +132,13 @@
     </div>
 
     <div class="app-bar-actions">
+      <!-- The Download page is one article among fourteen in the rail, and the rail scrolls, so
+           on a normal viewport the one page a visitor most often arrives looking for sat below
+           the fold behind "More". This puts it in the bar, on every page, at every width. -->
+      <a class="btn btn-filled app-bar-download" id="downloadBtn" href="#/download" aria-label="Download the game">
+        <svg class="icon" aria-hidden="true"><use href="#ui-download"></use></svg>
+        <span class="app-bar-download-text">Download</span>
+      </a>
       <button class="icon-btn" id="paletteBtn" type="button"
               aria-label="Open the command palette (Control plus Shift plus F)"
               title="Command palette — Ctrl+Shift+F">

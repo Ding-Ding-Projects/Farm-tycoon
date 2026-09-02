@@ -345,6 +345,10 @@ function fieldGrowProgress(obj, now) {
   return Math.max(0, Math.min(1, (t - obj.plantedAt) / (obj.readyAt - obj.plantedAt)));
 }
 
+// The frame's light ({ sun, vignette, night }) from main.js's day/night cycle; buildings read
+// `night` to light their windows. Set at the top of drawFrame, empty when no cycle is running.
+let frameLight = {};
+
 // kind -> dispatch fn(ctx, x, y, size, obj, now). Keeps drawFrame() a plain loop instead of a
 // growing if/else ladder; add a new kind here, not inline below.
 const KIND_DISPATCH = {
@@ -386,9 +390,10 @@ const KIND_DISPATCH = {
     // signalled by motion alone, any more than by colour alone: the lantern, firebox and plume
     // are static working signals, so a frozen factory still reads as busy from across the farm.
     derelict: !!obj.derelict, working: !!obj.working, now: motion.phase(now), fw: obj.fw, fh: obj.fh,
+    night: frameLight.night || 0,
   }),
   structure: (ctx, x, y, size, obj, now) => sprites.drawStructure(ctx, obj.type, x, y, size, {
-    derelict: !!obj.derelict, now: motion.phase(now), fw: obj.fw, fh: obj.fh,
+    derelict: !!obj.derelict, now: motion.phase(now), fw: obj.fw, fh: obj.fh, night: frameLight.night || 0,
   }),
   forage: (ctx, x, y, size, obj) => {
     const fn = sprites.FORAGE_DRAW[obj.type];
@@ -528,6 +533,7 @@ export function drawFrame(now, world = {}) {
   const w = viewportW, h = viewportH;
   const view = viewGeometry(w, h);
   effects.setZoom(camera.zoom);
+  frameLight = world.light || {};
 
   // ground: world-anchored texture, never a grid, except explicit placement/edit mode
   ground.drawGround(ctx, view, unlockedRects);
@@ -575,8 +581,9 @@ export function drawFrame(now, world = {}) {
   // world-space particle effects (coin bursts, XP floaters, sparkles)
   effects.tickAndDraw(ctx, now ?? Date.now());
 
-  // golden hour: two full-canvas gradients, after entities, before UI/DOM overlays
-  sprites.drawGoldenHour(ctx, w, h);
+  // golden hour (or whatever the day/night cycle says the light is): two full-canvas gradients,
+  // after entities, before UI/DOM overlays
+  sprites.drawGoldenHour(ctx, w, h, frameLight);
 }
 
 /**

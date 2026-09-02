@@ -69,6 +69,71 @@ export function radialGradient(ctx, x0, y0, r0, x1, y1, r1, stops, fallback) {
 }
 
 // ---------------------------------------------------------------------------------------
+// Lighting helpers. One light, from the upper right (PALETTE.light): a face toward it is lit, a
+// face away from it is shaded, and every gradient below is made ONCE per context in unit space
+// and mapped onto its box through the transform - the canvas maps the fill style through the
+// CTM but leaves the already-built path alone, which is what lets fifty buildings share three
+// gradients instead of allocating three each, every frame.
+// ---------------------------------------------------------------------------------------
+
+/** '#rrggbb', '#rgb' or 'rgb(r,g,b)' -> [r, g, b], or null. */
+function parseColor(color) {
+  if (typeof color !== 'string') return null;
+  if (color[0] === '#') return parseHex(color);
+  const m = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+const tintCache = new Map();
+function tint(color, k) {
+  const key = `${color}|${k}`;
+  const hit = tintCache.get(key);
+  if (hit) return hit;
+  const p = parseColor(color);
+  if (!p) return color;
+  const f = (c) => Math.round(k < 0 ? c * (1 + k) : c + (255 - c) * k);
+  const out = `rgb(${f(p[0])},${f(p[1])},${f(p[2])})`;
+  tintCache.set(key, out);
+  return out;
+}
+/** A colour in shadow (darkened by k) / in sun (lightened by k). Cached; safe on rgb() strings. */
+export function shade(color, k = 0.18) { return tint(color, -Math.abs(k)); }
+export function lighten(color, k = 0.18) { return tint(color, Math.abs(k)); }
+
+const unitGradients = new WeakMap();   // ctx -> Map(key -> gradient | null)
+/** A gradient in unit space, cached per context and key: 'v' runs top to bottom, 'h' left to
+ *  right, 'd' from the lower-left corner to the upper-right (the light's direction), 'r' radial
+ *  from the centre. Null where the context cannot make gradients (the tests' Proxy context). */
+function unitGradient(ctx, key, dir, stops) {
+  let m = unitGradients.get(ctx);
+  if (!m) { m = new Map(); unitGradients.set(ctx, m); }
+  if (m.has(key)) return m.get(key);
+  let g = null;
+  if (dir === 'h') g = linearGradient(ctx, 0, 0, 1, 0, stops, null);
+  else if (dir === 'd') g = linearGradient(ctx, 0, 1, 1, 0, stops, null);
+  else if (dir === 'r') g = radialGradient(ctx, 0.5, 0.5, 0, 0.5, 0.5, 0.5, stops, null);
+  else g = linearGradient(ctx, 0, 0, 0, 1, stops, null);
+  m.set(key, g);
+  return g;
+}
+
+/**
+ * Fill the CURRENT path with the cached unit gradient `key` stretched over the box (x, y, w, h),
+ * or flat `fallback` where gradients are unavailable. The path must already be built; nothing
+ * here starts a new one.
+ */
+export function fillUnit(ctx, key, dir, stops, x, y, w, h, fallback) {
+  const g = unitGradient(ctx, key, dir, stops);
+  if (!g) { ctx.fillStyle = fallback; ctx.fill(); return; }
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(Math.max(1e-3, w), Math.max(1e-3, h));
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------------------
 // shared helpers
 // ---------------------------------------------------------------------------------------
 
@@ -89,14 +154,66 @@ export function outline(ctx, T = 104, scale = 1) {
   ctx.stroke();
 }
 
-/** Warm rim-light stroke on the sun-facing (upper-right) edge of big structures only. */
-function rimLight(ctx, T = 104) {
+/**
+ * Warm rim-light on the sun-facing (upper-right) edge of a big structure. With `box`
+ * [x, y, w, h] (the sprite's bounding box) the stroke fades out toward the lower-left, so it reads
+ * as a lit edge rather than a halo round the whole silhouette; the gradient is a cached unit one
+ * under a UNIFORM scale, so the pen stays round. Strokes the current path.
+ */
+function rimLight(ctx, T = 104, box = null) {
   ctx.save();
-  ctx.strokeStyle = 'rgba(255,225,150,0.5)';
-  ctx.lineWidth = outlineWidth(T) * 0.6;
   ctx.lineJoin = 'round';
+  const s = box ? Math.max(box[2], box[3], 1) : 0;
+  const g = box ? unitGradient(ctx, `rim:${(box[2] / s).toFixed(2)}x${(box[3] / s).toFixed(2)}`, 'd',
+    [[0, 'rgba(255,225,150,0)'], [0.45, 'rgba(255,225,150,0)'], [1, 'rgba(255,225,150,0.6)']]) : null;
+  if (g && box) {
+    ctx.translate(box[0], box[1]);
+    ctx.scale(s, s);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = (outlineWidth(T) * 0.6) / s;
+  } else {
+    ctx.strokeStyle = 'rgba(255,225,150,0.4)';
+    ctx.lineWidth = outlineWidth(T) * 0.6;
+  }
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * The plot a building or structure stands on: a packed-earth slab on its REAL footprint, with
+ * the dark side thickness of a raised slab and a scatter of stones, so the thing sits on
+ * something rather than hovering over the lawn. `tile` is one tile in px at this zoom.
+ */
+export function drawSlab(ctx, x, y, fw, fh, tile, derelict = false) {
+  const c = footprintCorners(x, y, fw, fh, tile);
+  const D = tile * 0.08;
+  groundShadow(ctx, c.centre[0], c.centre[1] + D, tile * fw * 0.98, tile * fh * 0.46, tile, 0.15);
+  footprintPath(ctx, x, y, fw, fh, tile, D);
+  ctx.fillStyle = derelict ? '#6f6552' : '#6e4d2c';
+  ctx.fill();
+  footprintPath(ctx, x, y, fw, fh, tile);
+  const bx = c.west[0], by = c.top[1], bw = c.east[0] - c.west[0], bh = c.south[1] - c.top[1];
+  fillUnit(ctx, derelict ? 'slab:derelict' : 'slab', 'v',
+    derelict ? [[0, '#b0a58a'], [1, '#8a7f68']] : [[0, '#cfae74'], [0.55, '#b8934f'], [1, '#9a7538']],
+    bx, by, bw, bh, derelict ? '#a89878' : '#b8934f');
+  outline(ctx, tile, 0.5);
+  // Lit edge toward the sun (upper right), shaded edge away from it.
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,236,196,0.5)';
+  ctx.lineWidth = Math.max(1, tile * 0.02);
+  ctx.beginPath(); ctx.moveTo(c.top[0], c.top[1] + tile * 0.02); ctx.lineTo(c.east[0] - tile * 0.04, c.east[1]); ctx.stroke();
+  ctx.strokeStyle = 'rgba(58,37,16,0.28)';
+  ctx.beginPath(); ctx.moveTo(c.west[0] + tile * 0.04, c.west[1]); ctx.lineTo(c.south[0], c.south[1] - tile * 0.02); ctx.stroke();
+  ctx.restore();
+  // Stones, inside the plot by construction (no clip).
+  const pt = (u, v) => [c.top[0] + (u - v) * tile, c.top[1] + (u + v) * (tile / 2)];
+  for (let i = 0; i < 4 + fw * fh * 2; i++) {
+    const u = 0.2 + prand(i, 91) * (fw - 0.4), v = 0.2 + prand(i, 92) * (fh - 0.4);
+    const [px, py] = pt(u, v);
+    ctx.fillStyle = i % 3 ? 'rgba(255,240,210,0.22)' : 'rgba(58,37,16,0.18)';
+    ctx.beginPath(); ctx.ellipse(px, py, tile * (0.02 + prand(i, 93) * 0.03), tile * 0.012, prand(i, 94) * 3, 0, Math.PI * 2); ctx.fill();
+  }
 }
 
 // One unit-radius shadow gradient per context, reused for every shadow in the frame: drawn under
@@ -345,45 +462,51 @@ export function drawSoilPlot(ctx, x, y, size = 1) {
   };
   groundShadow(ctx, x, y + T / 2 + D, T * 1.0, T * 0.36, T);
   dia(D); ctx.fillStyle = PALETTE.soilDark; ctx.fill();
+  // Turned earth: dry and pale at the rim, dark and moist toward the middle.
   dia(0);
-  ctx.fillStyle = linearGradient(ctx, x, y, x, y + T, [[0, PALETTE.soilLight], [1, PALETTE.soil]], PALETTE.soil);
-  ctx.fill();
-  // Furrows run along the tile's OWN axis, not horizontally across it.
-  //
-  // Horizontal lines drawn over an isometric diamond meet its edges at the wrong angle, so they
-  // read as plank divisions rather than ploughed rows, and a 3x2 block of plots turned into what
-  // looked like a wooden boardwalk laid across the meadow. Following the top-right edge instead
-  // makes them read as furrows immediately, and each dark groove gets a light ridge alongside it
-  // so the soil has some relief rather than being a flat brown lozenge.
+  fillUnit(ctx, 'soil', 'r', [[0, '#5e3b1c'], [0.55, PALETTE.soil], [1, PALETTE.soilLight]], x - T, y, 2 * T, T, PALETTE.soil);
+
+  // Furrows run along the tile's OWN axis (following the top-right edge), soft and slightly
+  // uneven, with a faint dry crest beside each groove. Hard, evenly spaced lines with a bright
+  // ridge each read as plank divisions and turned a 3x2 block of plots into a boardwalk.
   ctx.save(); dia(0); ctx.clip();
-  ctx.lineWidth = Math.max(1.6, T * 0.026);
-  for (let f = 0.12; f < 1; f += 0.16) {
+  ctx.lineCap = 'round';
+  for (let f = 0.16; f < 0.96; f += 0.17) {
     const sx = x - f * T, sy = y + (f * T) / 2;
     const ex = x + T - f * T, ey = y + T / 2 + (f * T) / 2;
-    const inset = 0.10;   // stop short of both edges so plots do not join into planks
+    const inset = 0.12;
     const ax = sx + (ex - sx) * inset, ay = sy + (ey - sy) * inset;
     const bx = ex - (ex - sx) * inset, by = ey - (ey - sy) * inset;
-    ctx.strokeStyle = PALETTE.soilRow;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-    ctx.strokeStyle = 'rgba(196,142,86,0.26)';
-    const lift = T * 0.020;
-    ctx.beginPath(); ctx.moveTo(ax, ay - lift); ctx.lineTo(bx, by - lift); ctx.stroke();
+    const wob = (prand(Math.round(f * 100), 5) - 0.5) * T * 0.02;
+    ctx.strokeStyle = 'rgba(40,24,8,0.34)';
+    ctx.lineWidth = Math.max(1.4, T * 0.024);
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 + wob, bx, by); ctx.stroke();
+    ctx.strokeStyle = 'rgba(214,170,110,0.16)';
+    ctx.lineWidth = Math.max(1, T * 0.016);
+    ctx.beginPath(); ctx.moveTo(ax, ay - T * 0.024); ctx.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 - T * 0.024 + wob, bx, by - T * 0.024); ctx.stroke();
   }
-
-  // Clods. Turned earth is lumpy, and a few irregular specks do more to sell that than any
-  // amount of groove work. Positions come from prand() so a plot never shimmers between frames.
-  for (let i = 0; i < 7; i++) {
+  // Clods and grit: lumpy, varied, and stable between frames.
+  for (let i = 0; i < 14; i++) {
     const u = prand(i, 3), v = prand(i, 7);
-    const cxp = x + (u - 0.5) * T * 1.25;
-    const cyp = y + T * 0.5 + (v - 0.5) * T * 0.62;
-    ctx.fillStyle = i % 2 ? 'rgba(40,24,8,0.30)' : 'rgba(170,122,72,0.28)';
+    const cxp = x + (u - 0.5) * T * 1.3;
+    const cyp = y + T * 0.5 + (v - 0.5) * T * 0.66;
+    ctx.fillStyle = i % 3 === 0 ? 'rgba(40,24,8,0.32)' : i % 3 === 1 ? 'rgba(178,128,74,0.30)' : 'rgba(120,80,40,0.28)';
     ctx.beginPath();
-    ctx.ellipse(cxp, cyp, T * (0.016 + u * 0.014), T * (0.009 + v * 0.008), u * 3, 0, Math.PI * 2);
+    ctx.ellipse(cxp, cyp, T * (0.012 + u * 0.018), T * (0.007 + v * 0.009), u * 3, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
   dia(0);
-  outline(ctx, T, 0.7);
+  outline(ctx, T, 0.6);
+  // The slab's lit rim toward the sun, and its shaded rim away from it.
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,230,190,0.32)';
+  ctx.lineWidth = Math.max(1, T * 0.018);
+  ctx.beginPath(); ctx.moveTo(x + T * 0.04, y + T * 0.02); ctx.lineTo(x + T * 0.96, y + T / 2 - T * 0.01); ctx.stroke();
+  ctx.strokeStyle = 'rgba(40,24,8,0.3)';
+  ctx.beginPath(); ctx.moveTo(x - T * 0.96, y + T / 2 + T * 0.02); ctx.lineTo(x - T * 0.04, y + T - T * 0.02); ctx.stroke();
+  ctx.restore();
 }
 
 /** Locked expansion tile: greyed, hatched, no outline (it is terrain, not an object). */
@@ -427,25 +550,55 @@ export function drawPath(ctx, ax, ay, bx, by, T = 104) {
   ctx.restore();
 }
 
-/** Soft, non-outlined water edge — pond/lake perimeter reeds and ripple highlight. */
-export function drawWaterEdge(ctx, x, y, rx, ry) {
+/**
+ * The surface of a pond or lake: a sky reflection toward the far bank, ripples that drift with
+ * `t` (seconds; frozen under reduced motion by the caller), a specular streak along the light,
+ * and reeds and lily pads at the bank. One clip for the whole surface.
+ */
+export function drawWaterSurface(ctx, x, y, rx, ry, T = 104, t = 0) {
+  const k = T / 104;
   ctx.save();
-  ctx.beginPath(); ctx.ellipse(x, y - 4, rx, ry, -0.08, 0, Math.PI * 2); ctx.clip();
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = Math.max(1.5, ry * 0.07); ctx.lineCap = 'round';
-  for (let i = 0; i < 5; i++) {
-    const yy = y - 26 + i * 17, ww = 30 + (i % 2) * 26;
-    ctx.beginPath(); ctx.moveTo(x - ww - i * 12, yy);
-    ctx.quadraticCurveTo(x - ww / 2 - i * 12, yy - 5, x - i * 12, yy); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x, y - 4 * k, rx, ry, -0.08, 0, Math.PI * 2); ctx.clip();
+  // Sky reflection: paler toward the far (upper) bank, deeper near the front.
+  ctx.beginPath(); ctx.ellipse(x - rx * 0.12, y - ry * 0.42, rx * 0.62, ry * 0.36, -0.1, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(220,244,255,0.22)'; ctx.fill();
+  // Ripples, drifting slowly across the surface.
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = Math.max(1.2, ry * 0.06); ctx.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    const drift = Math.sin(t * 0.55 + i * 1.7) * rx * 0.06;
+    const yy = y - ry * 0.55 + i * ry * 0.26 + Math.sin(t * 0.8 + i) * ry * 0.03;
+    const ww = rx * (0.28 + (i % 2) * 0.2);
+    const sx = x + drift - ww - i * rx * 0.08;
+    ctx.beginPath(); ctx.moveTo(sx, yy);
+    ctx.quadraticCurveTo(sx + ww / 2, yy - ry * 0.08, sx + ww, yy); ctx.stroke();
+  }
+  // Specular streak along the light vector (upper right -> lower left).
+  const glint = 0.3 + 0.1 * Math.sin(t * 1.3);
+  ctx.fillStyle = `rgba(255,255,240,${glint.toFixed(3)})`;
+  ctx.beginPath(); ctx.ellipse(x + rx * 0.28, y - ry * 0.3, rx * 0.2, ry * 0.05, -0.55, 0, Math.PI * 2); ctx.fill();
+  // Lily pads near the front bank.
+  ctx.fillStyle = '#5fae2e';
+  for (let i = 0; i < 3; i++) {
+    const px = x + (prand(i, 61) - 0.5) * rx * 1.2, py = y + ry * (0.25 + prand(i, 62) * 0.4);
+    const r = rx * 0.06;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, r, 0.3, Math.PI * 2 - 0.3); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
+  // Reeds at the bank.
   ctx.save();
   ctx.strokeStyle = '#4f9c26'; ctx.lineWidth = Math.max(1.5, ry * 0.07); ctx.lineCap = 'round';
   for (let i = 0; i < 9; i++) {
     const a = -0.5 + i * 0.42;
-    const bx = x + Math.cos(a) * rx * 1.02, by = y - 4 + Math.sin(a) * ry * 1.02;
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + 3, by - 16, bx - 2, by - 30); ctx.stroke();
+    const bx = x + Math.cos(a) * rx * 1.02, by = y - 4 * k + Math.sin(a) * ry * 1.02;
+    const sway = Math.sin(t * 1.1 + i) * 2 * k;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + 3 * k + sway, by - 16 * k, bx - 2 * k + sway, by - 30 * k); ctx.stroke();
   }
   ctx.restore();
+}
+
+/** Soft, non-outlined water edge — kept for callers that only want the still surface. */
+export function drawWaterEdge(ctx, x, y, rx, ry) {
+  drawWaterSurface(ctx, x, y, rx, ry, ry * 1.7, 0);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1099,7 +1252,9 @@ function drawRoofForm(ctx, x, yy, BW, BH, T, form, color, derelict, size) {
   }
 
   ctx.closePath();
-  ctx.fill();
+  // Lit at the ridge, darker toward the eave: the roof is the biggest face the sun hits.
+  fillUnit(ctx, `roof:${color}`, 'v', [[0, lighten(color, 0.16)], [0.55, color], [1, shade(color, 0.2)]],
+    x - BW * 0.66, yy - BH * 1.34, BW * 1.32, BH * 1.3, color);
   ctx.strokeStyle = derelictColor(PALETTE.trimLight);
   ctx.lineWidth = 3.6 * size;
   ctx.stroke();
@@ -1423,7 +1578,9 @@ function drawAccent(ctx, x, yy, BW, BH, T, accent, cfg, size, t, working) {
 export function drawBuilding(ctx, x, y, size, buildingType, opts = {}) {
   const derelict = !!opts.derelict;
   const working = !derelict && !!opts.working;
+  const night = !derelict && (opts.night || 0) > 0.3;   // windows lit after dusk (day/night cycle)
   const T = 104 * size;
+  const fw = opts.fw || 1, fh = opts.fh || 1;
   const cfg = BUILDING_CONFIG[buildingType] || FALLBACK_CFG;
   const extras = cfg.extras || [];
   const roofColor = derelict ? PALETTE.derelictRoof : cfg.roof;
@@ -1437,16 +1594,29 @@ export function drawBuilding(ctx, x, y, size, buildingType, opts = {}) {
   const bob = working ? Math.sin(t * 2.2) * T * 0.008 : 0;
   const yy = y - T * 0.08 + bob;
 
-  groundShadow(ctx, x, y - T * 0.08 + BH * 0.7, BW * 0.6, BH * 0.2, T);
+  // The plot it stands on, when the renderer told us the footprint (the contact-sheet tool
+  // draws bare buildings). Then the cast shadow, longer for the taller forms.
+  if (fw > 1 || fh > 1) drawSlab(ctx, x, y, fw, fh, T / Math.max(fw, fh), derelict);
+  groundShadow(ctx, x, y - T * 0.08 + BH * 0.7, BW * 0.6, BH * 0.2, T, cfg.form === 'tower' ? 0.9 : 0.4);
 
   // Behind the shell.
   drawExtras(ctx, x, yy, BW, BH, T,
     extras.filter((e) => e === 'silo' || e === 'pipes'), cfg, derelict, size, t, working);
 
   applyDerelictFilter(ctx, derelict);
-  ctx.fillStyle = wallColor;
-  ctx.beginPath(); ctx.roundRect(x - BW / 2, yy - BH * 0.16, BW, BH, T * 0.06); ctx.fill();
+  // The wall: shaded on the left (away from the light), lit on the right, with a band of
+  // ambient occlusion where it meets the ground.
+  const wallX = x - BW / 2, wallY = yy - BH * 0.16;
+  ctx.beginPath(); ctx.roundRect(wallX, wallY, BW, BH, T * 0.06);
+  fillUnit(ctx, `wall:${wallColor}`, 'h',
+    [[0, shade(wallColor, 0.17)], [0.32, wallColor], [0.82, lighten(wallColor, 0.07)], [1, shade(wallColor, 0.06)]],
+    wallX, wallY, BW, BH, wallColor);
   outline(ctx, T);
+  ctx.beginPath(); ctx.roundRect(wallX, wallY + BH * 0.7, BW, BH * 0.3, T * 0.03);
+  fillUnit(ctx, 'ao', 'v', [[0, 'rgba(58,37,16,0)'], [1, 'rgba(58,37,16,0.3)']], wallX, wallY + BH * 0.7, BW, BH * 0.3, 'rgba(58,37,16,0.1)');
+  // The eave's shadow across the top of the wall, under the roof.
+  ctx.fillStyle = 'rgba(58,37,16,0.16)';
+  ctx.fillRect(wallX + T * 0.02, yy - BH * 0.12, BW - T * 0.04, BH * 0.1);
 
   ctx.save();
   if (derelict) { ctx.translate(x, yy); ctx.rotate(-0.06); ctx.translate(-x, -yy); }
@@ -1454,34 +1624,55 @@ export function drawBuilding(ctx, x, y, size, buildingType, opts = {}) {
   ctx.restore();
   clearFilter(ctx);
 
-  if (!derelict) rimLight(ctx, T);
+  if (!derelict) rimLight(ctx, T, [x - BW * 0.66, yy - BH * 1.34, BW * 1.32, BH * 2.2]);
 
   drawExtras(ctx, x, yy, BW, BH, T,
     extras.filter((e) => e === 'chimney'), cfg, derelict, size, t, working);
 
-  // Windows: cool when idle, warm and gently pulsing when a craft is running.
+  // Windows: glass with a sky reflection when idle, warm and gently pulsing when a craft is
+  // running, lamplit after dusk.
   applyDerelictFilter(ctx, derelict);
   if (!derelict) {
     const glow = working ? 0.55 + 0.25 * Math.sin(t * 2.6) : 0;
-    ctx.fillStyle = working
-      ? 'rgb(' + Math.round(127 + 128 * glow) + ',' + Math.round(212 + 18 * glow) + ',' + Math.round(240 - 100 * glow) + ')'
-      : PALETTE.window;
+    const wx = x - BW * 0.30, wy = yy + BH * 0.02, ww = BW * 0.18, wh = BH * 0.24;
     ctx.beginPath();
-    ctx.roundRect(x - BW * 0.30, yy + BH * 0.02, BW * 0.18, BH * 0.24, T * 0.02);
-    ctx.fill();
-    outline(ctx, T, 0.4);
+    ctx.roundRect(wx, wy, ww, wh, T * 0.02);
     if (working) {
-      ctx.fillStyle = 'rgba(255,214,120,' + (0.20 * glow).toFixed(3) + ')';
+      ctx.fillStyle = 'rgb(' + Math.round(127 + 128 * glow) + ',' + Math.round(212 + 18 * glow) + ',' + Math.round(240 - 100 * glow) + ')';
+      ctx.fill();
+    } else if (night) {
+      fillUnit(ctx, 'glass:night', 'v', [[0, '#ffe7a8'], [1, '#f0b040']], wx, wy, ww, wh, '#f7cf6a');
+    } else {
+      fillUnit(ctx, 'glass', 'v', [[0, '#cdeffb'], [0.5, PALETTE.window], [1, '#4aa6cc']], wx, wy, ww, wh, PALETTE.window);
+    }
+    outline(ctx, T, 0.4);
+    // A reflection streak across the pane, and the sill beneath it.
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = Math.max(1, T * 0.014);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(wx + ww * 0.22, wy + wh * 0.82); ctx.lineTo(wx + ww * 0.6, wy + wh * 0.18); ctx.stroke();
+    ctx.fillStyle = shade(wallColor, 0.22);
+    ctx.fillRect(wx - T * 0.012, wy + wh, ww + T * 0.024, Math.max(1, T * 0.018));
+    if (working || night) {
+      ctx.fillStyle = 'rgba(255,214,120,' + (working ? 0.20 * glow : 0.12).toFixed(3) + ')';
       ctx.beginPath(); ctx.arc(x - BW * 0.21, yy + BH * 0.14, T * 0.11, 0, Math.PI * 2); ctx.fill();
     }
   }
   // A derelict building omits its window entirely (SPRITE-NOTES §6), so there is deliberately
   // no else-branch here - only the door is drawn.
-  ctx.fillStyle = derelictColor(PALETTE.wood);
+  const dx = x + BW * 0.06, dy = yy + BH * 0.06, dw = BW * 0.22, dh = BH * 0.42;
   ctx.beginPath();
-  ctx.roundRect(x + BW * 0.06, yy + BH * 0.06, BW * 0.22, BH * 0.42, T * 0.02);
-  ctx.fill();
+  ctx.roundRect(dx, dy, dw, dh, T * 0.02);
+  fillUnit(ctx, `door:${derelictColor(PALETTE.wood)}`, 'h', [[0, shade(derelictColor(PALETTE.wood), 0.2)], [1, derelictColor(PALETTE.wood)]], dx, dy, dw, dh, derelictColor(PALETTE.wood));
   outline(ctx, T, 0.4);
+  // Plank lines, a knob and a doorstep.
+  ctx.strokeStyle = 'rgba(58,37,16,0.35)';
+  ctx.lineWidth = Math.max(1, T * 0.01);
+  ctx.beginPath(); ctx.moveTo(dx + dw * 0.5, dy + T * 0.01); ctx.lineTo(dx + dw * 0.5, dy + dh - T * 0.01); ctx.stroke();
+  ctx.fillStyle = PALETTE.gold;
+  ctx.beginPath(); ctx.arc(dx + dw * 0.68, dy + dh * 0.55, Math.max(1, T * 0.012), 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = shade(wallColor, 0.3);
+  ctx.fillRect(dx - T * 0.02, dy + dh, dw + T * 0.04, Math.max(1, T * 0.022));
   clearFilter(ctx);
 
   // Signboard: a small painted plaque, only where the config asks for one.
@@ -1510,11 +1701,30 @@ export function drawBuilding(ctx, x, y, size, buildingType, opts = {}) {
 // ---------------------------------------------------------------------------------------
 
 function structureBase(ctx, x, y, w, h, T, derelict) {
-  groundShadow(ctx, x, y + h * 0.66, w * 0.62, h * 0.2, T);
+  groundShadow(ctx, x, y + h * 0.66, w * 0.62, h * 0.2, T, 0.5);
+}
+
+/** The slab under a structure whose footprint the renderer passed (fw/fh), before its sprite. */
+function structureSlab(ctx, x, y, size, opts) {
+  const fw = opts.fw || 1, fh = opts.fh || 1;
+  if (fw <= 1 && fh <= 1) return;
+  drawSlab(ctx, x, y, fw, fh, (104 * size) / Math.max(fw, fh), !!opts.derelict);
+}
+
+/** A wall box shaded away from the light, with its ground band. Leaves the path for outline(). */
+function shadedWall(ctx, wx, wy, ww, wh, radius, color) {
+  ctx.beginPath(); ctx.roundRect(wx, wy, ww, wh, radius);
+  fillUnit(ctx, `wall:${color}`, 'h',
+    [[0, shade(color, 0.17)], [0.32, color], [0.82, lighten(color, 0.07)], [1, shade(color, 0.06)]],
+    wx, wy, ww, wh, color);
+  ctx.beginPath(); ctx.roundRect(wx, wy + wh * 0.7, ww, wh * 0.3, radius * 0.5);
+  fillUnit(ctx, 'ao', 'v', [[0, 'rgba(58,37,16,0)'], [1, 'rgba(58,37,16,0.3)']], wx, wy + wh * 0.7, ww, wh * 0.3, 'rgba(58,37,16,0.1)');
+  ctx.beginPath(); ctx.roundRect(wx, wy, ww, wh, radius);
 }
 
 export function drawBarn(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, BW = T * 1.7, BH = T * 1.0, yy = y - T * 0.08;
+  structureSlab(ctx, x, y, size, opts);
   structureBase(ctx, x, yy, BW, BH, T, derelict);
   applyDerelictFilter(ctx, derelict);
   const roofColor = derelict ? PALETTE.derelictRoof : PALETTE.roof;
@@ -1535,7 +1745,10 @@ export function drawBarn(ctx, x, y, size, opts = {}) {
   outline(ctx, T);
   ctx.restore();
   clearFilter(ctx);
-  if (!derelict) rimLight(ctx, T);
+  if (!derelict) rimLight(ctx, T, [x - BW * 0.6, yy - BH * 1.0, BW * 1.2, BH * 1.7]);
+  // Ambient occlusion where the barn meets its plot.
+  ctx.beginPath(); ctx.roundRect(x - BW / 2, yy + BH * 0.42, BW, BH * 0.28, T * 0.03);
+  fillUnit(ctx, 'ao', 'v', [[0, 'rgba(58,37,16,0)'], [1, 'rgba(58,37,16,0.3)']], x - BW / 2, yy + BH * 0.42, BW, BH * 0.28, 'rgba(58,37,16,0.1)');
   ctx.fillStyle = PALETTE.trimLight;
   ctx.beginPath(); ctx.arc(x, yy - BH * 0.6, T * 0.14, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = PALETTE.woodDark;
@@ -1553,7 +1766,8 @@ export function drawBarn(ctx, x, y, size, opts = {}) {
 
 export function drawSilo(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, SW = T * 0.5, SH = T * 1.4, yy = y - T * 0.08;
-  groundShadow(ctx, x, yy + 6, SW * 0.72, T * 0.13, T);
+  structureSlab(ctx, x, y, size, opts);
+  groundShadow(ctx, x, yy + 6 * (T / 104), SW * 0.72, T * 0.13, T, 1.2);
   applyDerelictFilter(ctx, derelict);
   ctx.fillStyle = linearGradient(ctx, x - SW / 2, 0, x + SW / 2, 0, [
     [0, derelict ? PALETTE.derelictWall : PALETTE.siloLight],
@@ -1572,7 +1786,7 @@ export function drawSilo(ctx, x, y, size, opts = {}) {
   ctx.moveTo(x - SW * 0.62, yy - SH); ctx.quadraticCurveTo(x, yy - SH - T * 0.5, x + SW * 0.62, yy - SH);
   ctx.closePath(); ctx.fill(); outline(ctx, T, 0.7);
   clearFilter(ctx);
-  if (!derelict) rimLight(ctx, T);
+  if (!derelict) rimLight(ctx, T, [x - SW * 0.62, yy - SH - T * 0.5, SW * 1.24, SH + T * 0.5]);
   if (derelict) derelictDebris(ctx, x, yy + SH * 0.02, T);
 }
 
@@ -1645,19 +1859,24 @@ export function drawBoatDock(ctx, x, y, size, opts = {}) {
 }
 
 export function drawPond(ctx, x, y, size, opts = {}) {
-  const T = 104 * size, rx = T * 1.4, ry = T * 0.6, yy = y;
+  const T = 104 * size, rx = T * 1.4, ry = T * 0.6, yy = y, k = T / 104;
+  const t = (opts.now || 0) / 1000;
+  // A sandy bank, then the deep edge, then the surface: shallow and pale at the far side, deep
+  // and blue toward the front.
+  ctx.beginPath(); ctx.ellipse(x, yy + T * 0.03, rx * 1.06, ry * 1.1, -0.08, 0, Math.PI * 2);
+  ctx.fillStyle = '#c9b27a'; ctx.fill();
   ctx.beginPath(); ctx.ellipse(x, yy, rx, ry, -0.08, 0, Math.PI * 2);
   ctx.fillStyle = '#2f6f96'; ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x, yy - 4, rx * 0.97, ry * 0.93, -0.08, 0, Math.PI * 2);
-  ctx.fillStyle = linearGradient(ctx, x, yy - ry, x, yy + ry, [[0, PALETTE.waterLight], [1, PALETTE.water]], PALETTE.water);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, yy - 4 * k, rx * 0.97, ry * 0.93, -0.08, 0, Math.PI * 2);
+  fillUnit(ctx, 'water', 'v', [[0, '#b9ecfb'], [0.4, PALETTE.waterLight], [1, '#2a8cc0']], x - rx, yy - ry, 2 * rx, 2 * ry, PALETTE.water);
   outline(ctx, T);
-  drawWaterEdge(ctx, x, yy, rx * 0.97, ry * 0.93);
+  drawWaterSurface(ctx, x, yy, rx * 0.97, ry * 0.93, T, t);
 }
 export const drawLake = drawPond;
 
 export function drawMineEntrance(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, yy = y - T * 0.06;
+  structureSlab(ctx, x, y, size, opts);
   groundShadow(ctx, x, yy + T * 0.32, T * 0.5, T * 0.14, T);
   applyDerelictFilter(ctx, derelict);
   ctx.fillStyle = PALETTE.wood;
@@ -1717,6 +1936,7 @@ export function drawMarketStall(ctx, x, y, size, opts = {}) {
 
 export function drawTrainStation(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, yy = y - T * 0.08;
+  structureSlab(ctx, x, y, size, opts);
   const w = T * 1.6, h = T * 0.4;
   groundShadow(ctx, x, yy + h * 0.7, w * 0.55, h * 0.3, T);
   applyDerelictFilter(ctx, derelict);
@@ -1738,11 +1958,11 @@ export function drawTrainStation(ctx, x, y, size, opts = {}) {
 
 export function drawAirport(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, yy = y - T * 0.08;
+  structureSlab(ctx, x, y, size, opts);
   const w = T * 1.8, h = T * 0.62;
   groundShadow(ctx, x, yy + h * 0.6, w * 0.55, h * 0.25, T);
   applyDerelictFilter(ctx, derelict);
-  ctx.fillStyle = derelict ? PALETTE.derelictWall : PALETTE.wall;
-  ctx.beginPath(); ctx.roundRect(x - w / 2, yy - h * 0.1, w, h * 0.6, T * 0.06); ctx.fill();
+  shadedWall(ctx, x - w / 2, yy - h * 0.1, w, h * 0.6, T * 0.06, derelict ? PALETTE.derelictWall : PALETTE.wall);
   outline(ctx, T);
   ctx.fillStyle = derelict ? PALETTE.derelictRoof : PALETTE.roofAlt;
   ctx.beginPath();
@@ -1780,11 +2000,11 @@ export function drawHelipad(ctx, x, y, size, opts = {}) {
 
 export function drawWorkshopYard(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, yy = y - T * 0.08;
+  structureSlab(ctx, x, y, size, opts);
   const w = T * 1.1, h = T * 0.4;
   groundShadow(ctx, x, yy + h * 0.7, w * 0.6, h * 0.24, T);
   applyDerelictFilter(ctx, derelict);
-  ctx.fillStyle = derelict ? PALETTE.derelictWall : PALETTE.wall;
-  ctx.beginPath(); ctx.roundRect(x - w / 2, yy - h * 0.1, w, h * 0.6, T * 0.05); ctx.fill();
+  shadedWall(ctx, x - w / 2, yy - h * 0.1, w, h * 0.6, T * 0.05, derelict ? PALETTE.derelictWall : PALETTE.wall);
   outline(ctx, T);
   ctx.fillStyle = derelict ? PALETTE.derelictRoof : PALETTE.roofDark;
   ctx.beginPath();
@@ -1808,12 +2028,12 @@ export function drawWorkshopYard(ctx, x, y, size, opts = {}) {
 
 export function drawMuseumHall(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, yy = y - T * 0.08;
+  structureSlab(ctx, x, y, size, opts);
   const w = T * 1.3, h = T * 0.5;
   groundShadow(ctx, x, yy + h * 0.7, w * 0.6, h * 0.22, T);
   applyDerelictFilter(ctx, derelict);
   const wall = derelict ? PALETTE.derelictWall : PALETTE.cream;
-  ctx.fillStyle = wall;
-  ctx.beginPath(); ctx.roundRect(x - w / 2, yy - h * 0.06, w, h * 0.6, T * 0.03); ctx.fill();
+  shadedWall(ctx, x - w / 2, yy - h * 0.06, w, h * 0.6, T * 0.03, wall);
   outline(ctx, T);
   ctx.fillStyle = derelict ? PALETTE.derelictRoof : '#e0d6ba';
   ctx.beginPath();
@@ -1831,14 +2051,14 @@ export function drawMuseumHall(ctx, x, y, size, opts = {}) {
 
 export function drawLaboratory(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, yy = y - T * 0.06;
+  structureSlab(ctx, x, y, size, opts);
   const w = T * 0.7, h = T * 0.42;
   groundShadow(ctx, x, yy + h * 0.6, w * 0.6, h * 0.24, T);
   applyDerelictFilter(ctx, derelict);
-  ctx.fillStyle = derelict ? PALETTE.derelictWall : PALETTE.wall;
-  ctx.beginPath(); ctx.roundRect(x - w / 2, yy - h * 0.1, w, h * 0.6, T * 0.04); ctx.fill();
+  shadedWall(ctx, x - w / 2, yy - h * 0.1, w, h * 0.6, T * 0.04, derelict ? PALETTE.derelictWall : PALETTE.wall);
   outline(ctx, T);
   clearFilter(ctx);
-  if (!derelict) rimLight(ctx, T);
+  if (!derelict) rimLight(ctx, T, [x - w / 2, yy - h * 0.1, w, h * 0.7]);
   // flask silhouette
   ctx.fillStyle = derelict ? '#5a6a5a' : '#7fd4c0';
   ctx.beginPath();
@@ -1853,6 +2073,7 @@ export function drawLaboratory(ctx, x, y, size, opts = {}) {
 
 export function drawExpeditionCamp(ctx, x, y, size, opts = {}) {
   const derelict = !!opts.derelict, T = 104 * size, yy = y - T * 0.02;
+  structureSlab(ctx, x, y, size, opts);
   groundShadow(ctx, x, yy + T * 0.3, T * 0.5, T * 0.15, T);
   applyDerelictFilter(ctx, derelict);
   ctx.fillStyle = derelict ? '#8a7f68' : '#c9382e';

@@ -53,3 +53,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `069388edb719` | Steamed Squid with Garlic Vermicelli · 蒜蓉粉絲蒸魷魚 | `garlic-vermicelli-squid` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0045-garlic-vermicelli-squid.png |
 | 0.1.0 | `03147803c073` | Steamed Prawns with Garlic Vermicelli · 蒜蓉粉絲蒸蝦 | `garlic-vermicelli-prawns` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0046-garlic-vermicelli-prawns.png |
 | 0.1.0 | `2a22694d0af5` | Steamed Razor Clams with Garlic Vermicelli · 蒜蓉粉絲蒸聖子 | `garlic-vermicelli-razor-clams` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0047-garlic-vermicelli-razor-clams.png |
+| 0.1.0 | `d5d357bd3956` | Steamed Pearl Chicken · 珍珠雞 | `pearl-chicken` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0048-pearl-chicken.png |

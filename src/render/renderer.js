@@ -401,7 +401,7 @@ const KIND_DISPATCH = {
     else sprites.drawPlaceholder(ctx, x, y, size, obj.type);
   },
   decoration: (ctx, x, y, size, obj, now) => sprites.drawDecoration(ctx, x, y, size, obj.type, {
-    now: motion.phase(now), fw: obj.fw, fh: obj.fh, joins: obj.joins,
+    now: motion.phase(now), fw: obj.fw, fh: obj.fh, joins: obj.joins, night: frameLight.night || 0,
   }),
   pet: (ctx, x, y, size, obj) => {
     const fn = obj.type === 'cat' ? sprites.drawCat : sprites.drawDog;
@@ -570,6 +570,10 @@ export function drawFrame(now, world = {}) {
     sprites.drawQueuePips(ctx, pips[i + 1], pips[i + 2] - TILE_BASE * size * 0.72, TILE_BASE * camera.zoom, obj.slots, obj.queue || []);
   }
 
+  // Cloud shadows drift over the farm in world space (frozen under reduced motion), over the
+  // objects they pass but under the effects, the ghost and the light.
+  for (const c of cloudShadows(now, w, h)) sprites.drawCloudShadow(ctx, c.x, c.y, c.r);
+
   // The drop target of a live item drag (a recipe over its factory, feed over a pen, a seed over
   // a field): the footprint tinted the way the placement ghost tints legality.
   if (world.dropTarget) drawDropTarget(ctx, world.dropTarget, now, w, h);
@@ -584,6 +588,36 @@ export function drawFrame(now, world = {}) {
   // golden hour (or whatever the day/night cycle says the light is): two full-canvas gradients,
   // after entities, before UI/DOM overlays
   sprites.drawGoldenHour(ctx, w, h, frameLight);
+}
+
+// Three clouds, each drifting along its own row of the world on the frame clock (a tile a
+// dozen seconds or so: a lazy afternoon). Positions are in tile space so the shadows pan with
+// the farm; the drift wraps over CLOUD_SPAN tiles starting west of the world, so the wrap always
+// happens off-screen. The lanes cross the start zone and the expansions, so a cloud is over the
+// farm a good part of the time.
+const CLOUDS = [
+  { tx0: 2, ty: 13, r: 2.6, vx: 0.09 },
+  { tx0: 20, ty: 17, r: 3.4, vx: 0.07 },
+  { tx0: 34, ty: 22, r: 2.1, vx: 0.11 },
+];
+const CLOUD_SPAN = 44;
+const CLOUD_WEST = -6;
+
+/**
+ * The cloud shadows visible this frame, as screen-space { x, y, r }. Pure in (now, camera): the
+ * drift comes from motion.phase(now), so reduced motion holds every cloud still.
+ */
+export function cloudShadows(now, w = viewportW, h = viewportH) {
+  const t = motion.phase(now) / 1000;
+  const wrap = (v) => ((v % CLOUD_SPAN) + CLOUD_SPAN) % CLOUD_SPAN + CLOUD_WEST;
+  const out = [];
+  for (const c of CLOUDS) {
+    const [x, y] = tileToScreen(wrap(c.tx0 + t * c.vx), c.ty, w, h);
+    const r = TILE_BASE * camera.zoom * c.r;
+    if (x < -r * 2 || x > w + r * 2 || y < -r || y > h + r) continue;
+    out.push({ x, y, r });
+  }
+  return out;
 }
 
 /**

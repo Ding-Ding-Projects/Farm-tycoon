@@ -12,6 +12,8 @@
 // Reference implementation read as executable pseudo-code while building this file:
 // design/farm-world.js (same drawing model — iso helper, palette object, per-entity fns).
 
+import { NIGHT_MAX_ALPHA, NIGHT_TINT } from './daylight.js';
+
 export const PALETTE = {
   // ground — pushed up in saturation without going neon
   grass: '#8ecb36', grassLight: '#a8dc52', grassDark: '#6da828',
@@ -31,6 +33,7 @@ export const PALETTE = {
   outlineWidth: 3.5,
   sun: 'rgba(255,196,104,0.34)',
   vignette: 'rgba(72,44,14,0.38)',
+  haze: 'rgba(176,206,238,0.13)',   // cool distance haze over the far (upper) third of the view
 
   // derelict fixed palette (SPRITE-NOTES §6) — distinct washed-out pair, not darkened PALETTE
   derelictRoof: '#8a7f68', derelictWall: '#c9b89a',
@@ -343,13 +346,21 @@ function derelictDebris(ctx, x, y, T) {
 // Golden hour lighting pass (SPRITE-NOTES §3). Called once per frame by renderer.js after
 // all entities are drawn and before UI/DOM overlays.
 // ---------------------------------------------------------------------------------------
-function paintLighting(ctx, w, h, sunColor, vignetteColor) {
+function paintLighting(ctx, w, h, sunColor, vignetteColor, hazeColor = PALETTE.haze, nightAlpha = 0) {
   const sun = radialGradient(ctx, w * 0.72, -h * 0.18, 0, w * 0.72, -h * 0.18, h * 1.15,
     [[0, sunColor], [1, 'rgba(0,0,0,0)']], null);
   if (sun) { ctx.fillStyle = sun; ctx.fillRect(0, 0, w, h); }
+  // Distance haze: far tiles are higher on screen, so a cool wash over the top third of the view
+  // reads as atmosphere between the player and the horizon.
+  const haze = linearGradient(ctx, 0, 0, 0, h * 0.35, [[0, hazeColor], [1, 'rgba(0,0,0,0)']], null);
+  if (haze) { ctx.fillStyle = haze; ctx.fillRect(0, 0, w, h * 0.35); }
   const vig = radialGradient(ctx, w / 2, h * 0.45, h * 0.34, w / 2, h * 0.5, h * 1.02,
     [[0, 'rgba(0,0,0,0)'], [1, vignetteColor]], null);
   if (vig) { ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h); }
+  if (nightAlpha > 0) {
+    ctx.fillStyle = `rgba(${NIGHT_TINT[0]},${NIGHT_TINT[1]},${NIGHT_TINT[2]},${nightAlpha})`;
+    ctx.fillRect(0, 0, w, h);
+  }
 }
 
 // The two full-canvas gradients are the same picture every frame until the window or the light
@@ -364,7 +375,10 @@ const lightLayers = new WeakMap();
 export function drawGoldenHour(ctx, w, h, opts = {}) {
   const sunColor = opts.sun || PALETTE.sun;
   const vignetteColor = opts.vignette || PALETTE.vignette;
-  const key = `${w}x${h}|${sunColor}|${vignetteColor}`;
+  const hazeColor = opts.haze || PALETTE.haze;
+  // The night overlay is bounded: the farm never drops below ~70% brightness.
+  const nightAlpha = Math.round(Math.max(0, Math.min(1, opts.night || 0)) * NIGHT_MAX_ALPHA * 1000) / 1000;
+  const key = `${w}x${h}|${sunColor}|${vignetteColor}|${hazeColor}|${nightAlpha}`;
   if (typeof document !== 'undefined' && typeof ctx.drawImage === 'function') {
     let layer = lightLayers.get(ctx);
     if (!layer || layer.key !== key) {
@@ -373,7 +387,7 @@ export function drawGoldenHour(ctx, w, h, opts = {}) {
         c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
         const lctx = c.getContext('2d');
         if (lctx && typeof lctx.createRadialGradient === 'function') {
-          paintLighting(lctx, w, h, sunColor, vignetteColor);
+          paintLighting(lctx, w, h, sunColor, vignetteColor, hazeColor, nightAlpha);
           layer = { key, canvas: c };
           lightLayers.set(ctx, layer);
         } else layer = null;
@@ -381,7 +395,7 @@ export function drawGoldenHour(ctx, w, h, opts = {}) {
     }
     if (layer) { ctx.drawImage(layer.canvas, 0, 0, w, h); return; }
   }
-  paintLighting(ctx, w, h, sunColor, vignetteColor);
+  paintLighting(ctx, w, h, sunColor, vignetteColor, hazeColor, nightAlpha);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -2745,7 +2759,8 @@ const DECO_DRAW = {
     hedge(0.3, fh - 0.3, fw * 0.55, fh - 0.3); hedge(1.0, 1.0, fw - 1.0, 1.0); hedge(1.0, 1.0, 1.0, fh - 0.9);
     hedge(fw - 1.0, 1.0, fw - 1.0, fh - 1.2); hedge(1.7, 1.7, fw - 1.0, 1.7);
   },
-  lights(ctx, x, by, T, tile, fw, fh, cfg, t) {
+  lights(ctx, x, by, T, tile, fw, fh, cfg, t, opts = {}) {
+    const night = Math.max(0, Math.min(1, opts.night || 0));
     decoPost(ctx, x - T * 0.36, by - T * 0.6, T * 0.04, T * 0.6, T);
     decoPost(ctx, x + T * 0.36, by - T * 0.6, T * 0.04, T * 0.6, T);
     ctx.strokeStyle = PALETTE.outline; ctx.lineWidth = Math.max(1, T * 0.012);
@@ -2754,7 +2769,7 @@ const DECO_DRAW = {
       const k = (i + 0.5) / 7;
       const px = x - T * 0.36 + k * T * 0.72;
       const py = by - T * 0.58 + (1 - Math.pow(2 * k - 1, 2)) * T * 0.16 * 0.5 + T * 0.02;
-      const glow = 0.6 + 0.4 * Math.sin(t * 4 + i * 1.3);
+      const glow = (0.6 + 0.4 * Math.sin(t * 4 + i * 1.3)) * (1 + 1.2 * night);
       if (cfg.lantern) {
         ctx.fillStyle = cfg.color;
         ctx.beginPath(); ctx.ellipse(px, py + T * 0.04, T * 0.035, T * 0.045, 0, 0, Math.PI * 2); ctx.fill(); outline(ctx, T, 0.3);
@@ -2768,15 +2783,21 @@ const DECO_DRAW = {
       }
     }
   },
-  lamp(ctx, x, by, T, tile, fw, fh, cfg, t) {
+  lamp(ctx, x, by, T, tile, fw, fh, cfg, t, opts = {}) {
+    const night = Math.max(0, Math.min(1, opts.night || 0));
     groundShadow(ctx, x, by, T * 0.1, T * 0.04, T, 0.7);
     ctx.fillStyle = '#3a3a3a';
     ctx.beginPath(); ctx.ellipse(x, by - T * 0.02, T * 0.08, T * 0.035, 0, 0, Math.PI * 2); ctx.fill(); outline(ctx, T, 0.4);
     decoPost(ctx, x, by - T * 0.62, T * 0.035, T * 0.6, T, '#3a3a3a');
     ctx.fillStyle = '#3a3a3a';
     ctx.beginPath(); ctx.moveTo(x - T * 0.08, by - T * 0.62); ctx.lineTo(x, by - T * 0.74); ctx.lineTo(x + T * 0.08, by - T * 0.62); ctx.closePath(); ctx.fill(); outline(ctx, T, 0.4);
-    ctx.fillStyle = `rgba(255,214,120,${(0.35 + 0.1 * Math.sin(t * 3)).toFixed(3)})`;
-    ctx.beginPath(); ctx.arc(x, by - T * 0.66, T * 0.11, 0, Math.PI * 2); ctx.fill();
+    // The lamp is always lit a little; after dusk its halo grows and brightens.
+    ctx.fillStyle = `rgba(255,214,120,${(0.35 + 0.1 * Math.sin(t * 3) + 0.35 * night).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(x, by - T * 0.66, T * (0.11 + 0.14 * night), 0, Math.PI * 2); ctx.fill();
+    if (night > 0.3) {
+      ctx.fillStyle = `rgba(255,200,90,${(0.16 * night).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(x, by, T * 0.34, T * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.fillStyle = '#ffe7a8';
     ctx.beginPath(); ctx.roundRect(x - T * 0.045, by - T * 0.72, T * 0.09, T * 0.1, T * 0.01); ctx.fill(); outline(ctx, T, 0.35);
   },
@@ -3238,9 +3259,18 @@ export function drawProgressRing(ctx, x, y, r, fraction) {
 }
 
 /** Soft moving cloud shadow, screen-space ellipse. */
+/**
+ * The shadow of a passing cloud: three soft overlapping blobs, each a radial fall-off through the
+ * cached unit gradient (a flat wash on a context that cannot make gradients). renderer.js places
+ * them in world space so they drift over the farm and pan with it.
+ */
 export function drawCloudShadow(ctx, x, y, r) {
-  ctx.fillStyle = 'rgba(40,80,30,0.08)';
-  ctx.beginPath(); ctx.ellipse(x, y, r * 1.6, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+  const stops = [[0, 'rgba(30,60,20,0.17)'], [0.55, 'rgba(30,60,20,0.11)'], [1, 'rgba(30,60,20,0)']];
+  for (const [dx, dy, kx, ky] of [[0, 0, 1.7, 0.55], [-0.9, 0.25, 1.1, 0.4], [0.95, -0.2, 1.2, 0.42]]) {
+    const cx = x + dx * r, cy = y + dy * r * 0.5, rx = r * kx, ry = r * ky;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    fillUnit(ctx, 'cloudShadow', 'r', stops, cx - rx, cy - ry, rx * 2, ry * 2, 'rgba(30,60,20,0.05)');
+  }
 }
 
 export function drawPlaceholder(ctx, x, y, size, label) {

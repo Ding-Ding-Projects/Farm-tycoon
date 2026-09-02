@@ -11,6 +11,7 @@
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import * as daylight from '../src/render/daylight.js';
 
 // main.js registers a DOMContentLoaded listener at module load and ui.js/tutorial.js/audio.js
 // touch nothing at load, so a bare window shim is enough to import the loop-wiring seam. The
@@ -456,6 +457,132 @@ test('the museum fossil display has its own sprite, not the hashed fallback', ()
     assert.notEqual(fossil, seq(other), `fossil_display draws the same thing as ${other}`);
   }
   assert.ok(fossil.includes('quadraticCurveTo'), 'the ribs and the rope are curves');
+});
+
+// ---------------------------------------------------------------------------
+// Atmosphere: the day/night cycle, the haze, cloud shadows, living water
+// ---------------------------------------------------------------------------
+
+test('daylight: night is bounded, the cycle never jumps, and off hands the renderer nothing', () => {
+  const rgbaOf = (str) => {
+    const m = /^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/.exec(str);
+    assert.ok(m, `not an rgba() colour: ${str}`);
+    return m.slice(1).map(Number);
+  };
+  let prev = null, maxStep = 0;
+  for (let m = 0; m <= 24 * 60; m++) {
+    const L = daylight.lightingAtHour(m / 60);
+    assert.ok(L.night >= 0 && L.night <= 1, `night out of range at ${m / 60}: ${L.night}`);
+    for (const k of ['sun', 'vignette', 'haze']) {
+      const c = rgbaOf(L[k]);
+      assert.ok(c[3] >= 0 && c[3] <= 0.5, `${k} alpha ${c[3]} at ${m / 60}`);
+    }
+    assert.ok(['night', 'dawn', 'day', 'dusk'].includes(L.phase), `phase ${L.phase}`);
+    if (prev) maxStep = Math.max(maxStep, Math.abs(L.night - prev.night));
+    prev = L;
+  }
+  assert.ok(maxStep < 0.02, `night moves a little per minute, never jumps: max step ${maxStep}`);
+  assert.equal(daylight.lightingAtHour(12).night, 0);
+  assert.equal(daylight.lightingAtHour(12).phase, 'day');
+  assert.equal(daylight.lightingAtHour(1).night, 1);
+  assert.equal(daylight.lightingAtHour(1).phase, 'night');
+  assert.equal(daylight.lightingAtHour(6.5).phase, 'dawn');
+  assert.equal(daylight.lightingAtHour(18).phase, 'dusk');
+  assert.deepEqual(daylight.lightingAtHour(24), daylight.lightingAtHour(0), 'midnight wraps');
+  assert.equal(daylight.lightingAtHour(18).sun, 'rgba(255,196,104,0.340)', 'dusk is the palette golden hour');
+  assert.deepEqual(daylight.lightingFor(Date.now(), false), {}, 'the cycle off overrides nothing');
+  const on = daylight.lightingFor(Date.now(), true);
+  assert.ok(typeof on.sun === 'string' && typeof on.night === 'number');
+});
+
+test('the lighting pass: palette colours and the haze when the cycle is off, a bounded night wash when on', () => {
+  // A context whose gradients record their stops, so the colours the pass asks for are visible.
+  const paint = (opts) => {
+    const calls = [];
+    const grad = () => ({ addColorStop: (o, c) => calls.push(`stop(${o},${c})`) });
+    const ctx = new Proxy({}, {
+      get(_t, k) {
+        if (k === 'canvas') return { width: 1280, height: 800 };
+        if (k === 'createRadialGradient' || k === 'createLinearGradient') return grad;
+        return (...args) => { calls.push(`${String(k)}(${args.join(',')})`); };
+      },
+      set(_t, k, v) { calls.push(`${String(k)}=${v}`); return true; },
+    });
+    sprites.drawGoldenHour(ctx, 1280, 800, opts);
+    return calls;
+  };
+  const off = paint({});
+  assert.ok(off.includes(`stop(0,${sprites.PALETTE.sun})`), 'off: the palette sun');
+  assert.ok(off.includes(`stop(1,${sprites.PALETTE.vignette})`), 'off: the palette vignette');
+  assert.ok(off.includes(`stop(0,${sprites.PALETTE.haze})`), 'the distance haze is part of the fixed look');
+  const isWash = (c) => c.startsWith(`fillStyle=rgba(${daylight.NIGHT_TINT.join(',')}`);
+  assert.ok(!off.some(isWash), 'off: no night wash');
+  assert.ok(!paint(daylight.lightingAtHour(12)).some(isWash), 'midday: no night wash');
+  const night = paint(daylight.lightingAtHour(1));
+  const wash = night.find(isWash);
+  assert.ok(wash, 'deep night paints the night wash');
+  const alpha = Number(wash.match(/,([\d.]+)\)$/)[1]);
+  assert.ok(alpha > 0 && alpha <= daylight.NIGHT_MAX_ALPHA + 1e-9, `night wash alpha ${alpha} stays within NIGHT_MAX_ALPHA`);
+  assert.ok(night.includes(`stop(0,${daylight.lightingAtHour(1).sun})`), 'night: the cycle\'s own sun colour');
+});
+
+test('cloud shadows drift in world space on the frame clock, pan with the farm, and hold still under reduced motion', () => {
+  resetCamera();
+  motion.__setReducedForTests(false);
+  // Over a full drift cycle every cloud crosses the viewport; sample the clock until one is there.
+  let t0 = null;
+  for (let t = 0; t < 700000 && t0 == null; t += 2000) if (renderer.cloudShadows(t, 1280, 800).length) t0 = t;
+  assert.ok(t0 != null, 'a cloud crosses the viewport within one drift cycle');
+  const a = renderer.cloudShadows(t0, 1280, 800), b = renderer.cloudShadows(t0 + 20000, 1280, 800);
+  assert.notDeepEqual(a, b, 'twenty seconds later the clouds have moved');
+  motion.__setReducedForTests(true);
+  assert.deepEqual(renderer.cloudShadows(t0, 1280, 800), renderer.cloudShadows(t0 + 20000, 1280, 800), 'reduced motion freezes the drift');
+  assert.deepEqual(renderer.cloudShadows(t0, 1280, 800), renderer.cloudShadows(0, 1280, 800), 'and holds them at the clock-zero position');
+  motion.__setReducedForTests(false);
+  // World-anchored: a camera one tile further east puts every shadow one tile further west on screen.
+  // (An oversized viewport, so the cull cannot drop a cloud on one side of the comparison.)
+  const T = renderer.TILE_BASE * renderer.camera.zoom;
+  const before = renderer.cloudShadows(0, 8000, 8000);
+  renderer.camera.x += 1;
+  const after = renderer.cloudShadows(0, 8000, 8000);
+  resetCamera();
+  let compared = 0;
+  for (const c of before) {
+    const d = after.find((o) => Math.abs(o.r - c.r) < 1e-9);
+    if (!d) continue;
+    compared++;
+    assert.ok(Math.abs((c.x - d.x) - T) < 1e-6 && Math.abs((c.y - d.y) - T / 2) < 1e-6, 'the shadow moved by exactly one tile');
+  }
+  assert.ok(compared > 0);
+  const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.ok(/for \(const c of cloudShadows\(now, w, h\)\) sprites\.drawCloudShadow\(/.test(src), 'drawFrame draws them');
+  const { calls } = liveFrame({ objects: [] });
+  assert.ok(calls.some((c) => c.startsWith('ellipse(')) || renderer.cloudShadows(Date.now(), 1280, 800).length === 0, 'and an ellipse reaches the context when one is in view');
+});
+
+test('water moves on the frame clock: the same surface differs between two instants, never between two calls at one', () => {
+  const seq = (t) => { const ctx = recorder(); sprites.drawWaterSurface(ctx, 100, 100, 80, 40, 104, t); return ctx.__calls.join('|'); };
+  assert.notEqual(seq(0), seq(0.7));
+  assert.equal(seq(0.3), seq(0.3));
+});
+
+test('after dusk the lamp post and the string lights glow brighter and the factory windows light up', () => {
+  const deco = (id, night) => {
+    const ctx = recorder();
+    sprites.drawDecoration(ctx, 100, 100, 1, id, { fw: 1, fh: 1, now: 0, night });
+    return ctx.__calls.join('|');
+  };
+  assert.notEqual(deco('lamp_post', 0), deco('lamp_post', 1));
+  assert.notEqual(deco('string_lights', 0), deco('string_lights', 1));
+  assert.equal(deco('gnome', 0), deco('gnome', 1), 'a gnome does not care');
+  const b = (night) => {
+    const ctx = recorder();
+    sprites.drawBuilding(ctx, 100, 100, 1, 'bakery', { now: 0, night, fw: 2, fh: 2 });
+    return ctx.__calls.join('|');
+  };
+  assert.notEqual(b(0), b(1), 'windows are lit at night');
+  const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.ok(/joins: obj\.joins, night: frameLight\.night \|\| 0,/.test(src), 'decorations receive the frame\'s night');
 });
 
 test('sprites.js sizes nothing in raw pixels: no `lineWidth = <number>;` literal survives', () => {

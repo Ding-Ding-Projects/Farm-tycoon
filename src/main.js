@@ -10,6 +10,7 @@
 import * as state from './state.js';
 import * as motion from './motion.js';
 import * as renderer from './render/renderer.js';
+import * as daylight from './render/daylight.js';
 import * as ui from './ui.js';
 import * as input from './input.js';
 import * as audio from './audio.js';
@@ -393,6 +394,8 @@ export function debugTimeSkip(ms) {
 }
 
 
+let debugHour = null;   // a pinned local hour for the day/night cycle (null = the real clock)
+
 function loop(nowMs) {
   if (!running) return;
   const now = Date.now();
@@ -404,7 +407,13 @@ function loop(nowMs) {
   tickAllSystems(now);
   safeCall(tutorial.checkAutoEvents);
   safeCall(renderer.tickCamera, dt);
-  safeCall(renderer.drawFrame, now, buildWorld());
+  const world = buildWorld();
+  // The light over the farm follows the player's clock when the cycle is on; {} paints the
+  // fixed golden hour. __farmDebug.setHour pins an hour for screenshots and playtests.
+  world.light = debugHour == null
+    ? daylight.lightingFor(now, state.state?.settings?.dayCycle !== false)
+    : daylight.lightingAtHour(debugHour);
+  safeCall(renderer.drawFrame, now, world);
   ui.updateHud();
 
   const interval = (state.state?.settings?.autosaveInterval || 10) * 1000;
@@ -532,6 +541,8 @@ function boot() {
     get state() { return state.state; },
     /** Shift every stored readyAt timestamp back by ms, simulating elapsed time. */
     timeSkip(ms) { debugTimeSkip(ms); },
+    /** Pin the day/night cycle to a local hour (0..24) for screenshots; null returns to the clock. */
+    setHour(hour) { debugHour = hour == null ? null : Number(hour); },
     /** Grant qty of an item id straight into the appropriate storage bucket. */
     give(itemId, qty = 1) {
       const s = state.state;

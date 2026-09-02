@@ -401,7 +401,7 @@ const KIND_DISPATCH = {
     else sprites.drawPlaceholder(ctx, x, y, size, obj.type);
   },
   decoration: (ctx, x, y, size, obj, now) => sprites.drawDecoration(ctx, x, y, size, obj.type, {
-    now: motion.phase(now), fw: obj.fw, fh: obj.fh,
+    now: motion.phase(now), fw: obj.fw, fh: obj.fh, joins: obj.joins,
   }),
   pet: (ctx, x, y, size, obj) => {
     const fn = obj.type === 'cat' ? sprites.drawCat : sprites.drawDog;

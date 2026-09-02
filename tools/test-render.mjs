@@ -367,7 +367,11 @@ test('every structure, pen, crop, animal, forage node, decoration and scenery sp
   const missingAnimals = Object.keys(data.ANIMALS).filter((id) => typeof sprites.ANIMAL_DRAW[id] !== 'function');
   assert.deepEqual(missingAnimals, [], `animals with no sprite: ${missingAnimals.join(', ')}`);
   for (const fn of Object.values(sprites.FORAGE_DRAW)) fn(ctx, 100, 100, 1);
-  for (const id of Object.keys(data.DECORATIONS)) sprites.drawDecoration(ctx, 100, 100, 1, id, { now: 0, fw: 1, fh: 1 });
+  for (const [id, def] of Object.entries(data.DECORATIONS)) {
+    const [fw, fh] = def.size || [1, 1];
+    sprites.drawDecoration(ctx, 100, 100, Math.max(fw, fh), id, { now: 0, fw, fh });
+    sprites.drawDecoration(ctx, 100, 100, Math.max(fw, fh), id, { now: 2500, fw, fh });
+  }
   for (const species of ['oak', 'pine', 'birch', 'fruit']) sprites.drawTree(ctx, 100, 100, 1, { kind: species, variant: 0.4 });
   for (const type of ['bush', 'rock', 'stump']) sprites.drawScenery(ctx, 100, 100, 1, { type, variant: 0.5 });
   sprites.drawScenery(ctx, 100, 100, 1, { type: 'rail', sides: 'NESW' });
@@ -377,6 +381,81 @@ test('every structure, pen, crop, animal, forage node, decoration and scenery sp
   sprites.drawGoldenHour(ctx, 1280, 800);
   sprites.drawMeadow(ctx, 1280, 800);
   assert.ok(ctx.__calls.length > 1000);
+});
+
+test('every decoration id has its own sprite: families differ, and the animated ones move on the clock', () => {
+  const seq = (id, now) => {
+    const calls = [];
+    const rec = new Proxy({}, {
+      get(_t, k) {
+        if (k === 'canvas') return { width: 400, height: 400 };
+        if (k === 'save' || k === 'restore') return () => {};
+        return (...args) => { calls.push(`${String(k)}(${args.map((a) => (typeof a === 'number' ? a.toFixed(1) : String(a))).join(',')})`); };
+      },
+      set(_t, k, v) { calls.push(`${String(k)}=${v}`); return true; },
+    });
+    const [fw, fh] = data.DECORATIONS[id].size;
+    sprites.drawDecoration(rec, 100, 100, Math.max(fw, fh), id, { now, fw, fh });
+    return calls;
+  };
+  // Twelve ids from twelve families must all draw differently (they used to collapse onto five
+  // hashed shapes, so an oak could render as a lamp).
+  const ids = ['tree_oak', 'gnome', 'fountain', 'windmill', 'string_lights', 'hay_bale', 'scarecrow', 'lily_pond', 'stone_arch', 'clock_tower', 'festival_tent', 'golden_statue'];
+  const seqs = ids.map((id) => seq(id, 0).join('|'));
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    assert.notEqual(seqs[i], seqs[j], `${ids[i]} and ${ids[j]} draw the same thing`);
+  }
+  // A fountain's water, a windmill's blades and string lights move on the frame clock; a gnome does not.
+  for (const id of ['fountain', 'windmill', 'string_lights', 'fair_carousel']) {
+    assert.notDeepEqual(seq(id, 0), seq(id, 1500), `${id} must animate with now`);
+  }
+  assert.deepEqual(seq('gnome', 0), seq('gnome', 1500), 'a gnome is still');
+});
+
+test('fences join their neighbours: buildWorld marks the run and a joined piece draws its rails toward them', () => {
+  const s = freshWorld();
+  s.coins = 9000;
+  for (const x of [15, 16, 17]) assert.ok(farm.place('decoration', 'fence_wood', x, 15), `fence at ${x},15`);
+  assert.ok(farm.place('decoration', 'fence_wood', 15, 18), 'a lone fence');
+  assert.ok(farm.place('decoration', 'fence_stone', 18, 15), 'a stone fence east of the wooden run');
+  const decos = main.buildWorld().objects.filter((o) => o.kind === 'decoration');
+  const at = (x, y) => decos.find((o) => o.tx === x && o.ty === y);
+  assert.deepEqual(at(16, 15).joins, { n: false, e: true, s: false, w: true }, 'the middle piece joins both ways');
+  assert.deepEqual(at(15, 15).joins, { n: false, e: true, s: false, w: false });
+  assert.deepEqual(at(17, 15).joins, { n: false, e: false, s: false, w: true }, 'a different fence type is not a neighbour');
+  assert.equal(at(15, 18).joins, undefined, 'a lone piece carries no joins');
+  assert.equal(at(18, 15).joins, undefined);
+  const seq = (id, joins) => {
+    const ctx = recorder();
+    sprites.drawDecoration(ctx, 100, 100, 1, id, { fw: 1, fh: 1, joins });
+    return ctx.__calls.join('|');
+  };
+  for (const id of ['fence_wood', 'fence_stone', 'fence_white', 'bunting_fence']) {
+    const lone = seq(id), run = seq(id, { n: false, e: true, s: false, w: true }), column = seq(id, { n: true, e: false, s: true, w: false });
+    assert.equal(lone, run, `${id}: a lone piece is one east-west run, exactly what a run's middle draws`);
+    assert.notEqual(run, column, `${id}: an east-west run must differ from a north-south one`);
+    assert.notEqual(seq(id, { n: false, e: true, s: false, w: false }), run, `${id}: a run end differs from its middle`);
+  }
+  // An east-west run's rails start at the west edge midpoint (x - T/2 = 48) and end at the east
+  // one (x + T/2 = 152) for a tile anchored at 100 with T = 104.
+  const run = seq('fence_wood', { n: false, e: true, s: false, w: true });
+  assert.ok(run.includes('moveTo(48,') && run.includes('lineTo(152,'), 'an east-west run spans the west and east edge midpoints');
+  const half = seq('fence_wood', { n: false, e: true, s: false, w: false });
+  assert.ok(half.includes('moveTo(100,') && half.includes('lineTo(152,') && !half.includes('moveTo(48,'), 'a run end starts at the tile centre');
+});
+
+test('the museum fossil display has its own sprite, not the hashed fallback', () => {
+  const seq = (id) => {
+    const ctx = recorder();
+    const [fw, fh] = data.DECORATIONS[id].size;
+    sprites.drawDecoration(ctx, 100, 100, Math.max(fw, fh), id, { fw, fh, now: 0 });
+    return ctx.__calls.join('|');
+  };
+  const fossil = seq('fossil_display');
+  for (const other of ['lamp_post', 'relic_plinth', 'golden_statue', 'hay_bale', 'flowerbed', 'fountain']) {
+    assert.notEqual(fossil, seq(other), `fossil_display draws the same thing as ${other}`);
+  }
+  assert.ok(fossil.includes('quadraticCurveTo'), 'the ribs and the rope are curves');
 });
 
 test('sprites.js sizes nothing in raw pixels: no `lineWidth = <number>;` literal survives', () => {

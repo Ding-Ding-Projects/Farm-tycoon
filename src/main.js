@@ -286,6 +286,15 @@ function buildWorld() {
   const unlockedRects = ownedRects(s);
   // The tile or object under a live item drag, tinted by whether it takes the drop.
   const dropTarget = drag.target();
+  // Fence-style decorations join up: a 1x1 decoration learns which of its four neighbours carries
+  // the same type, and sprites.drawDecoration runs its rails toward them.
+  const singles = new Map();
+  for (const o of objects) if (o.kind === 'decoration' && o.fw === 1 && o.fh === 1) singles.set(`${o.type}:${o.tx},${o.ty}`, o);
+  for (const o of singles.values()) {
+    const at = (dx, dy) => singles.has(`${o.type}:${o.tx + dx},${o.ty + dy}`);
+    const n = at(0, -1), e = at(1, 0), s = at(0, 1), w = at(-1, 0);
+    if (n || e || s || w) o.joins = { n, e, s, w };
+  }
   return { objects, ghost, showGrid: !!ghost, unlockedRects, isUnlocked: tileTest(unlockedRects), dropTarget };
 }
 

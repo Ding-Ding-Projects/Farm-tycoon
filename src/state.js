@@ -49,7 +49,9 @@ const storage = (() => {
  *   shop: { listings: [{item, qty, price, soldAt}] },
  *   market: { dayNum, offers: [{item, qty, price}], bought: [bool...] }, // daily rotating market
  *   pets: { dog: {owned, lastFedAt}, cat: {...} },
- *   fishing: { cast: null|{readyAt} },
+ *   fishing: { cast: null|{readyAt}, chest: null|{loot, hauledAt, readyAt, ready} },
+ *     chest is a hauled-up treasure chest being worked open. Its loot is rolled when it surfaces
+ *     and held until then, so a reload cannot re-roll it. Seeded lazily by fishing.js.
  *   achievements: { unlocked: [id...] },
  *   daily: { lastSpinAt, streak },
  *   event: { id, endsAt },
@@ -70,7 +72,10 @@ const storage = (() => {
  *   lab: { built, researched: [nodeId], active: {id, readyAt}|null },
  *   helicopter: { current, fuel, fuelUpdatedAt, returningAt },
  *   islands: { voyage: {islandId, readyAt}|null, unlocked },
- *   mine: { depthUnlocked, currentDepth, digs },
+ *   mine: { depthUnlocked, currentDepth, digs, active: null|{depthId, tool, item, qty, artifact, startedAt, readyAt, ready} },
+ *     active is the seam currently being worked. Rolled at the swing, collected when the haul
+ *     comes up. Absent on a save written before digs took time, which reads correctly as "no
+ *     dig in progress".
  *   town: { buildings: [{id, type, ...}], population, capacity, claimedMilestones },
  *   zoo: { enclosures: {enclosureId: {...}}, lastIncomeAt, orders },
  *   merge: { cells: [{chain, tier}|{generator}|null, ...], energy, energyUpdatedAt },
@@ -174,7 +179,7 @@ export function newGameState() {
     shop: { listings: [] },
     market: makeEmptyMarket(),
     pets: {},
-    fishing: { cast: null },
+    fishing: { cast: null, chest: null },
     achievements: { unlocked: [] },
     daily: { lastSpinAt: 0, streak: 0 },
     event: null,
@@ -194,7 +199,7 @@ export function newGameState() {
     lab: { built: false, researched: [], active: null },
     helicopter: { current: null, fuel: 5, fuelUpdatedAt: 0, returningAt: 0 },
     islands: { voyage: null, unlocked: [] },
-    mine: { depthUnlocked: ['mine_depth_1'], currentDepth: 'mine_depth_1', digs: 0 },
+    mine: { depthUnlocked: ['mine_depth_1'], currentDepth: 'mine_depth_1', digs: 0, active: null },
     town: makeEmptyTown(),
     zoo: makeEmptyZoo(),
     merge: makeEmptyMergeBoard(),

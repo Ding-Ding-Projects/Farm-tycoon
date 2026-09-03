@@ -176,6 +176,13 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
 - [x] **One road for every vessel.** `orders.addDelivery()` is the single door onto it, so the
       order board, the truck bay and the boat dock share one list, one arrival clock and one
       collection path instead of three that drift apart.
+- [x] **The mine is worked, not tapped.** A dig consumed a tool and dropped ore in the barn in
+      the same instant. The tool goes in now and the haul comes up later - 90s at the Surface
+      Seam, 10 minutes in The Deep - one seam at a time, with the yield rolled at the swing so
+      reloading cannot re-roll a poor haul.
+- [x] **A fished chest comes up locked.** It opened itself the instant it broke the surface.
+      Now it takes four minutes to work open, carrying the loot that was rolled when it
+      surfaced - so the wait can never turn a good chest into a bad one.
 
 - [x] **The tutorial can be moved through.** Ten of its twelve steps waited on a game event with
       no way past, and the other two advanced only if you clicked the bubble, with nothing saying

@@ -692,14 +692,22 @@ test('mine depths are level-gated by MINE.depths, not open from level 1', () => 
   assert.equal(mine.unlockDepth(depth2.id), false, 'cannot buy a depth twice');
 });
 
-test('mine.dig into a full barn consumes one pickaxe, keeps the ore as coins, and never passes the cap', () => {
+test('a dig into a full barn consumes one pickaxe, keeps the ore as coins, and never passes the cap', () => {
   const s = freshState();
   s.barn.items = { pickaxe: 1 };
   s.barn.capacity = 1; // the pickaxe is the only thing that fits; its slot frees on the dig
   const coins = s.coins;
-  const result = mine.dig('pickaxe');
-  assert.ok(result, 'a surface dig with a pickaxe must resolve');
-  assert.equal(s.barn.items.pickaxe, 0, 'exactly one pickaxe consumed');
+  const started = mine.dig('pickaxe');
+  assert.ok(started, 'a surface dig with a pickaxe must start');
+  assert.equal(s.barn.items.pickaxe, 0, 'exactly one pickaxe consumed at the swing');
+  assert.equal(s.mine.digs, 0, 'the dig is not counted until the haul comes up');
+
+  // The seam takes time now, so nothing has been found until it is worked.
+  assert.equal(mine.collectDig(Date.now()), false, 'a seam still being worked must not pay out');
+  const active = mine.activeDig();
+  assert.ok(active, 'the dig should be in progress');
+  const result = mine.collectDig(active.readyAt);
+  assert.ok(result, 'the haul must come up once the seam is worked');
   assert.ok(storage.used('barn') <= storage.capacity('barn'), 'never past the barn cap');
   if (result.item) {
     assert.ok(result.qty >= 1, 'the freed slot always holds one unit of ore');
@@ -708,6 +716,14 @@ test('mine.dig into a full barn consumes one pickaxe, keeps the ore as coins, an
   assert.equal(s.mine.digs, 1);
   assert.equal(s.stats.mineDigs, 1);
   assert.equal(mine.dig('pickaxe'), null, 'no pickaxe, no dig');
+});
+
+test('only one seam is worked at a time', () => {
+  const s = freshState();
+  s.barn.items.pickaxe = 2;
+  assert.ok(mine.dig('pickaxe'), 'the first dig starts');
+  assert.equal(mine.dig('pickaxe'), null, 'a second dig must be refused while one is in progress');
+  assert.equal(s.barn.items.pickaxe, 1, 'the refused dig must not eat a second pickaxe');
 });
 
 test('isWorkshopCraft names every Building Workshop output and nothing else', () => {

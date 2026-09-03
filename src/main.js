@@ -23,6 +23,8 @@ import * as trains from './trains.js';
 import * as zoo from './zoo.js';
 import * as extras from './extras.js';
 import * as foraging from './foraging.js';
+import * as mine from './mine.js';
+import * as fishing from './fishing.js';
 import * as placement from './placement.js';
 import * as lab from './lab.js';
 import * as helicopter from './helicopter.js';
@@ -303,7 +305,9 @@ function buildWorld() {
 function tickAllSystems(now) {
   safeCall(production.tick, now);
   safeCall(orders.tickTruck, now);
-  safeCall(orders.tickDeliveries, now);   // trucks on the road arrive even with every panel shut
+  safeCall(orders.tickDeliveries, now);   // trucks and boats arrive even with every panel shut
+  safeCall(mine.tick, now);              // a seam finishes with the mine panel shut
+  safeCall(fishing.tick, now);           // so does a chest on the bench
   safeCall(boat.tick, now);
   safeCall(shop.tick, now);
   safeCall(trains.tick, now);

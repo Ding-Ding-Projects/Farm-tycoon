@@ -89,6 +89,47 @@ function rollChestLoot() {
   return FISHING.chestLoot[FISHING.chestLoot.length - 1];
 }
 
+/**
+ * Reel in a chest: it comes up locked.
+ *
+ * The loot is rolled here, at the moment it breaks the surface, and held on the chest until it
+ * is worked open - so reloading a save cannot re-roll a disappointing chest, and what the player
+ * eventually opens is what they actually caught.
+ */
+function haulChest() {
+  const fishing = ensureFishingState();
+  const entry = rollChestLoot();
+  const loot = {};
+  if (entry.coins) loot.coins = randomBetween(entry.coins);
+  if (entry.diamonds) loot.diamonds = randomBetween(entry.diamonds);
+  if (entry.item) { loot.item = entry.item; loot.qty = randomBetween(entry.qty); }
+  if (entry.material) { loot.material = entry.material; loot.qty = randomBetween(entry.qty); }
+  const now = Date.now();
+  fishing.chest = {
+    loot,
+    hauledAt: now,
+    readyAt: now + FISHING.chestOpenTime * 1000,
+    ready: false,
+  };
+  return fishing.chest;
+}
+
+function randomBetween(range) {
+  const [min, max] = range;
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+/** The chest currently being worked open, or null. */
+export function pendingChest() {
+  return ensureFishingState().chest || null;
+}
+
+/** Mark a chest ready once its time is up. Called from the game loop. */
+export function tick(now = Date.now()) {
+  const fishing = ensureFishingState();
+  if (fishing.chest && !fishing.chest.ready && now >= fishing.chest.readyAt) fishing.chest.ready = true;
+}
+
 /** Resolve the reel minigame: accuracy 0..1 from the timing bar. Returns {item, qty} or {chest}. */
 export function reel(accuracy) {
   const fishing = ensureFishingState();
@@ -101,8 +142,11 @@ export function reel(accuracy) {
   fishing.cast = null; // the cast is consumed regardless of outcome
   const clampedAccuracy = Math.min(1, Math.max(0, accuracy));
 
-  if (Math.random() < FISHING.chestChance) {
-    return { chest: true };
+  // A chest already on the bench is never overwritten by a second one - that would silently
+  // destroy loot the player had already been shown and was waiting on.
+  if (!fishing.chest && Math.random() < FISHING.chestChance) {
+    const chest = haulChest();
+    return { chest: true, readyAt: chest.readyAt, seconds: FISHING.chestOpenTime };
   }
 
   const speciesId = pickSpecies();
@@ -120,39 +164,30 @@ export function reel(accuracy) {
   return { item: speciesId, qty: given, paidOut };
 }
 
-/** Open a treasure chest: rolls FISHING.chestLoot. */
-export function openChest() {
-  const entry = rollChestLoot();
-  const result = {};
+/**
+ * Open a chest that has finished being worked open. Pays whatever was rolled when it surfaced -
+ * never a fresh roll, so the wait cannot turn a good chest into a bad one.
+ */
+export function openChest(now = Date.now()) {
+  const fishing = ensureFishingState();
+  const chest = fishing.chest;
+  if (!chest) return null;
+  if (now < chest.readyAt) return false;
 
-  if (entry.coins) {
-    const [min, max] = entry.coins;
-    const amount = min + Math.floor(Math.random() * (max - min + 1));
-    economy.addCoins(amount);
-    result.coins = amount;
+  const loot = chest.loot || {};
+  const result = {};
+  if (loot.coins) { economy.addCoins(loot.coins); result.coins = loot.coins; }
+  if (loot.diamonds) { state.diamonds += loot.diamonds; result.diamonds = loot.diamonds; }
+  if (loot.item) {
+    const { given, paidOut } = storage.addOrPay(loot.item, loot.qty);   // never lost to a full barn
+    result.item = loot.item; result.qty = given; result.paidOut = paidOut;
   }
-  if (entry.diamonds) {
-    const [min, max] = entry.diamonds;
-    const amount = min + Math.floor(Math.random() * (max - min + 1));
-    state.diamonds += amount;
-    result.diamonds = amount;
+  if (loot.material) {
+    const { given, paidOut } = storage.addOrPay(loot.material, loot.qty);
+    result.material = loot.material; result.qty = given; result.paidOut = paidOut;
   }
-  if (entry.item) {
-    const [min, max] = entry.qty;
-    const qty = min + Math.floor(Math.random() * (max - min + 1));
-    const { given, paidOut } = storage.addOrPay(entry.item, qty);   // never lost to a full barn
-    result.item = entry.item;
-    result.qty = given;
-    result.paidOut = paidOut;
-  }
-  if (entry.material) {
-    const [min, max] = entry.qty;
-    const qty = min + Math.floor(Math.random() * (max - min + 1));
-    const { given, paidOut } = storage.addOrPay(entry.material, qty);
-    result.material = entry.material;
-    result.qty = given;
-    result.paidOut = paidOut;
-  }
+
+  fishing.chest = null;
   economy.trackStat('chestsOpened', 1);
   return result;
 }

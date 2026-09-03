@@ -421,7 +421,11 @@ test('fishing: rarity weights hold over many rolls (chest excluded), and chest l
     const result = fishing.reel(0.5);
     if (result.chest) {
       counts.chest++;
-      const loot = fishing.openChest();
+      // A chest comes up locked now: it has to be worked open before it pays.
+      const pending = fishing.pendingChest();
+      assert.ok(pending, 'reeling a chest must put one on the bench');
+      assert.equal(fishing.openChest(Date.now()), false, 'a locked chest must not pay early');
+      const loot = fishing.openChest(pending.readyAt);
       const validKeys = ['coins', 'diamonds', 'item', 'material'];
       assert.ok(Object.keys(loot).some((k) => validKeys.includes(k)), 'chest loot must resolve to a real reward');
       if (loot.item) assert.ok(GOODS[loot.item] || loot.item === 'pickaxe' || loot.item === 'dynamite');
@@ -436,15 +440,29 @@ test('fishing: rarity weights hold over many rolls (chest excluded), and chest l
   assert.ok(counts.fish > 0 && counts.chest > 0, 'both fish and chest outcomes must occur');
 });
 
-test('fishing: openChest never exceeds barn capacity for item/material rewards', () => {
+test('fishing: a chest opened into a full barn clamps to 0 rather than overflowing', () => {
   setState(freshState(FISHING.unlockLevel, {}));
-  state.barn.capacity = 0; // no room at all
-  let sawZeroQty = false;
-  for (let i = 0; i < 50; i++) {
-    const loot = fishing.openChest();
-    if (loot.qty === 0) sawZeroQty = true;
+  state.barn.capacity = 20;
+  // Reel until a chest carrying an item/material surfaces. The barn has room at this point -
+  // it has to, or reel() correctly refuses to spend the cast at all.
+  let pending = null;
+  for (let i = 0; i < 800 && !pending; i++) {
+    state.barn.items = {};   // keep room in the barn, or reel() correctly refuses the cast
+    assert.ok(fishing.cast());
+    state.fishing.cast.readyAt = Date.now() - 1;
+    const result = fishing.reel(0.5);
+    const chest = fishing.pendingChest();
+    if (result && result.chest && chest && (chest.loot.item || chest.loot.material)) pending = chest;
+    else if (chest) fishing.openChest(chest.readyAt);   // clear a coins/diamonds chest and carry on
   }
-  assert.ok(sawZeroQty, 'with zero barn room, item/material rewards must clamp to 0 rather than overflow');
+  assert.ok(pending, 'expected an item or material chest within 800 reels');
+
+  // Now fill the barn while the chest is being worked open. This is the real case: the room the
+  // reel checked is not the room the chest opens into.
+  state.barn.items = { pickaxe: state.barn.capacity };
+  const loot = fishing.openChest(pending.readyAt);
+  assert.ok(loot, 'a worked-open chest must still resolve');
+  assert.equal(loot.qty, 0, 'with no barn room, item/material rewards must clamp to 0 rather than overflow');
 });
 
 // -------------------------------------------------------------------------------------------

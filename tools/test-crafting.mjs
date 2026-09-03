@@ -173,12 +173,20 @@ test('pendingBonus returns a zeroed effect (never null) when nothing is pending'
 // mine.js
 // ---------------------------------------------------------------------------
 
+// One seam is worked at a time now, so a statistical sweep has to bring each haul up before
+// swinging again. This helper is the whole difference between the old loops and these.
+function digAndCollect(depthId, tool) {
+  const started = mine.digAt(depthId, tool);
+  if (!started) return null;
+  return mine.collectDig(started.readyAt);
+}
+
 test('the surface seam (depth 1) never drops an artifact', () => {
   const s = freshState();
   s.level = 90;
   s.barn.items.pickaxe = 500;
   for (let i = 0; i < 500; i++) {
-    const result = mine.digAt('mine_depth_1', 'pickaxe');
+    const result = digAndCollect('mine_depth_1', 'pickaxe');
     assert.ok(result);
     assert.equal(result.artifact, null, 'the surface seam has artifactChance 0');
   }
@@ -191,8 +199,8 @@ test('a deeper depth can drop an artifact (statistically, over many digs)', () =
   s.barn.items.pickaxe = 4000;
   let sawArtifact = false;
   for (let i = 0; i < 4000 && !sawArtifact; i++) {
-    const result = mine.digAt('mine_depth_5', 'pickaxe');
-    if (result.artifact) sawArtifact = true;
+    const result = digAndCollect('mine_depth_5', 'pickaxe');
+    if (result && result.artifact) sawArtifact = true;
   }
   assert.equal(sawArtifact, true, 'depth 5 has a 15% artifact chance — 4000 digs must surface at least one');
 });
@@ -208,10 +216,22 @@ test('digging without a tool held does nothing', () => {
 test('digging consumes exactly one tool per dig', () => {
   const s = freshState();
   s.barn.items.pickaxe = 3;
-  mine.dig('pickaxe');
+  digAndCollect('mine_depth_1', 'pickaxe');
   assert.equal(s.barn.items.pickaxe, 2);
-  mine.dig('pickaxe');
+  digAndCollect('mine_depth_1', 'pickaxe');
   assert.equal(s.barn.items.pickaxe, 1);
+});
+
+test('a dig takes its depth’s own time, and deeper is slower', () => {
+  const s = freshState();
+  s.level = 90;
+  s.mine.depthUnlocked.push('mine_depth_5');
+  s.barn.items.pickaxe = 2;
+  const shallow = mine.digAt('mine_depth_1', 'pickaxe');
+  assert.equal(shallow.seconds, MINE.depths[0].digTime, 'the surface seam uses its own digTime');
+  mine.collectDig(shallow.readyAt);
+  const deep = mine.digAt('mine_depth_5', 'pickaxe');
+  assert.ok(deep.seconds > shallow.seconds, 'the deep must take longer than the surface seam');
 });
 
 // ---------------------------------------------------------------------------

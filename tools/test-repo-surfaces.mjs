@@ -232,5 +232,54 @@ test('every vessel shares one delivery list, one clock and one collection path',
     'collectDelivery ignores vouchers, so a docked boat would pay nothing for them');
 });
 
+test('a dig is worked, not instant: the tool goes in and the haul comes up later', () => {
+  const src = readFileSync(abs('src/mine.js'), 'utf8');
+  const digAt = src.slice(src.indexOf('export function digAt('), src.indexOf('export function collectDig('));
+  assert(digAt.length > 100, 'could not isolate digAt - the guard needs updating');
+  assert(!digAt.includes('storage.addOrPay'),
+    'digAt puts ore in the barn on the spot; the haul must come up when the seam is worked');
+  assert(!digAt.includes('museum.addArtifact'),
+    'digAt hands the artifact over on the spot; it must come up with the haul');
+  assert(digAt.includes('readyAt'), 'digAt does not start a timed dig');
+  // Rolled at the swing, not at collection: otherwise a reload re-rolls a bad haul.
+  assert(digAt.includes('weightedPick'), 'digAt no longer rolls the haul at the swing');
+  const collect = src.slice(src.indexOf('export function collectDig('));
+  assert(collect.includes('storage.addOrPay') && collect.includes('museum.addArtifact'),
+    'collectDig does not actually deliver the haul');
+  const main = readFileSync(abs('src/main.js'), 'utf8');
+  assert(main.includes('mine.tick'), 'main.js never ticks the mine, so a seam finishes only while its panel is open');
+});
+
+test('a chest comes up locked, and what is inside was decided when it surfaced', () => {
+  const src = readFileSync(abs('src/fishing.js'), 'utf8');
+  const haul = src.slice(src.indexOf('function haulChest('), src.indexOf('export function pendingChest('));
+  assert(haul.length > 100, 'could not isolate haulChest - the guard needs updating');
+  assert(haul.includes('readyAt'), 'a chest is handed over unlocked, with no time to work it open');
+  assert(haul.includes('loot'), 'the loot is not rolled and held when the chest surfaces');
+  const open = src.slice(src.indexOf('export function openChest('));
+  assert(!open.includes('rollChestLoot'),
+    'openChest rolls fresh loot, so the wait could turn a good chest into a bad one');
+  assert(open.includes('chest.loot') || open.includes('chest.loot || {}'),
+    'openChest does not pay the loot the chest actually surfaced with');
+  const main = readFileSync(abs('src/main.js'), 'utf8');
+  assert(main.includes('fishing.tick'), 'main.js never ticks fishing, so a chest opens only while its panel is open');
+});
+
+test('every yield in the game is waited for - nothing hands goods over on the spot', () => {
+  // The hand-written list is the point: a rule-shaped check would pass on a module that had
+  // quietly grown a new instant payout, because it would never have looked for one.
+  const WAITS = [
+    ['src/shop.js', 'readyAt', 'the roadside stand'],
+    ['src/orders.js', 'arrivesAt', 'the order board and the truck bay'],
+    ['src/boat.js', 'addDelivery', 'the boat dock'],
+    ['src/mine.js', 'readyAt', 'the mine'],
+    ['src/fishing.js', 'readyAt', 'fishing'],
+  ];
+  for (const [file, needle, what] of WAITS) {
+    const src = readFileSync(abs(file), 'utf8');
+    assert(src.includes(needle), `${what} (${file}) no longer makes the player wait for its yield`);
+  }
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

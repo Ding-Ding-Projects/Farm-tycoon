@@ -1445,6 +1445,9 @@ export function qualityTier(score) {
 export const FISHING = {
   unlockLevel: 12,
   castTime: 20, // seconds until the catch window
+  // A chest comes up locked and rusted. chestOpenTime is how long it takes to work open, in
+  // seconds - the fish itself is yours the moment you reel it, but treasure makes you wait.
+  chestOpenTime: 240,
   species: ['fish_perch', 'fish_trout', 'fish_carp', 'fish_bass', 'fish_pike', 'fish_catfish', 'fish_salmon', 'fish_golden', 'fish_sturgeon', 'fish_zander', 'fish_huchen', 'fish_arctic', 'fish_barb', 'fish_moonfish'],
   rarityWeights: { common: 60, uncommon: 30, rare: 10 },
   chestChance: 0.08, // treasure chest instead of a fish
@@ -1471,35 +1474,38 @@ export const FISHING = {
  * validator asserts the identity so the alias cannot silently drift from what it aliases.
  */
 export const MINE = {
+  // digTime is how long the seam takes to work, in seconds. Deeper is slower: the Surface Seam
+  // is a minute and a half, The Deep is ten minutes. A dig is no longer instant - the tool goes
+  // in, the haul comes up later - so the depth ladder now costs patience as well as materials.
   unlockLevel: 24,
   depths: [
-    { id: 'mine_depth_1', name: 'Surface Seam', unlockLevel: 24, requires: null, artifactChance: 0,
+    { id: 'mine_depth_1', digTime: 90, name: 'Surface Seam', unlockLevel: 24, requires: null, artifactChance: 0,
       tools: {
       pickaxe:  { yields: [{ item: 'ore_silver', qty: [1, 2], weight: 60 }, { item: 'ore_gold', qty: [1, 1], weight: 30 }, { item: 'ore_platinum', qty: [1, 1], weight: 9 }, { item: 'gem', qty: [1, 1], weight: 1 }] },
       dynamite: { yields: [{ item: 'ore_silver', qty: [2, 4], weight: 40 }, { item: 'ore_gold', qty: [1, 3], weight: 35 }, { item: 'ore_platinum', qty: [1, 2], weight: 20 }, { item: 'gem', qty: [1, 1], weight: 5 }] },
     }, },
-    { id: 'mine_depth_2', name: 'Iron Gallery', unlockLevel: 56,
+    { id: 'mine_depth_2', digTime: 180, name: 'Iron Gallery', unlockLevel: 56,
       requires: { coins: 60000, materials: { rope: 5, timber: 4 } }, artifactChance: 0.06,
       artifactPool: ['clay_shard', 'flint_blade'],
       tools: {
         pickaxe:  { yields: [{ item: 'ore_silver', qty: [2, 4], weight: 45 }, { item: 'ore_gold', qty: [1, 2], weight: 35 }, { item: 'gem', qty: [1, 1], weight: 20 }] },
         dynamite: { yields: [{ item: 'ore_gold', qty: [2, 4], weight: 50 }, { item: 'ore_platinum', qty: [1, 2], weight: 30 }, { item: 'gem', qty: [1, 1], weight: 20 }] },
       } },
-    { id: 'mine_depth_3', name: 'Crystal Vault', unlockLevel: 68,
+    { id: 'mine_depth_3', digTime: 300, name: 'Crystal Vault', unlockLevel: 68,
       requires: { coins: 140000, materials: { jackhammer: 3, timber: 8 } }, artifactChance: 0.09,
       artifactPool: ['quartz_cluster', 'bronze_coin'],
       tools: {
         pickaxe:  { yields: [{ item: 'ore_gold', qty: [2, 5], weight: 40 }, { item: 'ore_platinum', qty: [1, 3], weight: 35 }, { item: 'gem', qty: [1, 2], weight: 25 }] },
         dynamite: { yields: [{ item: 'ore_platinum', qty: [2, 4], weight: 45 }, { item: 'gem', qty: [1, 3], weight: 35 }, { item: 'ore_gold', qty: [2, 4], weight: 20 }] },
       } },
-    { id: 'mine_depth_4', name: 'Fossil Bed', unlockLevel: 79,
+    { id: 'mine_depth_4', digTime: 420, name: 'Fossil Bed', unlockLevel: 79,
       requires: { coins: 300000, materials: { drill: 4, cement: 10 } }, artifactChance: 0.12,
       artifactPool: ['ammonite', 'silver_denarius'],
       tools: {
         pickaxe:  { yields: [{ item: 'ore_platinum', qty: [2, 4], weight: 40 }, { item: 'gem', qty: [1, 3], weight: 40 }, { item: 'ore_gold', qty: [3, 6], weight: 20 }] },
         dynamite: { yields: [{ item: 'gem', qty: [2, 4], weight: 50 }, { item: 'ore_platinum', qty: [3, 5], weight: 35 }, { item: 'ore_gold', qty: [3, 6], weight: 15 }] },
       } },
-    { id: 'mine_depth_5', name: 'The Deep', unlockLevel: 90,
+    { id: 'mine_depth_5', digTime: 600, name: 'The Deep', unlockLevel: 90,
       requires: { coins: 600000, materials: { jackhammer: 6, drill: 6, electric_saw: 4 } }, artifactChance: 0.15,
       artifactPool: ['star_sapphire', 'raptor_claw', 'pearl_casket'],
       tools: {

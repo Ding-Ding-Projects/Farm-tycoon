@@ -896,8 +896,37 @@ function reelAt(elapsedMs) {
   return { pos, accuracy: 1 - Math.abs(pos - 0.5) * 2 };
 }
 
+/** A hauled-up chest being worked open, if there is one. Its loot was rolled when it surfaced. */
+function renderPendingChest(container, now) {
+  const chest = fishing.pendingChest();
+  if (!chest) return;
+  const card = document.createElement('div');
+  card.className = 'order-card';
+  card.innerHTML = '<strong>🧰 Locked chest</strong>';
+  if (now >= chest.readyAt) {
+    card.appendChild(button('Open it', () => {
+      const loot = fishing.openChest();
+      if (!loot) { audio.error(); toast('It is still rusted shut.', 'error'); return; }
+      const parts = [];
+      if (loot.coins) parts.push(`🪙${loot.coins}`);
+      if (loot.diamonds) parts.push(`💎${loot.diamonds}`);
+      if (loot.item) parts.push(`${itemIcon(loot.item)} x${loot.qty}`);
+      if (loot.material) parts.push(`${itemIcon(loot.material)} x${loot.qty}`);
+      audio.coin();
+      toast(`Treasure chest: ${parts.join(', ') || 'nothing this time'}!`, 'success');
+      save();
+      refreshPanel();
+    }));
+  } else {
+    card.appendChild(hintEl(`Working it open… ${fmtDuration(chest.readyAt - now)}`));
+  }
+  container.appendChild(card);
+}
+
 function renderFishing(container) {
   const now = Date.now();
+  fishing.tick(now);
+  renderPendingChest(container, now);
   const cast = state.fishing.cast;
 
   if (!cast) {
@@ -947,14 +976,10 @@ function renderFishing(container) {
     const result = fishing.reel(accuracy);
     if (!result) { audio.error(); toast('Barn is full — make room before you reel in.', 'error'); refreshPanel(); return; }
     if (result.chest) {
-      const loot = fishing.openChest();
-      const parts = [];
-      if (loot.coins) parts.push(`🪙${loot.coins}`);
-      if (loot.diamonds) parts.push(`💎${loot.diamonds}`);
-      if (loot.item) parts.push(`${itemIcon(loot.item)} x${loot.qty}`);
-      if (loot.material) parts.push(`${itemIcon(loot.material)} x${loot.qty}`);
+      // The chest comes up locked and rusted. What is in it was decided the moment it broke
+      // the surface; working it open is the wait.
       audio.coin();
-      toast(`Treasure chest: ${parts.join(', ') || 'nothing this time'}!`, 'success');
+      toast(`A locked chest! It takes about ${fmtDuration((result.seconds || 0) * 1000)} to work open.`, 'success');
     } else if (result.qty > 0) {
       audio.fishSplash();
       toast(`Caught a ${itemName(result.item)}!`, 'success');
@@ -978,32 +1003,55 @@ function renderFishing(container) {
 // The mine (mine.js) — tiered depths, dig with a pickaxe or dynamite.
 // ---------------------------------------------------------------------------
 function renderMine(container) {
+  const now = Date.now();
+  mine.tick(now);
   const tools = mine.availableTools();
   container.appendChild(hintEl(`Tools in the barn: ${itemIcon('pickaxe')} x${tools.pickaxe}   ${itemIcon('dynamite')} x${tools.dynamite}`));
 
   const cur = mine.currentDepth();
   container.appendChild(hintEl(`Currently digging: ${cur?.name || '—'}`));
 
-  const digRow = row('');
-  digRow.appendChild(button(`Dig with ${itemIcon('pickaxe')} Pickaxe`, () => {
-    const result = mine.digAt(state.mine.currentDepth, 'pickaxe');
-    if (result) {
-      audio.harvest();
-      const line = result.item ? `${itemIcon(result.item)} x${result.qty}` : 'nothing this time';
-      toast(`Found ${line}${result.artifact ? ' + an artifact!' : ''}`, 'success');
-      refreshPanel();
-    } else { audio.error(); toast('No pickaxe in the barn.', 'error'); }
-  }, { disabled: tools.pickaxe <= 0 }));
-  digRow.appendChild(button(`Dig with ${itemIcon('dynamite')} Dynamite`, () => {
-    const result = mine.digAt(state.mine.currentDepth, 'dynamite');
-    if (result) {
-      audio.harvest();
-      const line = result.item ? `${itemIcon(result.item)} x${result.qty}` : 'nothing this time';
-      toast(`Found ${line}${result.artifact ? ' + an artifact!' : ''}`, 'success');
-      refreshPanel();
-    } else { audio.error(); toast('No dynamite in the barn.', 'error'); }
-  }, { disabled: tools.dynamite <= 0 }));
-  container.appendChild(digRow);
+  // A dig in progress replaces the dig buttons entirely: one seam is worked at a time, and a
+  // disabled pair of buttons with no explanation reads as broken rather than as busy.
+  const active = mine.activeDig();
+  if (active) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    card.innerHTML = `<strong>⛏️ Working the ${mine.depths().find((d) => d.id === active.depthId)?.name || 'seam'}</strong>`;
+    if (now >= active.readyAt) {
+      card.appendChild(button('Bring the haul up', () => {
+        const result = mine.collectDig();
+        if (result) {
+          audio.harvest();
+          const line = result.item ? `${itemIcon(result.item)} x${result.qty}` : 'nothing this time';
+          toast(`Brought up ${line}${result.artifact ? ' + an artifact!' : ''}`, 'success');
+          save();
+          refreshPanel();
+        } else { audio.error(); toast('The seam is still being worked.', 'error'); }
+      }));
+    } else {
+      card.appendChild(hintEl(`The haul comes up in ${fmtDuration(active.readyAt - now)}…`));
+    }
+    container.appendChild(card);
+  } else {
+    const digTime = fmtDuration((cur?.digTime || 0) * 1000);
+    container.appendChild(hintEl(`A dig here takes about ${digTime}.`));
+    const digRow = row('');
+    const startDig = (tool) => {
+      const result = mine.digAt(state.mine.currentDepth, tool);
+      if (result) {
+        audio.place();
+        toast(`Digging — the haul comes up in about ${fmtDuration(result.seconds * 1000)}.`, 'info');
+        save();
+        refreshPanel();
+      } else { audio.error(); toast(`No ${tool} in the barn.`, 'error'); }
+    };
+    digRow.appendChild(button(`Dig with ${itemIcon('pickaxe')} Pickaxe`, () => startDig('pickaxe'),
+      { disabled: tools.pickaxe <= 0 }));
+    digRow.appendChild(button(`Dig with ${itemIcon('dynamite')} Dynamite`, () => startDig('dynamite'),
+      { disabled: tools.dynamite <= 0 }));
+    container.appendChild(digRow);
+  }
 
   container.appendChild(hintEl('Depths:'));
   const grid = slotGrid();

@@ -56,3 +56,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `d5d357bd3956` | Steamed Pearl Chicken · 珍珠雞 | `pearl-chicken` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0048-pearl-chicken.png |
 | 0.1.0 | `4f6ae4b0f446` | Mini Glutinous Rice Chicken · 糯米雞 | `mini-lotus-leaf-rice` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0049-mini-lotus-leaf-rice.png |
 | 0.1.0 | `2ea8f3257fa3` | Pork Belly with Preserved Mustard Greens · 梅菜扣肉 | `mustard-green-pork-belly` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0050-mustard-green-pork-belly.png |
+| 0.1.0 | `17d205ee910f` | Classic Char Siu Bao · 叉燒包 | `classic-char-siu-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0051-classic-char-siu-bao.png |

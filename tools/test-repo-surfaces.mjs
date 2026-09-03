@@ -185,5 +185,22 @@ test('the order card states the drive before the player commits to it', () => {
     'the order button no longer says what it does - it dispatches a truck, it does not pay');
 });
 
+test('loading a truck bundle does not pay for it either', () => {
+  const src = readFileSync(abs('src/orders.js'), 'utf8');
+  const fn = src.slice(src.indexOf('export function fillTruckBundle('),
+                       src.indexOf('function dispatchTruck('));
+  assert(fn.length > 100, 'could not isolate fillTruckBundle - the guard needs updating');
+  assert(!fn.includes('addCoins'),
+    'fillTruckBundle pays coins per bundle; the whole load must be paid on the truck return');
+  assert(!fn.includes('addXp'),
+    'fillTruckBundle awards XP per bundle; the whole load must be paid on the truck return');
+  const dispatch = src.slice(src.indexOf('function dispatchTruck('));
+  assert(!dispatch.slice(0, dispatch.indexOf('\n}')).includes('addCoins'),
+    'dispatchTruck pays at the bay; the payout must ride with the delivery instead');
+  assert(dispatch.includes('arrivesAt'), 'dispatchTruck does not put the load on the road');
+  assert(dispatch.includes('bonusMultiplier'),
+    'the completion bonus is no longer carried by the departing truck');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

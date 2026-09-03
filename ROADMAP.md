@@ -162,6 +162,11 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
       instant, with the delivery truck parked outside doing nothing. Loading an order now
       dispatches a delivery; the coins and XP arrive when the truck does. Drive time scales with
       the size of the load and is capped.
+- [x] **The Truck Bay travels too.** It was the last place in the game where handing goods over
+      paid instantly - per bundle, so the truck "departed" with nothing left to wait for. The
+      bundles are cargo now: a full load sets off on the same road as the order board and the
+      whole payment, bundle payouts plus the completion bonus, arrives with it. An uncollected
+      load never blocks the next truck.
 
 - [x] **The tutorial can be moved through.** Ten of its twelve steps waited on a game event with
       no way past, and the other two advanced only if you clicked the bubble, with nothing saying

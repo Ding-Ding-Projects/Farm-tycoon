@@ -625,9 +625,12 @@ function renderOrders(container) {
   }
 }
 
-/** Loads already on the road, and the ones that have arrived and are waiting to be collected. */
-function renderDeliveries(container) {
-  const list = orders.deliveries();
+/**
+ * Loads already on the road, and the ones that have arrived and are waiting to be collected.
+ * `filter` narrows it to the loads a particular bay sent; the order board shows everything.
+ */
+function renderDeliveries(container, filter = null) {
+  const list = filter ? orders.deliveries().filter(filter) : orders.deliveries();
   if (!list.length) return;
   container.appendChild(hintEl(`On the road (${list.length}):`));
   for (const d of list) {
@@ -657,13 +660,22 @@ function renderDeliveries(container) {
 
 function renderTruck(container) {
   orders.tickTruck(Date.now());
+  orders.tickDeliveries(Date.now());
+  // Loads this bay sent out are on the shared road with the order board's, so show them here
+  // too - a player who loaded a truck and came back should not have to guess where the money went.
+  renderDeliveries(container, (d) => d.kind === 'truck');
+
   const truck = state.orders.truck;
   if (!truck) { renderComingSoon(container, 'The truck'); return; }
 
   if (truck.departed) {
-    container.appendChild(hintEl(`The truck has departed. Next one in ${fmtDuration((truck.nextSpawnAt || 0) - Date.now())}.`));
+    container.appendChild(hintEl(`The truck is out on its round. Next one in ${fmtDuration((truck.nextSpawnAt || 0) - Date.now())}.`));
     return;
   }
+
+  const units = truck.bundles.reduce((sum, b) => sum + b.qty, 0);
+  container.appendChild(hintEl(
+    `Fill every bundle and the truck sets off — about ${fmtDuration(orders.deliveryTimeFor(units) * 1000)} on the road, paid on its return.`));
 
   const grid = slotGrid();
   truck.bundles.forEach((bundle, i) => {
@@ -673,10 +685,15 @@ function renderTruck(container) {
     if (bundle.filled) {
       card.appendChild(hintEl('Loaded ✅'));
     } else {
-      card.appendChild(button('Fill', () => {
+      card.appendChild(button('Load', () => {
         const ok = orders.fillTruckBundle(i);
-        if (ok) { audio.place(); toast('Bundle filled!', 'success'); refreshPanel(); }
-        else { audio.error(); toast('Not enough in storage.', 'error'); }
+        if (ok) {
+          audio.place();
+          const departed = state.orders.truck?.departed;
+          toast(departed ? 'Full load — the truck is away!' : 'Bundle loaded.', 'success');
+          save();
+          refreshPanel();
+        } else { audio.error(); toast('Not enough in storage.', 'error'); }
       }, { disabled: stockCount(bundle.itemId) < bundle.qty }));
     }
     grid.appendChild(card);

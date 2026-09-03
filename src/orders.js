@@ -278,7 +278,7 @@ export function tickTruck(now = Date.now()) {
   }
 }
 
-/** Fill one truck bundle. */
+/** Fill one truck bundle. Takes the goods and loads them; the truck pays when it gets back. */
 export function fillTruckBundle(index) {
   const truck = state.orders.truck;
   if (!truck || truck.departed) return false;
@@ -289,24 +289,59 @@ export function fillTruckBundle(index) {
   if ((bucket[bundle.itemId] || 0) < bundle.qty) return false;
   bucket[bundle.itemId] -= bundle.qty;
   bundle.filled = true;
-
-  const base = baseSellValue(bundle.itemId) * bundle.qty;
-  // Truck Bonanza (a weekend event) pays extra per bundle; research/perks raise every order.
-  const coinMult = ORDERS.board.payoutMultiplier * (eventEffect().truckCoinMult || 1) * economy.multiplier('orderPayoutMult', bundle.itemId);
-  economy.addCoins(Math.round(base * coinMult));
-  economy.addXp(Math.round(bundle.qty * ORDERS.board.xpMultiplier));
   economy.trackStat('truckBundles', 1);   // the name the Truck Bonanza event scores
 
   if (truck.bundles.length > 0 && truck.bundles.every((b) => b.filled)) {
-    const totalBase = truck.bundles.reduce((sum, b) => sum + baseSellValue(b.itemId) * b.qty, 0);
-    const bonusCoins = Math.round(totalBase * (ORDERS.truck.bonusMultiplier - 1));
-    if (bonusCoins > 0) economy.addCoins(bonusCoins);
-    economy.addXp(Math.round(truck.bundles.length * ORDERS.board.xpMultiplier));
-    economy.trackStat('trucksCompleted', 1);
-    const now = Date.now();
-    truck.departed = true;
-    // The co-op's Standing Orders perk (truckIntervalMult) brings the next truck sooner.
-    truck.nextSpawnAt = now + Math.round(ORDERS.truck.interval * 1000 * economy.multiplier('truckIntervalMult', 'truck'));
+    dispatchTruck(truck);
   }
   return true;
+}
+
+/**
+ * Send the loaded truck off, carrying its whole payout with it.
+ *
+ * The per-bundle money used to land the instant each bundle was packed, which made the truck
+ * itself decorative: it "departed" after the last bundle with nothing left to wait for. Now the
+ * bundles are cargo, the load goes onto the same road the order board's deliveries use, and the
+ * entire payment - bundle payouts plus the completion bonus - is collected on arrival.
+ *
+ * orderPayoutMult is deliberately NOT applied here. collectDelivery() applies it, so a research
+ * node or co-op perk that finishes while the truck is out still counts.
+ */
+function dispatchTruck(truck) {
+  const now = Date.now();
+  const eventMult = eventEffect().truckCoinMult || 1;
+  let coins = 0;
+  let xp = 0;
+  let units = 0;
+  for (const bundle of truck.bundles) {
+    const base = baseSellValue(bundle.itemId) * bundle.qty;
+    coins += Math.round(base * ORDERS.board.payoutMultiplier * eventMult);
+    xp += Math.round(bundle.qty * ORDERS.board.xpMultiplier);
+    units += bundle.qty;
+  }
+  const totalBase = truck.bundles.reduce((sum, b) => sum + baseSellValue(b.itemId) * b.qty, 0);
+  coins += Math.max(0, Math.round(totalBase * (ORDERS.truck.bonusMultiplier - 1)));
+  xp += Math.round(truck.bundles.length * ORDERS.board.xpMultiplier);
+  economy.trackStat('trucksCompleted', 1);
+
+  const seconds = deliveryTimeFor(units);
+  ensureDeliveries().push({
+    id: `del_truck_${now}`,
+    orderId: 'truck',
+    kind: 'truck',
+    items: truck.bundles.map((b) => ({ itemId: b.itemId, qty: b.qty })),
+    rewardCoins: coins,
+    rewardXp: xp,
+    dispatchedAt: now,
+    arrivesAt: now + seconds * 1000,
+    arrived: false,
+  });
+
+  truck.departed = true;
+  // The co-op's Standing Orders perk (truckIntervalMult) brings the next truck sooner. The next
+  // truck is NOT held up by an uncollected load: the delivery lives on the shared road, so the
+  // bay is free the moment this one leaves.
+  truck.nextSpawnAt = now + Math.round(ORDERS.truck.interval * 1000 * economy.multiplier('truckIntervalMult', 'truck'));
+  return seconds;
 }

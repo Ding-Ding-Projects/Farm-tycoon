@@ -59,6 +59,12 @@ function importState(s) {
   return importSave(JSON.stringify(s));
 }
 
+// orders.js keeps its own baseSellValue() private; mirror it here from the same tables so
+// the bonus assertion is computed independently rather than trusting the module under test.
+function baseSellValueFor(itemId) {
+  return CROPS[itemId]?.sellPrice ?? GOODS[itemId]?.sellPrice ?? 0;
+}
+
 function fillSilo(itemId, qty) { state.silo.items[itemId] = (state.silo.items[itemId] || 0) + qty; }
 function fillBarn(itemId, qty) { state.barn.items[itemId] = (state.barn.items[itemId] || 0) + qty; }
 
@@ -184,7 +190,7 @@ test('orders: discardOrder replaces the slot with a cooldown marker, no reward',
 // orders.js — truck, across a multi-day offline gap
 // -------------------------------------------------------------------------------------------
 
-test('orders: truck spawns, completes with a bonus, and respawns across a multi-day gap', () => {
+test('orders: a full truck departs with its whole payout and pays only when it gets back', () => {
   setState(freshState(30));
   const start = Date.now();
   orders.tickTruck(start);
@@ -194,15 +200,57 @@ test('orders: truck spawns, completes with a bonus, and respawns across a multi-
     if (CROPS[bundle.itemId]) fillSilo(bundle.itemId, bundle.qty); else fillBarn(bundle.itemId, bundle.qty);
   }
   const coinsBefore = state.coins;
-  truck.bundles.forEach((_, i) => assert.ok(orders.fillTruckBundle(i), `bundle ${i} should fill`));
-  assert.ok(state.coins > coinsBefore, 'completing every bundle must pay a bonus on top of per-bundle payout');
-  assert.ok(state.orders.truck.departed, 'truck should depart once every bundle is filled');
+  const xpBefore = state.xp;
+
+  // Loading takes the goods and pays nothing - not per bundle, and not on the last one either.
+  truck.bundles.forEach((_, i) => {
+    assert.ok(orders.fillTruckBundle(i), `bundle ${i} should load`);
+    assert.equal(state.coins, coinsBefore, `loading bundle ${i} must not pay on the spot`);
+  });
+  assert.equal(state.xp, xpBefore, 'loading must not award XP on the spot');
+  assert.ok(state.orders.truck.departed, 'the truck should set off once every bundle is loaded');
+
+  const load = orders.deliveries().find((d) => d.kind === 'truck');
+  assert.ok(load, 'the full truck must be on the road as a delivery');
+  const units = truck.bundles.reduce((sum, b) => sum + b.qty, 0);
+  assert.equal(Math.round((load.arrivesAt - load.dispatchedAt) / 1000), orders.deliveryTimeFor(units),
+    'the truck drives on the same road as the order board, by the same formula');
+
+  // The completion bonus rides along rather than being paid at the bay.
+  const bundleOnly = truck.bundles.reduce(
+    (sum, b) => sum + Math.round(baseSellValueFor(b.itemId) * b.qty * ORDERS.board.payoutMultiplier), 0);
+  assert.ok(load.rewardCoins > bundleOnly,
+    `expected the load to carry the completion bonus on top of ${bundleOnly}, got ${load.rewardCoins}`);
+
+  orders.tickDeliveries(load.arrivesAt);
+  const paid = orders.collectDelivery(load.id);
+  assert.ok(paid, 'an arrived truck must pay');
+  assert.equal(state.coins, coinsBefore + paid.coins, 'the whole payout arrives with the truck');
+  assert.ok(state.xp > xpBefore, 'XP arrives with the truck too');
 
   // Jump forward three days — the truck must resolve to a fresh one, not stay departed forever,
   // and must not spawn more than one at once regardless of how much time passed.
   const threeDaysLater = start + 3 * 24 * 60 * 60 * 1000;
   orders.tickTruck(threeDaysLater);
   assert.ok(state.orders.truck && !state.orders.truck.departed, 'a new truck should have spawned after the offline gap');
+});
+
+test('orders: an uncollected truck load never blocks the next truck', () => {
+  setState(freshState(30));
+  const start = Date.now();
+  orders.tickTruck(start);
+  const truck = state.orders.truck;
+  for (const bundle of truck.bundles) {
+    if (CROPS[bundle.itemId]) fillSilo(bundle.itemId, bundle.qty); else fillBarn(bundle.itemId, bundle.qty);
+  }
+  truck.bundles.forEach((_, i) => orders.fillTruckBundle(i));
+  assert.equal(orders.deliveries().length, 1, 'the load should be on the road');
+
+  // Deliberately do NOT collect. The bay is a bay, not a waiting room: the next truck arrives on
+  // its own schedule and the money stays owed on the road.
+  orders.tickTruck(start + ORDERS.truck.interval * 1000 + 1000);
+  assert.ok(state.orders.truck && !state.orders.truck.departed, 'a fresh truck should be waiting to load');
+  assert.equal(orders.deliveries().length, 1, 'the uncollected load must still be owed, not dropped');
 });
 
 test('orders: fillTruckBundle refuses without stock and never double-fills a bundle', () => {

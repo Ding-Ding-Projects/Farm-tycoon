@@ -58,3 +58,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `2ea8f3257fa3` | Pork Belly with Preserved Mustard Greens · 梅菜扣肉 | `mustard-green-pork-belly` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0050-mustard-green-pork-belly.png |
 | 0.1.0 | `17d205ee910f` | Classic Char Siu Bao · 叉燒包 | `classic-char-siu-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0051-classic-char-siu-bao.png |
 | 0.1.0 | `768094e96324` | Snowy Char Siu Bao · 雪山叉燒包 | `snowy-char-siu-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0052-snowy-char-siu-bao.png |
+| 0.1.0 | `63bc9328ad46` | Pineapple Char Siu Bao · 菠蘿叉燒包 | `pineapple-char-siu-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0053-pineapple-char-siu-bao.png |

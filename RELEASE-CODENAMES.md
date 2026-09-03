@@ -62,3 +62,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `c13360410a4e` | Steamed Chicken Bao · 雞包仔 | `steamed-chicken-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0054-steamed-chicken-bao.png |
 | 0.1.0 | `5e11e1ef2231` | Traditional Big Bun · 大包 | `traditional-big-bun` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0055-traditional-big-bun.png |
 | 0.1.0 | `1535fc991f69` | Lotus Seed Paste Bao · 蓮蓉包 | `lotus-seed-paste-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0056-lotus-seed-paste-bao.png |
+| 0.1.0 | `dd6c20843798` | Salted Egg Yolk Custard Bao · 流沙包 | `salted-egg-custard-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0057-salted-egg-custard-bao.png |

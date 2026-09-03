@@ -14,7 +14,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 
@@ -313,6 +313,19 @@ async function pickCodename({ version, sha, downloadDir, token }) {
   return { dish, error: null };
 }
 
+/** Content counts, from the generated module whose own guard keeps it in step with src/data.js.
+ *  Imported rather than text-parsed: the module exports more than one binding, so slicing between
+ *  the first and last brace picks up the wrong object. */
+async function loadDataCounts() {
+  try {
+    const url = pathToFileURL(path.join(REPO_ROOT, 'docs', 'content', 'data-counts.js')).href;
+    const mod = await import(url);
+    return mod.COUNTS ?? null;
+  } catch {
+    return null;   // a missing counts module softens the sentence; it never fails the release
+  }
+}
+
 function getLineCounts() {
   try {
     const out = execSync('node tools/count-lines.mjs --json', { cwd: REPO_ROOT, encoding: 'utf8' });
@@ -349,18 +362,25 @@ async function main() {
   lines.push(`**Commit:** \`${sha}\``);
   lines.push('');
 
-  lines.push('## ⚠️ Status: content-complete Phase A scaffold — not yet playable');
+  // The status paragraph used to be a hand-typed sentence claiming the game was an unplayable
+  // Phase A scaffold with a stub renderer, and it kept saying so on every release for months
+  // after Phase B landed - including numbers (14 crops, 50 levels) that were never true again.
+  // A false claim on a public release page is worse than no claim, so the counts now come from
+  // the generated COUNTS module, which its own guard keeps in step with src/data.js.
+  const counts = await loadDataCounts();
+  lines.push('## Status');
   lines.push('');
   lines.push(
-    'This release ships a **content-complete scaffold**, not a finished game. The data layer ' +
-      '(`src/data.js` — 14 crops, 7 animals, 15 buildings/52 recipes, 85 goods, the full event ' +
-      'and Township systems, 50 levels), its validator, the Squirrel.Windows packaging, the app ' +
-      'icon and the vendored fonts are all real and verified. Every other game module ' +
-      '(`economy`, `farm`, `production`, `orders`, `render`, `ui`, `input`, and the rest) is a ' +
-      'documented API **contract with stub bodies** — the renderer is not implemented. ' +
-      '**Installing this build gets you a placeholder splash screen, not a playable farm.** ' +
-      'Full implementation (Phase B) has not started yet; see `PLAN.md` and `CLAUDE.md` in the ' +
-      'repository for the design and the handoff state.'
+    'Farm Tycoon is playable. Every module has a real implementation - the canvas renderer, the ' +
+      'economy, production, orders, the Township layer and the rest - and the content tables are ' +
+      (counts
+        ? `complete: ${counts.crops} crops, ${counts.animals} animals, ${counts.buildings} ` +
+          `buildings across ${counts.recipes} recipes, ${counts.goods} goods and ${counts.maxLevel} levels. `
+        : 'complete. ') +
+      'What is NOT here: most of the shared cross-project surface contracts (the language modes, ' +
+      'the funny-level sliders, School mode, the narrator, the command palette, the toy locks and ' +
+      'the rest) are not implemented in this game yet. See `ROADMAP.md` and `HANDOFF.md` for the ' +
+      'current state rather than trusting this paragraph alone.'
   );
   lines.push('');
 

@@ -152,6 +152,73 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
 - [x] `npm test`: validator + economy audit + 19 suites, **771 passed, 0 failed**;
       `tools/test-render.mjs` is new.
 
+## Yum tong pass (2026-09-02)
+
+- [x] **The tutorial can be moved through.** Ten of its twelve steps waited on a game event with
+      no way past, and the other two advanced only if you clicked the bubble, with nothing saying
+      so. Every step now has a 44px Next, a Skip and a step counter.
+- [x] **The map drags.** `clampCamera` clamped the eased camera and never the pan target, so a
+      drag into an edge sent the target far outside the legal box while the camera stood still,
+      and dragging back did nothing until the target had walked home. `clampCameraTarget` clamps
+      it against the TARGET zoom, so a simultaneous pan-and-zoom still reaches where it legally can.
+- [x] **The silo and barn open from their HUD pills**, which show a number and previously refused
+      to open. Same panels, same Sell buttons, as the world structures.
+- [x] **The Download page is visible on the documentation site** - a filled button in the app bar
+      on every page, rather than the thirteenth item in a scrolling rail behind "More".
+- [x] **The dev server sends `no-store`.** `python3 -m http.server` let the browser cache ES
+      modules and produce a MIXED module graph, which surfaces as an import error naming an
+      export that is plainly in the file. Two verification passes were lost to it.
+- [x] **The release notes stopped lying.** Every release since Phase B landed claimed the game
+      was "not yet playable", a scaffold with "stub bodies" and a "placeholder splash screen",
+      and quoted content counts (14 crops, 50 levels) that were never true again. The status
+      paragraph is rewritten and its numbers now come from the generated counts module.
+- [x] **`build.bat`, `build-installer.bat` and `download-dependencies.bat`** at the repository
+      root, each with a `/s` silent mode, proven end to end on this machine.
+- [x] **`social-preview.png` at the repository root**, byte-identical to the docs site's
+      `og:image`, with a guard that fails when the two drift.
+
+- [ ] **Upload the social preview** - Settings -> General -> Social preview -> Upload an image,
+      pointing at `social-preview.png` at the repository root. It cannot be scripted: the REST
+      API does not expose it, so it stays open until the owner does it by hand.
+
+## Shared surface contracts this game does NOT implement
+
+Audited 2026-09-02 against the game and the documentation site, by grep and by reading, not from
+memory. These are absent rather than partial, and they are listed so the gap is a decision on
+record rather than an oversight the next person rediscovers:
+
+- [ ] Three language modes (English / Cantonese / bilingual) - settings shows a fixed
+      `Language: English`
+- [ ] Both funny-level sliders
+- [ ] The "show emojis in dialogs" toggle
+- [ ] School mode, its rename, and its unlock credential
+- [ ] The TTS narrator and its per-language voice pickers
+- [ ] Scheduled language / appearance settings
+- [ ] The dim sum startup surprise (the release *code names* use the catalog; the in-game
+      surprise does not exist)
+- [ ] A regex builder on every search bar - `src/panelsearch.js` has a regex toggle on one
+      search, with no builder
+- [ ] Notification history
+- [ ] Per-element appearance editing, the infinite colour picker and the font picker
+- [ ] Tabbed navigation with pinning, grouping and the four tab searches
+- [ ] The command palette on Ctrl+Shift+F
+- [ ] The two-key-plus-slider destructive confirmation (there is a single confirm dialog)
+- [ ] Local Git-backed version history
+- [ ] A changelog viewer with a date picker and commit links
+- [ ] External-editor handoff
+- [ ] Multi-format export and bulk actions (there is a single JSON save export)
+- [ ] Toy locks and Support Tickets
+- [ ] The unlock ladder
+- [ ] The built-in authenticator and QR TOTP registration
+- [ ] ADHD modes
+- [ ] The local personal-vocabulary JSON upload
+- [ ] App-logo customization
+- [ ] The universal file converter
+- [ ] The local Ollama suite manager
+- [ ] Status Hub registration and reporting
+- [ ] The browser-extension download-capture dialogs
+- [ ] Version and updated-at, with seconds and timezone, on the first screen before navigation
+
 ## Open items
 
 - [x] **Every control is at least 44x44.** A sweep of all 25 panels found 33 below it, and every

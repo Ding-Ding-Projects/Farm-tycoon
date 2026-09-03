@@ -1,7 +1,75 @@
 # Handoff
 
-State of the repository as of commit `a220e43` on `main` (the 2026-09-02 section is the newest; older sections are kept as written). Written to be read by whoever picks
+State of the repository as of commit `17d205e` on `main` (the 2026-09-02 section is the newest; older sections are kept as written). Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
+
+## Session of 2026-09-02 (later) — yum tong: five player-facing poke guys, then a release pass
+
+Started from five complaints about the running game and the documentation site, then ran the
+repository through a full close-out. Every figure below was read out of a real run, not recalled.
+
+**State: 783 assertions across 20 suites plus the validator, zero failures · the game boots with
+zero console errors · release `v0.1.0-build74+17d205ee910f` published from `17d205e` with a green
+CI verdict · the local Squirrel installer rebuilds to 119,464,960 bytes and reports `NotSigned`.**
+
+### The five complaints, and what each actually was
+
+1. **"Tutorial clunky and no next button."** True and worse than it sounded. Ten of the twelve
+   steps waited on a game event with no manual way past, and the other two advanced only if the
+   player happened to click the bubble itself, with nothing on screen saying so. Every step now
+   carries a 44px Next, a Skip and an `n/12` counter, and Next works on every step.
+2. **"Poke guys preventing it from progressing."** Same cause as (1) - the steps that looked
+   broken were the ones whose event the player could not find a way to fire.
+3. **"Can't drag the map."** `clampCamera` clamped the eased camera and never the pan target
+   that `input.js` writes. A drag into an edge kept pushing the target outside the legal box
+   while the camera stood still, so the next drag back did nothing until the target had walked
+   all the way home. Measured after the fix: eight drags into the east wall leave the target
+   pinned at exactly 18.083 (the clamp limit) and the very next reverse drag moves.
+   `clampCameraTarget` judges against the TARGET zoom - using the current one pins a
+   simultaneous pan-and-zoom to the wide view's tighter box, and 12 of 22 structures become
+   unreachable through the frame loop.
+4. **"Can't open silo or barn to sell."** The HUD pills showed a number and were `<div>`s. They
+   are buttons now and open the same panels, with the same Sell buttons, as the world structures.
+5. **"Download page not visible."** It existed; it was the thirteenth item in a scrolling rail
+   behind "More". It is a filled button in the documentation site's app bar on every page.
+
+### What else this pass changed
+
+- **`tools/serve.mjs` replaced `python3 -m http.server`.** That server sends no cache directives,
+  so the browser heuristically cached every ES module and served a MIXED module graph - new
+  modules linked against old ones. It surfaces as `The requested module './sprites.js' does not
+  provide an export named 'prand'` for an export sitting plainly in the file, and as
+  `economy.bonus is not a function` for a function that is right there. Two verification passes
+  went chasing that ghost. If either symptom returns, suspect the cache before the code.
+- **The release notes stopped lying.** Every release since Phase B landed described the game as
+  "not yet playable", a scaffold whose renderer "is not implemented", installing to a
+  "placeholder splash screen", with counts (14 crops, 7 animals, 50 levels) that were never true
+  again. The status paragraph is rewritten and its numbers are now loaded from the generated
+  `docs/content/data-counts.js`, whose own guard keeps it in step with `src/data.js`.
+- **`build.bat`, `build-installer.bat`, `download-dependencies.bat`** at the repository root,
+  each with `/s`. Proven end to end here: `build.bat /s` reports `771 passed, 0 failed` and exits
+  0; `build-installer.bat /s` packages in 32 s and asserts `NotSigned` on the result.
+- **`social-preview.png` at the root**, byte-identical to the docs `og:image`, guarded.
+- **`tools/test-repo-surfaces.mjs`** - a hand-written inventory, because a rule-shaped check
+  passes cleanly on a repository that has none of the files it checks. Watched red three times
+  (remove build.bat; drift the preview by one byte; reinstate the stale release claim) and green
+  again after each.
+
+### Deliberately not done, with the reason
+
+- **Vertical panning is about one tile at the boot zoom.** Raising `worldBounds`' `PAD` from 1
+  does widen it and genuinely improves structure reachability, but it breaks the fits-branch
+  guarantee that both diagonal bounds corners stay on screen - at `PAD = 2`, corner (8,8) lands
+  at screen y = -16. Five camera tests encode that contract deliberately. The whole world already
+  fits vertically at that zoom, so nothing is hidden; this is the framing guarantee working.
+  Treat a pad change as a design decision, not a poke-guy fix.
+- **The shared cross-project surface contracts are absent from this game.** Audited by grep and
+  by reading: the three language modes, both funny-level sliders, School mode, the narrator,
+  scheduled settings, the command palette, per-element appearance editing, toy locks and Support
+  Tickets, the unlock ladder, the authenticator, ADHD modes, the personal-vocabulary upload,
+  app-logo customization, the file converter, the Ollama manager, Status Hub reporting and the
+  browser-extension download surfaces. `ROADMAP.md` carries the full list. This is the honest
+  reason this close-out cannot claim a complete pass against those gates.
 
 ## Session of 2026-09-02 — bug hunt, realistic graphics, Hay Day drags
 

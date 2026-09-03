@@ -335,6 +335,25 @@ rule reshaped an earlier HUD dock design.)
 ## Getting started
 
 <details open>
+<summary><strong>One click, from a machine with nothing installed</strong></summary>
+
+```
+build.bat
+```
+
+It installs Node if the machine has none (user-scoped, through winget), runs `npm ci`, runs the
+whole test chain, and then offers to launch the game. `build-installer.bat` does the same and
+additionally packages the unsigned Squirrel.Windows installer, verifying afterwards that the
+setup executable exists, that `RELEASES` was produced, and that the signature status really is
+`NotSigned`. `download-dependencies.bat` is the dependency half on its own, though neither build
+script needs you to run it first - they call it themselves.
+
+Every one of them takes `/s` (or `--silent`) for an unattended run: no prompt, no launch offer,
+and a non-zero exit on the first real failure, so CI or a script can branch on it.
+
+</details>
+
+<details open>
 <summary><strong>Browser (recommended for all development)</strong></summary>
 
 ```

@@ -1,0 +1,109 @@
+/* test-repo-surfaces.mjs — the repository's own shipped surfaces, as a hand-written inventory.
+ *
+ * A rule-shaped check ("every .bat that exists is well-formed") passes cleanly on a repository
+ * that has no .bat files at all, which is exactly the state this file was written to catch. So
+ * the inventory below is written by hand: each entry names a file that MUST exist, and adding a
+ * new required surface means adding a row here, not hoping a glob notices.
+ */
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+let passed = 0, failed = 0;
+
+function test(name, fn) {
+  try { fn(); console.log(`  ok  - ${name}`); passed++; }
+  catch (e) { console.log(`FAIL  - ${name}\n        ${e.message}`); failed++; }
+}
+const abs = (p) => path.join(ROOT, p);
+function assert(cond, msg) { if (!cond) throw new Error(msg); }
+
+// ---------------------------------------------------------------------------------------------
+// One-click build scripts. A repository whose build script only works on a machine that already
+// has everything is a build script nobody has proven, and the first time it is needed is the
+// worst time to find out.
+// ---------------------------------------------------------------------------------------------
+const REQUIRED_SCRIPTS = [
+  { file: 'build.bat', mustMention: ['build.ps1', '/s'] },
+  { file: 'build-installer.bat', mustMention: ['build.ps1', '-Installer'] },
+  { file: 'download-dependencies.bat', mustMention: ['bootstrap.ps1'] },
+  { file: 'tools/build.ps1', mustMention: ['npm test', 'NotSigned', 'bootstrap.ps1'] },
+  { file: 'tools/bootstrap.ps1', mustMention: ['npm ci', 'electron'] },
+];
+
+for (const entry of REQUIRED_SCRIPTS) {
+  test(`${entry.file} exists and is a real script`, () => {
+    assert(existsSync(abs(entry.file)), `${entry.file} is missing from the repository root`);
+    const text = readFileSync(abs(entry.file), 'utf8');
+    assert(text.length > 200, `${entry.file} is too short to be doing the job it claims`);
+    for (const needle of entry.mustMention) {
+      assert(text.includes(needle), `${entry.file} never mentions ${needle}`);
+    }
+  });
+}
+
+test('every .bat accepts a silent mode, so CI and an agent can call it without blocking', () => {
+  for (const { file } of REQUIRED_SCRIPTS.filter((e) => e.file.endsWith('.bat'))) {
+    const text = readFileSync(abs(file), 'utf8');
+    assert(/\/s/i.test(text) && text.includes('--silent'), `${file} has no silent mode`);
+  }
+});
+
+test('build.ps1 judges npm by its exit code, not by whether it printed to stderr', () => {
+  // The suite deliberately prints "Error: boom" from a fixture. Under ErrorActionPreference
+  // 'Stop' that one line aborts a run that exited 0, so the preference must be relaxed around
+  // the native call and the exit code read explicitly.
+  const text = readFileSync(abs('tools/build.ps1'), 'utf8');
+  assert(/\$ErrorActionPreference\s*=\s*'Continue'/.test(text),
+    'build.ps1 never relaxes ErrorActionPreference around its native npm calls');
+  assert(text.includes('$testExit'), 'build.ps1 does not capture npm test\'s exit code');
+});
+
+// ---------------------------------------------------------------------------------------------
+// The shared-link embed graphic. A repository whose link pastes as a grey card has thrown away
+// its first impression, and the upload is a manual Settings step — so the file has to be
+// findable at the root, not four directories down.
+// ---------------------------------------------------------------------------------------------
+test('social-preview.png sits at the repository root', () => {
+  assert(existsSync(abs('social-preview.png')),
+    'social-preview.png is missing from the repository root (Settings -> General -> Social preview uploads it)');
+  assert(statSync(abs('social-preview.png')).size > 10000, 'social-preview.png is implausibly small');
+});
+
+test('the root master and the served docs copy are byte-identical', () => {
+  // Two copies of one picture are two pictures that will disagree eventually, so assert rather
+  // than assume: the docs site serves docs/og-image.png as its og:image and the root file is the
+  // master a human drags into the Settings page.
+  const digest = (p) => createHash('sha256').update(readFileSync(abs(p))).digest('hex');
+  assert(digest('social-preview.png') === digest('docs/og-image.png'),
+    'social-preview.png and docs/og-image.png have drifted apart');
+});
+
+test('the docs site actually references its og:image', () => {
+  const html = readFileSync(abs('docs/index.html'), 'utf8');
+  assert(/property=["']og:image["']/.test(html), 'docs/index.html declares no og:image');
+  assert(/twitter:card/.test(html) && html.includes('summary_large_image'),
+    'docs/index.html has no summary_large_image card, so the embed renders as a thumbnail');
+});
+
+// ---------------------------------------------------------------------------------------------
+// Release notes must not make a claim the repository can disprove.
+// ---------------------------------------------------------------------------------------------
+test('the release notes no longer describe the game as an unplayable scaffold', () => {
+  const text = readFileSync(abs('tools/release-notes.mjs'), 'utf8');
+  for (const stale of ['not yet playable', 'stub bodies', 'placeholder splash screen']) {
+    assert(!text.includes(stale),
+      `release-notes.mjs still claims "${stale}", which stopped being true when Phase B landed`);
+  }
+});
+
+test('the release notes take their content counts from the generated module, never from prose', () => {
+  const text = readFileSync(abs('tools/release-notes.mjs'), 'utf8');
+  assert(text.includes('loadDataCounts'), 'release-notes.mjs does not load the generated counts');
+  assert(/counts\.crops/.test(text), 'release-notes.mjs does not use the loaded crop count');
+});
+
+console.log(`\n${passed} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);

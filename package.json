@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "serve": "node tools/serve.mjs 8123",
-    "test": "node tools/validate-data.mjs && node tools/test-economy.mjs && node tools/test-tables.mjs && node tools/test-motion.mjs && node tools/test-camera.mjs && node tools/test-core.mjs && node tools/test-placement.mjs && node tools/test-logistics.mjs && node tools/test-crafting.mjs && node tools/test-playables.mjs && node tools/test-bakebook.mjs && node tools/test-panelsearch.mjs && node tools/test-verbs.mjs && node tools/test-township.mjs && node tools/test-research.mjs && node tools/test-deadtime.mjs && node tools/test-social.mjs && node tools/test-ui-workshop.mjs && node tools/test-ui-contracts.mjs && node tools/test-render.mjs",
+    "test": "node tools/validate-data.mjs && node tools/test-economy.mjs && node tools/test-tables.mjs && node tools/test-motion.mjs && node tools/test-camera.mjs && node tools/test-core.mjs && node tools/test-placement.mjs && node tools/test-logistics.mjs && node tools/test-crafting.mjs && node tools/test-playables.mjs && node tools/test-bakebook.mjs && node tools/test-panelsearch.mjs && node tools/test-verbs.mjs && node tools/test-township.mjs && node tools/test-research.mjs && node tools/test-deadtime.mjs && node tools/test-social.mjs && node tools/test-ui-workshop.mjs && node tools/test-ui-contracts.mjs && node tools/test-render.mjs && node tools/test-repo-surfaces.mjs",
     "dist": "electron-builder --win squirrel",
     "android:sync": "cap sync android",
     "android:add": "cap add android",

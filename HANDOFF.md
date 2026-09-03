@@ -1,9 +1,78 @@
 # Handoff
 
-State of the repository as of commit `c1dd36e` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
+State of the repository as of commit `5f7a200` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
 
-## Session of 2026-09-02 (latest) — desktop shell catches up: title bar, auto-updater, two visible fixes
+## Session of 2026-09-03 (latest): the Squirrel installer actually installs, and the game opens after it
+
+Commit `5f7a200` (the merge carrying the fix) repaired three lines in `electron/main.cjs` that
+made the Windows installer fail in two ways at once, and this pass then verified the repair
+against a real built artifact rather than against the source.
+
+**What was wrong.** The Squirrel guard read:
+
+```js
+if (process.argv.some((a) => a.startsWith('--squirrel-'))) app.quit();
+```
+
+`app.quit()` is asynchronous. Execution fell straight through the rest of the module, so
+`app.whenReady()` still fired and a full 1280x800 game window opened *during the install*.
+Squirrel waits about fifteen seconds for that process to exit, then abandons the install, which
+is why an install could appear to finish with nothing in the Start Menu. Separately, the same
+condition matched `--squirrel-firstrun`, the launch Squirrel performs the instant an install
+completes, so the first launch was suppressed by the identical three lines. One mistake, two
+symptoms, and neither of them names the other.
+
+**What it does now.** Each event is handled by name. `--squirrel-install` and `--squirrel-updated`
+invoke `Update.exe --createShortcut "<exe>" -l Desktop,StartMenu`; `--squirrel-uninstall` invokes
+`--removeShortcut` with the same arguments; `--squirrel-obsolete` does nothing. All of them end
+with `app.exit(0)` (immediate, unlike `quit`) followed by a top-level `return`, which is legal
+because CommonJS modules are function-wrapped, so nothing downstream in the file runs at all.
+`--squirrel-firstrun` deliberately falls through and boots the game like any other launch.
+`build/icon.ico` was also added to `build.files`; `ICON_PATH` had been resolving to a path inside
+`app.asar` that was never packaged.
+
+**Verification, from the built artifact.**
+
+- `npm run dist` clean: exit 0. `dist/squirrel-windows/` holds `Farm Tycoon-Setup-0.1.0.exe`
+  (119,483,904 bytes), `RELEASES`, and `farm-tycoon-0.1.0-full.nupkg` (118,626,877 bytes). No
+  delta package, which is correct for a first build at this version.
+- `(Get-AuthenticodeSignature ...).Status` returns `NotSigned`. Code signing is permanently out of
+  scope; the artifact is unsigned on purpose and will raise an unknown-publisher warning.
+- The setup executable was run with `--silent` on this machine. It installed to
+  `%LOCALAPPDATA%\farm-tycoon` with `app-0.1.0`, `packages`, `Update.exe`, `app.ico` and
+  `Farm Tycoon.exe`.
+- Shortcuts were created, and were checked on disk rather than only in the log:
+  `Farm Tycoon.lnk` on the Desktop, and
+  `Start Menu\Programs\Farm Tycoon Contributors\Farm Tycoon.lnk`. `SquirrelSetup.log` records both
+  creations with the correct target and working directory.
+- The installed `Farm Tycoon.exe` was then launched on an off-screen Windows desktop through the
+  cheap headless route. It produced a window titled `Farm Tycoon`, class `Chrome_WidgetWin_1`,
+  1280x800, and a `PrintWindow` capture shows the real game running: the frameless Material title
+  bar, the coin/diamond/silo/barn HUD pills, the isometric farm, and the tutorial coach card at
+  step 6 of 12. The capture lives in the session scratchpad and is not committed, because this
+  repository holds no binary assets.
+
+**One honest reading of that capture, so nobody files it as a defect.** The footer says
+`v0.1.0 build date unavailable`. That is correct for a locally built artifact: `src/build-info.js`
+ships `builtAt: null`, and only the release workflow's stamping step overwrites it, so a local
+`npm run dist` is genuinely unstamped and the HUD says so rather than inventing a time. The
+published installer carries a real stamp.
+
+**Left installed.** The verification install was not removed, so the Desktop and Start Menu
+shortcuts are still present on this machine. To remove it:
+`& "$env:LOCALAPPDATA\farm-tycoon\Update.exe" --uninstall`.
+
+**Numbers re-measured this pass**, replacing stale ones carried by the previous section and by the
+documentation site: `npm test` summed across every suite reports **806 passed, 0 failed** (the
+previous section said 799 at `c1dd36e`). The repository holds **269 commits**, **98 JavaScript
+modules under `src/`** (43 at the top level, 46 verb modules, 4 minigame modules, 5 renderer
+modules), and **71 published releases**. `docs/content/changelog.js` had been claiming 116
+commits, 37 modules, 171 assertions and 28 releases; those four are now corrected. Its fifth tile
+claimed 57 captures of the real build, and no capture directory exists anywhere in the tree or in
+the docs site, so that tile was removed rather than restated with a number nothing backs.
+
+## Session of 2026-09-02 — desktop shell catches up: title bar, auto-updater, two visible fixes
 
 Commit `c1dd36e1e9764b370d00511248b6faf0b1ba1e36` added four things, all of them things the game
 already claimed to do and did not:

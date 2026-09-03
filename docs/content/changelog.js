@@ -30,11 +30,10 @@ export const article = {
       heading: 'Where it stands today',
       html: `
 <div class="stat-row">
-  <div class="stat"><div class="stat-num">116</div><div class="stat-label">commits</div></div>
-  <div class="stat"><div class="stat-num">37</div><div class="stat-label">source modules</div></div>
-  <div class="stat"><div class="stat-num">171</div><div class="stat-label">passing assertions</div></div>
-  <div class="stat"><div class="stat-num">57</div><div class="stat-label">captures of the real build</div></div>
-  <div class="stat"><div class="stat-num">28</div><div class="stat-label">published releases</div></div>
+  <div class="stat"><div class="stat-num">269</div><div class="stat-label">commits</div></div>
+  <div class="stat"><div class="stat-num">98</div><div class="stat-label">source modules</div></div>
+  <div class="stat"><div class="stat-num">806</div><div class="stat-label">passing assertions</div></div>
+  <div class="stat"><div class="stat-num">71</div><div class="stat-label">published releases</div></div>
 </div>
 
 <p><em>Re-measured at commit <code>7edfa26</code> against a clean checkout: the

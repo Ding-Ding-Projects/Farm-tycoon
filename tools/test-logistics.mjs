@@ -95,7 +95,7 @@ test('orders: refreshBoard fills every slot and never generates below unlockLeve
   assert.deepEqual(state.orders.board, [], 'board must stay empty before unlockLevel');
 });
 
-test('orders: a fulfilled order consumes exactly its items and pays the right coins + XP', () => {
+test('orders: loading the truck consumes exactly its items and pays nothing until the delivery arrives', () => {
   setState(freshState(30));
   orders.refreshBoard(Date.now());
   const slot = state.orders.board.find((s) => s && !s.empty);
@@ -106,15 +106,50 @@ test('orders: a fulfilled order consumes exactly its items and pays the right co
   const coinsBefore = state.coins;
   const xpBefore = state.xp;
   const result = orders.fulfillOrder(slot.id);
-  assert.ok(result, 'fulfillOrder should have succeeded');
-  assert.equal(state.coins, coinsBefore + result.coins);
-  assert.equal(state.xp, xpBefore + result.xp);
+  assert.ok(result && result.dispatched, 'fulfillOrder should have dispatched a delivery');
+
+  // The whole point: the goods are gone and the money is NOT here yet.
+  assert.equal(state.coins, coinsBefore, 'loading the truck must not pay on the spot');
+  assert.equal(state.xp, xpBefore, 'loading the truck must not award XP on the spot');
   for (const { itemId } of slot.items) {
     const bucket = CROPS[itemId] ? state.silo.items : state.barn.items;
     assert.equal(bucket[itemId] || 0, 0, `${itemId} should be fully consumed`);
   }
+
+  const [delivery] = orders.deliveries();
+  assert.ok(delivery, 'expected the order to be on the road');
+  assert.equal(delivery.arrived, false, 'a delivery starts in transit, never already arrived');
+
+  const units = slot.items.reduce((sum, it) => sum + it.qty, 0);
+  assert.equal(Math.round((delivery.arrivesAt - delivery.dispatchedAt) / 1000),
+    orders.deliveryTimeFor(units),
+    'the drive must be the one deliveryTimeFor() computes, not a second copy of the arithmetic');
+
+  // Collecting early is refused rather than silently paying.
+  assert.equal(orders.collectDelivery(delivery.id), false, 'a delivery in transit must not pay out');
+  assert.equal(state.coins, coinsBefore, 'a refused collection must not move coins');
+
+  // Wind the clock forward the way the game loop would, then collect.
+  orders.tickDeliveries(delivery.arrivesAt);
+  assert.equal(orders.deliveries()[0].arrived, true, 'the delivery should arrive on its own clock');
+  const paid = orders.collectDelivery(delivery.id);
+  assert.ok(paid, 'an arrived delivery must pay');
+  assert.equal(state.coins, coinsBefore + paid.coins);
+  assert.equal(state.xp, xpBefore + paid.xp);
+  assert.equal(orders.deliveries().length, 0, 'a collected delivery leaves the road');
+
   const replaced = state.orders.board.find((s) => s && s.empty);
-  assert.ok(replaced, 'the fulfilled slot should now be an empty/cooldown marker');
+  assert.ok(replaced, 'the loaded slot should now be an empty/cooldown marker');
+});
+
+test('orders: a bigger load takes longer on the road, and the drive is capped', () => {
+  const one = orders.deliveryTimeFor(1);
+  const ten = orders.deliveryTimeFor(10);
+  assert.ok(ten > one, `expected a ten-unit load to take longer than one unit, got ${ten} vs ${one}`);
+  assert.equal(orders.deliveryTimeFor(100000), ORDERS.board.deliveryMax,
+    'a huge load must be capped at deliveryMax rather than becoming an overnight wait');
+  assert.equal(orders.deliveryTimeFor(0), ORDERS.board.deliveryBase,
+    'an empty load is still a drive: the base time');
 });
 
 test('orders: fulfillOrder refunds nothing extra and consumes nothing on a failed fulfil', () => {

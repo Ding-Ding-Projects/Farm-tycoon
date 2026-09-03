@@ -587,6 +587,9 @@ function renderStorageUpgrade(container, kind) {
 // ---------------------------------------------------------------------------
 function renderOrders(container) {
   orders.refreshBoard(Date.now());
+  orders.tickDeliveries(Date.now());
+  renderDeliveries(container);
+
   const board = state.orders.board || [];
   if (!board.some(Boolean)) { renderComingSoon(container, 'The order board'); return; }
 
@@ -602,16 +605,52 @@ function renderOrders(container) {
     const order = slot;
     const canFulfill = orders.canFulfill(order);
     const reqs = (order.items || []).map((it) => `${itemIcon(it.itemId)} ${itemName(it.itemId)} x${it.qty}`).join(', ');
-    card.innerHTML = `<strong>Order</strong><div>${reqs}</div><div>Reward: 🪙${order.rewardCoins ?? 0} · ✨${order.rewardXp ?? 0} XP</div>`;
-    card.appendChild(button('Fulfill', () => {
+    // Say the drive up front. The reward is no longer instant, so an order card that only names
+    // the payout is describing half the deal.
+    const units = (order.items || []).reduce((sum, it) => sum + it.qty, 0);
+    const drive = fmtDuration(orders.deliveryTimeFor(units) * 1000);
+    card.innerHTML = `<strong>Order</strong><div>${reqs}</div>` +
+      `<div>Reward: 🪙${order.rewardCoins ?? 0} · ✨${order.rewardXp ?? 0} XP</div>` +
+      `<div class="minigame-hint">🚚 about ${drive} on the road once it is loaded</div>`;
+    card.appendChild(button('Load the truck', () => {
       const result = orders.fulfillOrder(order.id);
       if (result) {
         audio.orderComplete();
-        toast('Order fulfilled!', 'success');
-        tutorial.emit('order_fulfilled');
+        toast(`On its way — about ${fmtDuration(result.seconds * 1000)} to arrive.`, 'success');
+        save();
         refreshPanel();
       } else { audio.error(); toast("You don't have everything for this order yet.", 'error'); }
     }, { disabled: !canFulfill }));
+    container.appendChild(card);
+  }
+}
+
+/** Loads already on the road, and the ones that have arrived and are waiting to be collected. */
+function renderDeliveries(container) {
+  const list = orders.deliveries();
+  if (!list.length) return;
+  container.appendChild(hintEl(`On the road (${list.length}):`));
+  for (const d of list) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    const load = (d.items || []).map((it) => `${itemIcon(it.itemId)} ${itemName(it.itemId)} x${it.qty}`).join(', ');
+    card.innerHTML = `<strong>🚚 Delivery</strong><div>${load}</div>`;
+    if (d.arrived) {
+      card.appendChild(button(`Collect 🪙${d.rewardCoins} · ✨${d.rewardXp} XP`, () => {
+        const paid = orders.collectDelivery(d.id);
+        if (paid) {
+          audio.coin();
+          // 'order_fulfilled' is the tutorial's gate, and it belongs where the money lands -
+          // the same rule the roadside stand follows.
+          tutorial.emit('order_fulfilled');
+          toast(`Delivered! 🪙${paid.coins} · ✨${paid.xp} XP`, 'success');
+          save();
+          refreshPanel();
+        } else { audio.error(); toast('That one has not arrived yet.', 'error'); }
+      }));
+    } else {
+      card.appendChild(hintEl(`Arrives in ${fmtDuration(d.arrivesAt - Date.now())}…`));
+    }
     container.appendChild(card);
   }
 }

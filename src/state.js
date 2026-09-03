@@ -42,7 +42,10 @@ const storage = (() => {
  *   silo: { capacity, items: {cropId: qty} },
  *   barn: { capacity, items: {goodId: qty} },
  *   production: [{objectId, recipeId, readyAt, cid, play}], // active queue entries
- *   orders: { board: [...], truck: {...}, boat: {...} },
+ *   orders: { board: [...], truck: {...}, boat: {...}, deliveries: [{id, orderId, items, rewardCoins, rewardXp, dispatchedAt, arrivesAt, arrived}] },
+ *     deliveries are orders already packed onto the truck and still on the road. Seeded lazily
+ *     by orders.js ensureDeliveries(), the same way shop.js seeds its listings, so a v5 save
+ *     written before deliveries existed needs no migration: the array appears on first use.
  *   shop: { listings: [{item, qty, price, soldAt}] },
  *   market: { dayNum, offers: [{item, qty, price}], bought: [bool...] }, // daily rotating market
  *   pets: { dog: {owned, lastFedAt}, cat: {...} },
@@ -167,7 +170,7 @@ export function newGameState() {
     silo: { capacity: 50, items: { ...NEW_GAME.seeds } },
     barn: { capacity: 50, items: {} },
     production: [],
-    orders: { board: [], truck: null, boat: null },
+    orders: { board: [], truck: null, boat: null, deliveries: [] },
     shop: { listings: [] },
     market: makeEmptyMarket(),
     pets: {},

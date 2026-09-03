@@ -360,13 +360,27 @@ test('the order board reads order.items[].itemId and rewardCoins/rewardXp, never
   assert.ok(html.includes('🪙4242'), `expected the real reward "🪙4242" in the order card, got: ${html}`);
   assert.ok(html.includes('✨77'), `expected the real reward XP "✨77" in the order card, got: ${html}`);
 
-  const fulfillBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent === 'Fulfill');
-  assert.ok(fulfillBtn, 'expected a Fulfill button');
-  assert.equal(fulfillBtn.disabled, false, 'enough wheat is in the silo — Fulfill must be enabled');
+  const loadBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent === 'Load the truck');
+  assert.ok(loadBtn, 'expected a "Load the truck" button');
+  assert.equal(loadBtn.disabled, false, 'enough wheat is in the silo — loading must be enabled');
   const coinsBefore = s.coins;
-  fulfillBtn.click();
-  assert.equal(s.coins, coinsBefore + 4242, 'fulfilling must pay the real rewardCoins, not order.reward.coins (undefined)');
-  assert.equal(s.silo.items.wheat, 7, 'fulfilling must consume the real qty from the real itemId');
+  loadBtn.click();
+  // Loading takes the goods and dispatches; the money arrives with the truck.
+  assert.equal(s.coins, coinsBefore, 'loading the truck must not pay on the spot');
+  assert.equal(s.silo.items.wheat, 7, 'loading must consume the real qty from the real itemId');
+  const [delivery] = orders.deliveries();
+  assert.ok(delivery, 'expected a delivery on the road after loading');
+  assert.equal(delivery.rewardCoins, 4242, 'the delivery must carry the order’s real rewardCoins');
+
+  // Arrive it the way the game loop does, re-render, and collect through the real button.
+  orders.tickDeliveries(delivery.arrivesAt);
+  ui.openPanel('orders');
+  const collectBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Collect'));
+  assert.ok(collectBtn, 'expected a Collect button on the arrived delivery');
+  assert.ok(collectBtn.textContent.includes('4242'),
+    `expected the Collect button to name the payout, got: ${collectBtn.textContent}`);
+  collectBtn.click();
+  assert.equal(s.coins, coinsBefore + 4242, 'collecting must pay the real rewardCoins');
 });
 
 test('the order board never crashes on an {empty, readyAt} cooldown slot and shows a countdown', () => {

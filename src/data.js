@@ -1759,7 +1759,15 @@ export const STORAGE = {
 
 /** Order board / truck / boat tuning. */
 export const ORDERS = {
-  board: { slots: 6, refreshCooldown: 300, unlockLevel: 3, itemsPerOrder: [1, 3], payoutMultiplier: 1.35, xpMultiplier: 2 },
+  // An order is not finished when the crate is packed - the truck still has to drive it there.
+  // deliveryBase is the seconds a one-item load takes; deliveryPerItem is added for every unit
+  // on board, so a big order is a longer haul. Capped by deliveryMax so a large late-game order
+  // never turns into an overnight wait.
+  board: {
+    slots: 6, refreshCooldown: 300, unlockLevel: 3, itemsPerOrder: [1, 3],
+    payoutMultiplier: 1.35, xpMultiplier: 2,
+    deliveryBase: 45, deliveryPerItem: 12, deliveryMax: 600,
+  },
   truck: { unlockLevel: 8, interval: 900, bundles: 3, bonusMultiplier: 1.6 },
   boat:  { unlockLevel: 17, interval: 7200, crates: 6, departureWindow: 3600, bonusMultiplier: 2.0, vouchersPerBoat: [4, 10] },
 };
@@ -2741,7 +2749,7 @@ export const TUTORIAL = {
     { id: 'feed_hens',    target: 'world:pen',                     text: 'Tap the coop and drag the feed onto your hens — the coop came with a bag of it.', event: 'fed' },
     { id: 'buy_bakery',   target: 'world:structure:workshop_yard', text: 'Back at the yard, drag out a Bakery.', event: 'placed:bakery' },
     { id: 'bake_bread',   target: 'world:building',                text: 'Tap the Bakery and drag the bread onto it to start baking. 🍞', event: 'enqueued:bread' },
-    { id: 'first_order',  target: 'world:structure:order_board',   text: 'The order board pays extra for goods. Fulfill your first order!', event: 'order_fulfilled' },
+    { id: 'first_order',  target: 'world:structure:order_board',   text: 'The order board pays extra. Load a crate onto the truck — you get paid when it arrives.', event: 'order_fulfilled' },
     { id: 'done',         target: null,                            text: 'You’re a real farmer now — the farm is yours! 🎉', event: 'dismissed' },
   ],
 };

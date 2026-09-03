@@ -153,7 +153,13 @@ export function canFulfill(order) {
   });
 }
 
-/** Fulfill a board order: consume items, pay coins + XP, generate a replacement after cooldown. */
+/**
+ * Pack an order onto the delivery truck.
+ *
+ * This takes the goods and dispatches; it does NOT pay. The coins and XP are recorded on the
+ * delivery and handed over by collectDelivery() once the truck arrives - see the Deliveries
+ * section below for why the multipliers are applied then rather than now.
+ */
 export function fulfillOrder(orderId) {
   const index = findBoardSlot(orderId);
   if (index === -1) return null;
@@ -164,15 +170,79 @@ export function fulfillOrder(orderId) {
     const bucket = CROPS[itemId] ? state.silo.items : state.barn.items;
     bucket[itemId] -= qty;
   }
-  // Research (accounting) and the co-op's Fair Dealing raise the payout at hand-in time.
-  const coins = Math.round(order.rewardCoins * economy.multiplier('orderPayoutMult', order.id));
-  economy.addCoins(coins);
-  economy.addXp(order.rewardXp);
-  economy.trackStat('ordersFulfilled', 1);
 
   const now = Date.now();
+  const units = order.items.reduce((sum, it) => sum + it.qty, 0);
+  const seconds = deliveryTimeFor(units);
+  ensureDeliveries().push({
+    id: `del_${order.id}_${now}`,
+    orderId: order.id,
+    items: order.items.map((it) => ({ itemId: it.itemId, qty: it.qty })),
+    rewardCoins: order.rewardCoins,
+    rewardXp: order.rewardXp,
+    dispatchedAt: now,
+    arrivesAt: now + seconds * 1000,
+    arrived: false,
+  });
+  economy.trackStat('ordersDispatched', 1);
+
   state.orders.board[index] = { empty: true, readyAt: now + ORDERS.board.refreshCooldown * 1000 };
-  return { coins, xp: order.rewardXp };
+  return { dispatched: true, seconds, coins: order.rewardCoins, xp: order.rewardXp };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Deliveries: the leg between packing a crate and being paid for it.
+//
+// Handing an order in used to be the whole transaction - goods vanished from the barn and coins
+// appeared in the same instant, with the delivery truck parked outside doing nothing. Now the
+// crate goes ON the truck, the truck drives, and the money arrives when it does. Nothing is lost
+// in transit and nothing can fail; the wait is the point, not a risk.
+// ---------------------------------------------------------------------------------------------
+
+/** Seconds a load of `units` items takes to reach its buyer, from ORDERS.board tuning. */
+export function deliveryTimeFor(units) {
+  const cfg = ORDERS.board;
+  const raw = cfg.deliveryBase + cfg.deliveryPerItem * Math.max(0, units);
+  return Math.min(cfg.deliveryMax, Math.round(raw));
+}
+
+function ensureDeliveries() {
+  if (!Array.isArray(state.orders.deliveries)) state.orders.deliveries = [];
+  return state.orders.deliveries;
+}
+
+/** Every delivery currently on the road or waiting to be collected, newest dispatch last. */
+export function deliveries() {
+  return ensureDeliveries();
+}
+
+/** Mark any delivery whose arrival time has passed. Called from the game loop and on load. */
+export function tickDeliveries(now = Date.now()) {
+  for (const d of ensureDeliveries()) {
+    if (!d.arrived && now >= d.arrivesAt) d.arrived = true;
+  }
+}
+
+/**
+ * Take the payment for an arrived delivery.
+ *
+ * The multipliers are applied HERE rather than at dispatch, so a research node or a co-op perk
+ * that lands while the truck is on the road still counts - the alternative quietly punishes the
+ * player for having filled the order five minutes earlier.
+ */
+export function collectDelivery(deliveryId) {
+  const list = ensureDeliveries();
+  const index = list.findIndex((d) => d.id === deliveryId);
+  if (index === -1) return false;
+  const delivery = list[index];
+  if (!delivery.arrived) return false;
+
+  const coins = Math.round(delivery.rewardCoins * economy.multiplier('orderPayoutMult', delivery.orderId));
+  economy.addCoins(coins);
+  economy.addXp(delivery.rewardXp);
+  economy.trackStat('ordersFulfilled', 1);
+  list.splice(index, 1);
+  return { coins, xp: delivery.rewardXp };
 }
 
 /** Discard an order (replacement arrives after refreshCooldown). */

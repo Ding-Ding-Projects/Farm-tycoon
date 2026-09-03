@@ -154,6 +154,15 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
 
 ## Yum tong pass (2026-09-02)
 
+- [x] **Selling waits for a buyer.** There was no selling mechanic, only a payout: a `Sell for
+      🪙4` button in the silo and barn made the roadside stand - which already listed at a chosen
+      price and sold on a timer - a slower way to do the same thing. One way to sell now, and it
+      is the stand, with a dialog that states the price/wait trade before you commit.
+- [x] **Orders travel by road.** Handing in a crate used to take the goods and pay in the same
+      instant, with the delivery truck parked outside doing nothing. Loading an order now
+      dispatches a delivery; the coins and XP arrive when the truck does. Drive time scales with
+      the size of the load and is capped.
+
 - [x] **The tutorial can be moved through.** Ten of its twelve steps waited on a game event with
       no way past, and the other two advanced only if you clicked the bubble, with nothing saying
       so. Every step now has a 44px Next, a Skip and a step counter.

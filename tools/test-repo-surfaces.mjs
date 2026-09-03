@@ -145,5 +145,45 @@ test('the roadside stand is open from level 1, because it is the only way to sel
     'the shop_stand structure is not unlocked at level 1, so the stand cannot be reached');
 });
 
+// ---------------------------------------------------------------------------------------------
+// Orders travel by road. Packing a crate takes the goods; the truck's arrival pays for them.
+// The failure this guards against is the same one the roadside stand had: a single addCoins at
+// hand-in time, which removes the entire delivery leg while leaving all of its code in place.
+// ---------------------------------------------------------------------------------------------
+test('loading an order onto the truck does not pay for it', () => {
+  const src = readFileSync(abs('src/orders.js'), 'utf8');
+  const fn = src.slice(src.indexOf('export function fulfillOrder('),
+                       src.indexOf('// -----', src.indexOf('export function fulfillOrder(')));
+  assert(fn.length > 100, 'could not isolate fulfillOrder - the guard needs updating');
+  assert(!fn.includes('addCoins'),
+    'fulfillOrder pays coins directly; the delivery must pay on arrival instead');
+  assert(!fn.includes('addXp'),
+    'fulfillOrder awards XP directly; the delivery must award it on arrival instead');
+  assert(fn.includes('arrivesAt'), 'fulfillOrder no longer dispatches a delivery');
+});
+
+test('the delivery leg exists end to end: dispatch, tick, collect', () => {
+  const src = readFileSync(abs('src/orders.js'), 'utf8');
+  for (const name of ['deliveryTimeFor', 'deliveries', 'tickDeliveries', 'collectDelivery']) {
+    assert(src.includes('export function ' + name),
+      'orders.js does not export ' + name + ', so the delivery leg is incomplete');
+  }
+  const collect = src.slice(src.indexOf('export function collectDelivery('));
+  assert(collect.includes('addCoins') && collect.includes('addXp'),
+    'collectDelivery does not actually pay, so an arrived truck is worth nothing');
+  // The loop has to advance deliveries, or a truck only arrives while its panel is open.
+  const main = readFileSync(abs('src/main.js'), 'utf8');
+  assert(main.includes('orders.tickDeliveries'),
+    'main.js never ticks deliveries, so a truck would only arrive while the order panel is open');
+});
+
+test('the order card states the drive before the player commits to it', () => {
+  const ui = readFileSync(abs('src/ui.js'), 'utf8');
+  assert(ui.includes('orders.deliveryTimeFor('),
+    'the order card does not show the drive time from the shared function');
+  assert(ui.includes('Load the truck'),
+    'the order button no longer says what it does - it dispatches a truck, it does not pay');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

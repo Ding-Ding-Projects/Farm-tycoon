@@ -303,6 +303,7 @@ function buildWorld() {
 function tickAllSystems(now) {
   safeCall(production.tick, now);
   safeCall(orders.tickTruck, now);
+  safeCall(orders.tickDeliveries, now);   // trucks on the road arrive even with every panel shut
   safeCall(boat.tick, now);
   safeCall(shop.tick, now);
   safeCall(trains.tick, now);

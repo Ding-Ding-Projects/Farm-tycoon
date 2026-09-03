@@ -33,6 +33,7 @@ import * as coop from './coop.js';
 import * as regatta from './regatta.js';
 import * as farm from './farm.js';
 import * as drag from './drag.js';
+import * as desktop from './desktop.js';
 import { prand, tileHash } from './render/sprites.js';
 import {
   CROPS, GOODS, MATERIALS, STRUCTURES, FARM, FORAGING, HELICOPTER, ANIMALS, BUILDINGS, LEVELS,
@@ -195,7 +196,7 @@ function buildWorld() {
         const done = obj.readyAt !== null && obj.readyAt <= now;
         const span = obj.readyAt && obj.plantedAt ? obj.readyAt - obj.plantedAt : 0;
         const growProgress = done || span <= 0 ? 1 : clamp01((now - obj.plantedAt) / span);
-        objects.push({ id: obj.id, kind: 'crop', type: obj.cropId, tx: obj.x, ty: obj.y, fw: 1, fh: 1, growProgress, ready: done });
+        objects.push({ id: obj.id, kind: 'crop', type: obj.cropId, tx: obj.x, ty: obj.y, fw: 1, fh: 1, growProgress, progress: done ? undefined : growProgress, ready: done });
       } else {
         objects.push({ id: obj.id, kind: 'field', type: 'field', tx: obj.x, ty: obj.y, fw: 1, fh: 1 });
       }
@@ -510,6 +511,10 @@ function boot() {
   renderer.cameraTarget.x = renderer.camera.x;
   renderer.cameraTarget.y = renderer.camera.y;
   renderer.cameraTarget.zoom = renderer.camera.zoom;
+
+  // Desktop chrome first: it inserts the title bar, which changes the canvas's usable height.
+  // Doing it after the canvas sized itself would leave the world 34px too tall for one resize.
+  safeCall(desktop.init);
 
   motion.init();   // must run before the first frame, so nothing animates once and then stops
   ui.init();

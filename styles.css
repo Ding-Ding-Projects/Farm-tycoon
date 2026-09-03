@@ -977,3 +977,55 @@ button.pill-counter:focus-visible { outline: 3px solid #fff; outline-offset: 2px
   transform: translate(-50%, -60%); font-size: 40px; line-height: 1;
   filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.45));
 }
+
+/* ── Desktop shell: custom title bar + update banner ─────────────────────────────────
+   Only present in the Electron build (src/desktop.js adds .is-desktop to <body>), so the
+   browser layout is untouched. The window is frameless there, which means this bar is the
+   ONLY way to move, maximise or close it — every rule below is load-bearing. */
+.title-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 34px; z-index: 9000;
+  display: flex; align-items: center; gap: 8px; padding-left: 12px;
+  background: var(--wood-bg);
+  border-bottom: 2px solid var(--color-wood-dark);
+  color: var(--color-cream);
+  font-weight: 700; font-size: 13px;
+  /* The drag region. Without it a frameless window cannot be moved at all. */
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.title-bar-name { letter-spacing: 0.02em; text-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+.title-bar-version { opacity: 0.7; font-weight: 600; font-size: 11px; }
+.title-bar-buttons { margin-left: auto; display: flex; height: 100%; -webkit-app-region: no-drag; }
+.title-bar-btn {
+  width: 46px; height: 100%; border: 0; background: transparent; cursor: pointer;
+  color: var(--color-cream); font-family: "Segoe MDL2 Assets", "Segoe Fluent Icons", sans-serif;
+  font-size: 11px; line-height: 1;
+}
+.title-bar-btn:hover { background: rgba(255,255,255,0.16); }
+.title-bar-btn:focus-visible { outline: 2px solid var(--color-cream); outline-offset: -3px; }
+.title-bar-btn.danger:hover { background: var(--color-danger); }
+/* Push everything below the bar rather than letting it overlap the HUD. */
+body.is-desktop { padding-top: 34px; box-sizing: border-box; }
+body.is-desktop #world { top: 34px; height: calc(100% - 34px); }
+
+.update-banner {
+  position: fixed; right: 16px; bottom: 16px; z-index: 9100;
+  display: flex; align-items: center; gap: 12px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 16px;
+  background: var(--card-bg);
+  border: 3px solid var(--color-wood-dark);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  color: var(--color-ink);
+}
+.update-banner[hidden] { display: none; }
+.update-text { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.update-text span { color: var(--color-ink-soft); font-size: 12px; }
+@media (max-width: 560px) {
+  .update-banner { left: 16px; flex-wrap: wrap; }
+}
+
+/* A dialog is the only thing being asked at that moment: hide the tutorial coach card and its
+   spotlight underneath rather than letting the two overlap. */
+body.modal-open .tutorial-overlay { display: none; }

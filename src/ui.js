@@ -235,6 +235,10 @@ export function openModal(html, opts = {}) {
   if (typeof opts === 'function') opts = { onClose: opts };
   modalOpts = { dismissible: opts.dismissible !== false, onClose: opts.onClose || null, onDismiss: opts.onDismiss || null };
   el.modal.hidden = false;
+  // A modal already sits above the tutorial overlay, but 'above' still leaves the coach card
+  // and its spotlight showing around it, which reads as two things asking at once. The class
+  // hides the overlay outright for as long as a dialog is up.
+  document.body?.classList?.add('modal-open');
   el.modalCard.innerHTML = html;
   if (typeof el.modalCard.setAttribute === 'function') {
     el.modalCard.setAttribute('role', 'dialog');
@@ -261,6 +265,7 @@ export function closeModal(onClose) {
   const opts = modalOpts;
   modalOpts = null;
   el.modal.hidden = true;
+  document.body?.classList?.remove('modal-open');
   el.modalCard.innerHTML = '';
   const cb = onClose || (opts && opts.onClose);
   if (cb) cb();

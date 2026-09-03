@@ -836,6 +836,12 @@ button.pill-counter:focus-visible { outline: 3px solid #fff; outline-offset: 2px
 .bar.green > i { background: linear-gradient(#a8dc63, #62a52c); }
 .bar.gem > i { background: linear-gradient(#7fd4f0, #2a9fd0); }
 
+/* ---------- Sell dialog (the roadside listing flow) ---------- */
+.sell-row { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-2) 0; }
+.sell-row label { flex: 0 0 8.5em; font-weight: 800; color: #6d3f14; }
+.sell-row input[type="range"] { flex: 1 1 auto; min-height: 44px; accent-color: var(--color-leaf, #5aa02c); }
+.sell-summary { margin: var(--sp-2) 0 0; font-weight: 700; line-height: 1.45; color: #6d3f14; text-wrap: pretty; }
+
 /* ---------- Tutorial overlay ---------- */
 .tutorial-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
 .tutorial-spotlight {

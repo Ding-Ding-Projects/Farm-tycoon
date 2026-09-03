@@ -105,5 +105,45 @@ test('the release notes take their content counts from the generated module, nev
   assert(/counts\.crops/.test(text), 'release-notes.mjs does not use the loaded crop count');
 });
 
+// ---------------------------------------------------------------------------------------------
+// Selling waits for a buyer. There is no instant sell anywhere, and this is the check that stops
+// one quietly coming back: a single addCoins beside a storage take, in a panel, is all it takes
+// to undercut the entire roadside stand.
+// ---------------------------------------------------------------------------------------------
+test('no inventory panel pays out coins on the spot', () => {
+  const ui = readFileSync(abs('src/ui.js'), 'utf8');
+  assert(!ui.includes('Sell for '),
+    'src/ui.js still renders an instant "Sell for X" button - selling must go through the shop');
+  const grid = ui.slice(ui.indexOf('function renderInventoryGrid'), ui.indexOf('function openSellDialog'));
+  assert(grid.length > 100, 'could not isolate renderInventoryGrid - the guard needs updating');
+  assert(!grid.includes('addCoins'),
+    'renderInventoryGrid pays coins directly; selling must list on the stand and wait');
+  assert(grid.includes('openSellDialog'), 'renderInventoryGrid no longer opens the sell dialog');
+});
+
+test('the dialog previews the wait with the same function the listing uses', () => {
+  const ui = readFileSync(abs('src/ui.js'), 'utf8');
+  const shopSrc = readFileSync(abs('src/shop.js'), 'utf8');
+  assert(ui.includes('shop.estimateSellTime('),
+    'the sell dialog does not call shop.estimateSellTime, so its preview can drift from the result');
+  assert(shopSrc.includes('export function estimateSellTime'),
+    'shop.js does not export estimateSellTime');
+  const listFn = shopSrc.slice(shopSrc.indexOf('export function list('),
+                               shopSrc.indexOf('export function cancel('));
+  assert(listFn.includes('estimateSellTime('),
+    'shop.list() computes its own sell time instead of the shared estimator');
+});
+
+test('the roadside stand is open from level 1, because it is the only way to sell', () => {
+  const data = readFileSync(abs('src/data.js'), 'utf8');
+  const i = data.indexOf('export const SHOP = {');
+  assert(i >= 0, 'src/data.js has no SHOP table');
+  const shopBlock = data.slice(i, i + 700);
+  assert(shopBlock.includes('unlockLevel: 1'),
+    'SHOP.unlockLevel is not 1 - a new player would have produce and no way to sell it');
+  assert(data.includes("unlockLevel: 1,  panel: 'shop'"),
+    'the shop_stand structure is not unlocked at level 1, so the stand cannot be reached');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

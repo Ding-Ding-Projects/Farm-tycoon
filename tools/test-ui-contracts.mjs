@@ -146,6 +146,7 @@ for (const id of [
   'event-banner',
 ]) registerId(id);
 const sheetContentEl = registry.get('sheet-content');
+const modalCardEl = registry.get('modal-card');
 
 globalThis.document = {
   createElement: (tag) => fakeElement(tag),
@@ -393,8 +394,12 @@ test('the roadside shop reads listing.itemId, never listing.item, and tolerates 
   assert.ok(html.includes(data.CROPS.wheat.icon) && html.includes('Wheat'), 'expected the real wheat listing');
   assert.ok(html.includes(data.CROPS.corn.icon) && html.includes('Corn'), 'expected the real corn listing');
 
-  const collectBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent === 'Collect');
+  // The button names the payout now ("Collect 🪙80"), because a sold listing is the one place
+  // the player learns what waiting actually earned them.
+  const collectBtn = queryAll(sheetContentEl, 'button').find((b) => b.textContent.startsWith('Collect'));
   assert.ok(collectBtn, 'expected a Collect button on the sold corn listing');
+  assert.ok(collectBtn.textContent.includes('80'),
+    `expected the Collect button to name the 40x2 payout, got: ${collectBtn.textContent}`);
   const coinsBefore = s.coins;
   collectBtn.click();
   assert.equal(s.coins, coinsBefore + 40 * 2, 'collecting a sold listing must pay price*qty from the real fields');
@@ -408,10 +413,18 @@ test('listing an owned item from the shop panel actually calls shop.list with th
   ui.openPanel('shop');
   const eggCard = queryAll(sheetContentEl, '.build-card').find((c) => c.innerHTML.includes('<strong>Egg</strong>'));
   assert.ok(eggCard, 'expected an Egg card in the "list an item" section');
-  const listBtn = queryAll(eggCard, 'button').find((b) => b.textContent.startsWith('List 1'));
-  assert.ok(listBtn, 'expected a "List 1 for ..." button on the Egg card');
-  listBtn.click();
-  assert.equal(s.shop.listings.filter(Boolean).length, 1, 'expected exactly one real listing after clicking List');
+  // Selling is never instant now: the card opens the sell dialog, where quantity and price are
+  // chosen, and only its confirm button creates the listing.
+  const sellBtn = queryAll(eggCard, 'button').find((b) => b.textContent.startsWith('Sell'));
+  assert.ok(sellBtn, 'expected a "Sell..." button on the Egg card');
+  sellBtn.click();
+  const confirm = queryAll(modalCardEl, 'button').find((b) => b.textContent === 'List it');
+  assert.ok(confirm, 'expected the sell dialog to open with a confirm button');
+  const summary = queryAll(modalCardEl, '.sell-summary')[0];
+  assert.ok(summary && /to find a buyer/.test(summary.textContent),
+    `expected the dialog to state the wait before committing, got: ${summary && summary.textContent}`);
+  confirm.click();
+  assert.equal(s.shop.listings.filter(Boolean).length, 1, 'expected exactly one real listing after confirming the dialog');
   assert.equal(s.shop.listings.find(Boolean).itemId, 'egg', 'the listing must carry the real item id that was clicked');
 });
 
@@ -1075,7 +1088,6 @@ test('every dock button has an accessible name, not just an emoji and a title', 
 // ---------------------------------------------------------------------------
 // R. Reachability: the systems data.js describes can actually be reached from the UI.
 // ---------------------------------------------------------------------------
-const modalCardEl = registry.get('modal-card');
 const modalEl = registry.get('modal');
 
 function cardWithStrong(text) {

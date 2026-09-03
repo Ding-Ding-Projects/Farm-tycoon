@@ -437,27 +437,120 @@ function renderInventoryGrid(container, items, emptyLabel) {
     const card = document.createElement('div');
     card.className = 'build-card';
     card.innerHTML = `<span class="icon">${itemIcon(id)}</span><strong>${itemName(id)}</strong><span>x${qty}</span>`;
+    // Selling means LISTING and waiting for a buyer - there is no instant sell anywhere in the
+    // game. An inventory card therefore opens the sell dialog rather than paying out on the
+    // spot; the coins arrive when somebody actually buys, at the roadside shop.
     const sellPrice = economy.sellValue ? economy.sellValue(id) : null;
     if (sellPrice) {
-      card.appendChild(button(`Sell for 🪙${sellPrice}`, () => {
-        try {
-          // The item's OWN store (crops in the silo, everything else in the barn) - picking the
-          // bucket by "which key exists" sent a barn item's decrement to a stale zero-valued silo
-          // key and left the silo at -1.
-          if (storage.take(id, 1) < 1) return;
-          economy.addCoins(sellPrice);
-          economy.trackStat && economy.trackStat('sold', 1);
-          tutorial.emit('sold');
-          audio.coin();
-          toast(`Sold 1 ${itemName(id)} for 🪙${sellPrice}`, 'success');
-          save();
-          refreshPanel();
-        } catch (e) { audio.error(); toast('Could not sell that.', 'error'); }
-      }));
+      const locked = state.level < SHOP.unlockLevel;
+      const noSlot = !locked && shop.freeSlots() <= 0;
+      const label = locked
+        ? `Shop opens at level ${SHOP.unlockLevel}`
+        : (noSlot ? 'Shop stand is full' : 'Sell in the shop…');
+      const btn = button(label, () => openSellDialog(id), { disabled: locked || noSlot });
+      // A disabled control that does not say which condition is unmet reads as broken rather
+      // than as blocked.
+      if (noSlot) btn.title = `All ${SHOP.slots} shop slots are in use — collect or cancel one first.`;
+      card.appendChild(btn);
     }
     grid.appendChild(card);
   }
   container.appendChild(grid);
+}
+
+/**
+ * The sell dialog: choose how many and at what price, see how long that price will take to
+ * find a buyer, then list it. This is the whole selling verb in the game - nothing anywhere
+ * pays out instantly, because a farm stand that empties the moment you put something on it is
+ * not a stand, it is a vending machine.
+ *
+ * The price slider is the actual decision: cheap sells in seconds for less, dear sells slowly
+ * for more. The wait shown here is computed by shop.estimateSellTime, the same function the
+ * listing itself uses, so the preview cannot drift away from the result.
+ */
+function openSellDialog(itemId) {
+  const owned = stockCount(itemId);
+  if (owned <= 0) { audio.error(); toast('None left to sell.', 'error'); return; }
+  if (shop.freeSlots() <= 0) { audio.error(); toast('Every shop slot is in use.', 'error'); return; }
+  const { min, max } = shop.priceBounds(itemId);
+  const lo = Math.max(1, Math.round(min));
+  const hi = Math.max(lo, Math.round(max));
+
+  let qty = 1;
+  let price = Math.round((lo + hi) / 2);
+
+  // Built with createElement rather than an innerHTML blob, so the controls are real nodes a
+  // test can find and click. A dialog assembled from a template string is a dialog nothing can
+  // drive, which is how an interactive surface ends up shipping unexercised.
+  const card = openModal('', { label: `Sell ${itemName(itemId)}` });
+  if (!card) return;
+
+  const title = document.createElement('h3');
+  title.textContent = `Sell ${itemIcon(itemId)} ${itemName(itemId)}`;
+  card.appendChild(title);
+  card.appendChild(hintEl('Put it on the roadside stand and wait for a buyer. A lower price finds one sooner.'));
+
+  const makeSlider = (labelText, id, minV, maxV, value) => {
+    const row = document.createElement('div');
+    row.className = 'sell-row';
+    const label = document.createElement('label');
+    label.setAttribute?.('for', id);
+    label.textContent = labelText;
+    const input = document.createElement('input');
+    input.id = id;
+    input.type = 'range';
+    input.min = String(minV);
+    input.max = String(maxV);
+    input.step = '1';
+    input.value = String(value);
+    row.appendChild(label);
+    row.appendChild(input);
+    card.appendChild(row);
+    return input;
+  };
+
+  const qtyEl = makeSlider('How many', 'sell-qty', 1, owned, qty);
+  const priceEl = makeSlider('Price each', 'sell-price', lo, hi, price);
+
+  const summary = document.createElement('p');
+  summary.className = 'sell-summary';
+  summary.id = 'sell-summary';
+  summary.setAttribute?.('aria-live', 'polite');
+  card.appendChild(summary);
+
+  // The summary is the whole point of the dialog: what you get, how long you wait, and how the
+  // price compares to the item's usual value.
+  const update = () => {
+    qty = Number(qtyEl.value) || 1;
+    price = Number(priceEl.value) || lo;
+    const wait = shop.estimateSellTime(itemId, price);
+    const base = economy.sellValue(itemId) || 0;
+    const delta = base > 0 ? Math.round(((price - base) / base) * 100) : 0;
+    const compare = delta === 0 ? 'the usual price'
+      : (delta > 0 ? `${delta}% over the usual price` : `${-delta}% under the usual price`);
+    summary.textContent =
+      `${qty} x ${itemName(itemId)} at 🪙${price} each — 🪙${qty * price} when it sells. ` +
+      `About ${fmtDuration(wait * 1000)} to find a buyer (${compare}).`;
+  };
+  qtyEl.addEventListener('input', update);
+  priceEl.addEventListener('input', update);
+  update();
+
+  const actions = document.createElement('div');
+  actions.className = 'minigame-actions';
+  actions.appendChild(button('Cancel', () => closeModal(), { className: 'quiet' }));
+  const confirm = button('List it', () => {
+    const ok = shop.list(itemId, qty, price);
+    if (!ok) { audio.error(); toast('Could not list that.', 'error'); return; }
+    audio.place();
+    toast(`${qty} ${itemName(itemId)} on the stand — waiting for a buyer.`, 'success');
+    save();
+    closeModal();
+    refreshPanel();
+  });
+  confirm.id = 'sell-confirm';
+  actions.appendChild(confirm);
+  card.appendChild(actions);
 }
 
 function renderBarnOrSilo(container, kind) {
@@ -564,9 +657,11 @@ function renderShop(container) {
       card.className = 'shop-slot';
       card.innerHTML = `<span class="icon">${itemIcon(listing.itemId)}</span><strong>${itemName(listing.itemId)}</strong><span>x${listing.qty} — 🪙${listing.price}</span>`;
       if (listing.sold) {
-        card.appendChild(button('Collect', () => {
+        card.appendChild(button(`Collect 🪙${listing.price * listing.qty}`, () => {
           const ok = shop.collect(i);
-          if (ok) { audio.coin(); toast('Collected!', 'success'); save(); refreshPanel(); }
+          // 'sold' is the tutorial's step-6 gate. It belongs HERE, where a buyer has paid,
+          // rather than on the old instant-sell button, which no longer exists.
+          if (ok) { audio.coin(); economy.trackStat && economy.trackStat('sold', listing.qty); tutorial.emit('sold'); toast(`Sold! 🪙${listing.price * listing.qty}`, 'success'); save(); refreshPanel(); }
           else { audio.error(); toast('Could not collect that.', 'error'); }
         }));
       } else {
@@ -580,10 +675,10 @@ function renderShop(container) {
     });
     container.appendChild(grid);
   } else {
-    container.appendChild(hintEl('No listings yet — sell something below.'));
+    container.appendChild(hintEl('Nothing on the stand yet. List something and a buyer will come along — a lower price finds one sooner.'));
   }
 
-  container.appendChild(hintEl('List an item for sale:'));
+  container.appendChild(hintEl(`Put something on the stand (${shop.freeSlots()} of ${SHOP.slots} slots free):`));
   const usedSlots = listings.filter(Boolean).length;
   const full = usedSlots >= SHOP.slots;
   const sellPool = { ...state.silo.items, ...state.barn.items };
@@ -594,15 +689,12 @@ function renderShop(container) {
     const base = economy.sellValue(id);
     if (!(base > 0)) continue;
     listable++;
-    const price = Math.round(base * 1.2);
     const card = document.createElement('div');
     card.className = 'build-card';
     card.innerHTML = `<span class="icon">${itemIcon(id)}</span><strong>${itemName(id)}</strong><span>x${qty} owned</span>`;
-    card.appendChild(button(`List 1 for 🪙${price}`, () => {
-      const ok = shop.list(id, 1, price);
-      if (ok) { audio.place(); toast(`Listed 1 ${itemName(id)}.`, 'success'); refreshPanel(); }
-      else { audio.error(); toast('Could not list that.', 'error'); }
-    }, { disabled: full }));
+    // One dialog for both doors into selling, so the stand and the barn cannot offer
+    // different deals for the same item.
+    card.appendChild(button('Sell…', () => openSellDialog(id), { disabled: full }));
     listGrid.appendChild(card);
   }
   if (listable) container.appendChild(listGrid);

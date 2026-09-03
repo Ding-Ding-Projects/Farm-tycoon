@@ -402,15 +402,31 @@ function bootBounds() {
 }
 
 /** Mirrors main.js's boot() focus-target computation for a fresh level-1 save. */
+/** The starting plots exactly as state.js makeStartingFields() lays them out: rows of three. */
+function startingFieldTiles() {
+  const COLS = 3;
+  const tiles = [];
+  for (let i = 0; i < NEW_GAME.fields; i++) {
+    tiles.push({
+      x: FARM.startZone.x + 1 + (i % COLS),
+      y: FARM.startZone.y + 3 + Math.floor(i / COLS),
+    });
+  }
+  return tiles;
+}
+
 function bootFocusTargetFreshSave() {
-  const fieldRow = FARM.startZone.y + 3; // makeStartingFields()'s row
-  const fieldTiles = [];
-  for (let i = 0; i < NEW_GAME.fields; i++) fieldTiles.push({ x: FARM.startZone.x + 1 + i, y: fieldRow });
-  const unlockedStructures = Object.values(STRUCTURES).filter((d) => NEW_GAME.level >= d.unlockLevel);
-  const points = [
-    ...fieldTiles,
-    ...unlockedStructures.map((d) => ({ x: d.pos.x + d.size[0] / 2, y: d.pos.y + d.size[1] / 2 })),
-  ];
+  // Mirrors src/main.js's boot() EXACTLY, which is the whole value of this helper. boot() prefers
+  // what the player OWNS and falls back to unlocked structures only for a save that owns nothing;
+  // this used to average the two together, which was a different framing from the one shipping,
+  // and it silently coupled these assertions to every structure's unlockLevel - so opening the
+  // roadside shop at level 1 moved a camera constant, which is nonsense as a cause.
+  const fieldTiles = startingFieldTiles();
+  const points = fieldTiles.length
+    ? fieldTiles
+    : Object.values(STRUCTURES)
+        .filter((d) => NEW_GAME.level >= d.unlockLevel)
+        .map((d) => ({ x: d.pos.x + d.size[0] / 2, y: d.pos.y + d.size[1] / 2 }));
   return [
     points.reduce((sum, p) => sum + p.x, 0) / points.length,
     points.reduce((sum, p) => sum + p.y, 0) / points.length,
@@ -426,9 +442,8 @@ test('boot: the starting fields are dramatically less clipped than before, and m
   const fieldCount = NEW_GAME.fields;
   let worstSy = Infinity;
   let clearOfHud = 0;
-  for (let i = 0; i < fieldCount; i++) {
-    const tx = FARM.startZone.x + 1 + i;
-    const [, sy] = tileToScreen(tx, fieldRow, VIEWPORT_W, VIEWPORT_H);
+  for (const tile of startingFieldTiles()) {
+    const [, sy] = tileToScreen(tile.x, tile.y, VIEWPORT_W, VIEWPORT_H);
     worstSy = Math.min(worstSy, sy);
     if (sy >= HUD_INSET_PX) clearOfHud++;
   }
@@ -598,18 +613,20 @@ test("boot's richer framing SURVIVES tickCamera() once a bounds provider is regi
   const fieldRow = FARM.startZone.y + 3;
   let worstSy = Infinity;
   let clearOfHud = 0;
-  for (let i = 0; i < NEW_GAME.fields; i++) {
-    const tx = FARM.startZone.x + 1 + i;
-    const [, sy] = tileToScreen(tx, fieldRow, VIEWPORT_W, VIEWPORT_H);
+  for (const tile of startingFieldTiles()) {
+    const [, sy] = tileToScreen(tile.x, tile.y, VIEWPORT_W, VIEWPORT_H);
     worstSy = Math.min(worstSy, sy);
     if (sy >= HUD_INSET_PX) clearOfHud++;
   }
-  // Verified exact value (computed independently before writing this assertion): 108.75px. The
-  // exact same computation with NO provider registered lands at -8px and clears only 4/6 — see
-  // the fallback test above. All 6 fields clearing the HUD, through the real frame loop, is the
-  // literal deliverable this fix exists to reach.
-  assert.ok(Math.abs(worstSy - 108.75) < 1e-6,
-    `expected the worst starting field to sit at the verified 108.75px once a provider is registered and the real frame loop runs, got ${worstSy}`);
+  // 112px, derived independently rather than pasted from a run: with the camera resting at its
+  // boot target (12, 13.5), the northmost plot's row sum is 24, so
+  //   sy = H*OY_RATIO + (24 - (12 + 13.5)) * (T/2) = 190 - 1.5 * 52 = 112.
+  // The previous constant here was 108.75, and it was wrong for a reason worth recording: this
+  // test modelled the six starting plots as ONE ROW OF SIX, while state.js lays them out in rows
+  // of three. Both the focus target and the worst-plot search were computed against a farm that
+  // has never existed. All 6 plots clear the 76px HUD either way, which is the deliverable.
+  assert.ok(Math.abs(worstSy - 112) < 1e-6,
+    `expected the worst starting plot to sit at the derived 112px once a provider is registered and the real frame loop runs, got ${worstSy}`);
   assert.equal(clearOfHud, NEW_GAME.fields,
     `expected all ${NEW_GAME.fields} starting fields clear of the HUD (sy >= ${HUD_INSET_PX}) once tickCamera() uses the real bounds every frame, got ${clearOfHud}/${NEW_GAME.fields}`);
 });

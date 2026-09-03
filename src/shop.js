@@ -13,10 +13,29 @@ function baseValue(itemId) {
   return CROPS[itemId]?.sellPrice ?? GOODS[itemId]?.sellPrice ?? MATERIALS[itemId]?.sellPrice ?? 0;
 }
 
-function priceBounds(itemId) {
+export function priceBounds(itemId) {
   const base = baseValue(itemId);
   const [minMult, maxMult] = SHOP.priceBand;
   return { min: base * minMult, max: base * maxMult };
+}
+
+/**
+ * Seconds a listing at `price` will take to sell. Exported because the sell dialog shows the
+ * player this number BEFORE they commit, and a preview computed separately from the real thing
+ * is a preview that eventually lies - the whole point of the price slider is that the estimate
+ * it moves is the estimate that will actually be used.
+ */
+export function estimateSellTime(itemId, price) {
+  const { min, max } = priceBounds(itemId);
+  const clamped = Math.min(max, Math.max(min, price));
+  const frac = max > min ? (clamped - min) / (max - min) : 1;
+  return Math.max(MIN_SELL_TIME, Math.round(SHOP.sellTimeBase * (0.15 + frac * 0.85)));
+}
+
+/** Free listing slots right now. */
+export function freeSlots() {
+  const shop = ensureShopState();
+  return SHOP.slots - shop.listings.filter(Boolean).length;
 }
 
 function stockBucket(itemId) { return CROPS[itemId] ? state.silo.items : state.barn.items; }
@@ -49,10 +68,10 @@ export function list(itemId, qty, price) {
   bucket[itemId] -= qty;
 
   const now = Date.now();
-  const frac = max > min ? (clampedPrice - min) / (max - min) : 1; // 0 = cheapest, 1 = priciest
-  // Cheaper listings sell faster: at the price floor sellTime shrinks toward MIN_SELL_TIME
-  // (subject to the floor), at the price ceiling it is the full sellTimeBase.
-  const sellTime = Math.max(MIN_SELL_TIME, Math.round(SHOP.sellTimeBase * (0.15 + frac * 0.85)));
+  // Cheaper listings sell faster: at the price floor sellTime shrinks toward MIN_SELL_TIME,
+  // at the price ceiling it is the full sellTimeBase. One formula, shared with the dialog's
+  // preview, so what the player was shown is what they get.
+  const sellTime = estimateSellTime(itemId, clampedPrice);
 
   while (shop.listings.length <= slotIndex) shop.listings.push(null);
   shop.listings[slotIndex] = {

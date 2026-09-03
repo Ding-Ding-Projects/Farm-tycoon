@@ -1766,7 +1766,10 @@ export const ORDERS = {
 
 /** Roadside shop stand. */
 export const SHOP = {
-  slots: 8, unlockLevel: 4,
+  // Level 1, not 4. Selling in this game means listing a thing and waiting for somebody to buy
+  // it - there is no instant sell anywhere - so the stand has to be open from the first harvest
+  // or a new player has produce and no way to turn it into coins.
+  slots: 8, unlockLevel: 1,
   priceBand: [0.7, 1.5],       // min/max multiplier over base sellPrice
   sellTimeBase: 120,            // seconds at max price; cheaper listings sell faster
 };
@@ -2594,7 +2597,7 @@ export const STRUCTURES = {
   truck_bay:     { name: 'Truck Bay',         size: [2, 1], pos: { x: 17, y: 11 }, unlockLevel: 8,  panel: 'truck' },
   barn:          { name: 'Barn',              size: [2, 2], pos: { x: 10, y: 10 }, unlockLevel: 1,  panel: 'barn' },
   silo:          { name: 'Silo',              size: [1, 2], pos: { x: 12, y: 10 }, unlockLevel: 1,  panel: 'silo' },
-  shop_stand:    { name: 'Roadside Shop',     size: [2, 1], pos: { x: 20, y: 10 }, unlockLevel: 4,  panel: 'shop' },
+  shop_stand:    { name: 'Roadside Shop',     size: [2, 1], pos: { x: 20, y: 10 }, unlockLevel: 1,  panel: 'shop' }, // open from the start: it is the only way to sell anything
   boat_dock:     { name: 'Boat Dock',         size: [3, 2], pos: { x: 10, y: 22 }, unlockLevel: 17, panel: 'boat' },
   lake:          { name: 'Fishing Lake',      size: [4, 3], pos: { x: 22, y: 10 }, unlockLevel: 12, panel: 'fishing' },
   mine_entrance: { name: 'Mine Entrance',     size: [2, 2], pos: { x: 5,  y: 13 }, unlockLevel: 24, panel: 'mine' },
@@ -2733,7 +2736,7 @@ export const TUTORIAL = {
     { id: 'grow_wait',    target: 'world:field',                   text: 'Wheat takes a moment to grow — watch the ring around the plot fill up.', event: 'crop_ready' },
     { id: 'harvest',      target: 'world:field',                   text: 'It’s ready! Tap the field and drag the basket across the ripe wheat — or tap it to harvest one.', event: 'harvested' },
     { id: 'silo_peek',    target: 'world:structure:silo',          text: 'Your crops are stored in the silo. Tap it to take a look!', event: 'panel_opened:inventory' },
-    { id: 'sell_wheat',   target: 'panel:.build-card',             text: 'Sell 2 wheat to earn your first coins.', event: 'sold' },
+    { id: 'sell_wheat',   target: 'world:structure:shop_stand',    text: 'Nothing sells instantly here — put wheat on the roadside stand and a buyer will come along. Cheaper listings sell sooner.', event: 'sold' },
     { id: 'buy_coop',     target: 'world:structure:workshop_yard', text: 'Tap the Building Workshop yard and drag the Chicken Coop out onto your land. 🐔', event: 'placed:chicken' },
     { id: 'feed_hens',    target: 'world:pen',                     text: 'Tap the coop and drag the feed onto your hens — the coop came with a bag of it.', event: 'fed' },
     { id: 'buy_bakery',   target: 'world:structure:workshop_yard', text: 'Back at the yard, drag out a Bakery.', event: 'placed:bakery' },

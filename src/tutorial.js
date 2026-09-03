@@ -111,7 +111,33 @@ function placeAt(circle, anchoredToWorld) {
   // bottom of the screen used to sit off the display.
   const below = circle.y + circle.r + 16;
   bubble.style.top = below + 140 <= h ? `${below}px` : `${Math.max(12, circle.y - circle.r - 156)}px`;
+  keepClearOfSheet();
   overlay.dataset.anchored = anchoredToWorld ? 'world' : 'dom';
+}
+
+/**
+ * Keep the bubble off the open sheet panel.
+ *
+ * Several steps say "tap the silo" or "open the build menu", and the moment the player does,
+ * the sheet slides up from the bottom - straight under a bubble that is usually anchored low,
+ * because the thing it was pointing at is usually low. So the instruction ends up covering the
+ * panel it just asked you to open, which is the exact opposite of guidance.
+ */
+function keepClearOfSheet() {
+  const sheet = document.getElementById('sheet');
+  if (!sheet || sheet.hidden || typeof sheet.getBoundingClientRect !== 'function') return;
+  const panel = sheet.getBoundingClientRect();
+  if (!panel.height) return;
+  const box = bubble.getBoundingClientRect();
+  if (!box.height) return;
+  const overlaps = box.bottom > panel.top && box.top < panel.bottom
+    && box.right > panel.left && box.left < panel.right;
+  if (!overlaps) return;
+  // Above the panel if there is room for the whole bubble, otherwise pinned to the top margin -
+  // never partly off-screen, which is the failure the old bottom-anchored fallback had.
+  const wanted = panel.top - box.height - 12;
+  bubble.style.bottom = '';
+  bubble.style.top = `${Math.max(12, wanted)}px`;
 }
 
 function render() {
@@ -211,6 +237,13 @@ export function checkAutoEvents() {
 
 /** Skip the whole tutorial (settings option). Pays the finish reward once, never twice. */
 export function skip() { finish(); }
+
+/**
+ * Re-place the bubble without changing step. ui.js calls this whenever a sheet panel opens or
+ * closes, because that is when the bubble's clear space appears and disappears - the tutorial
+ * itself has no way to notice a panel it did not open.
+ */
+export function reposition() { if (active) render(); }
 
 export function isActive() { return active; }
 

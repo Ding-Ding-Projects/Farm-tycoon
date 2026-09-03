@@ -352,6 +352,9 @@ export function openPanel(panelId, ctx = null) {
   audio.open();
   renderPanelContent(panelId, ctx);
   window.dispatchEvent(new CustomEvent('panel-opened', { detail: { panelId } }));
+  // The sheet slides up over the bottom half of the screen, which is exactly where a tutorial
+  // bubble anchored to a low world object sits. Tell it to move.
+  tutorial.reposition?.();
 }
 
 export function closePanel() {
@@ -363,6 +366,7 @@ export function closePanel() {
   mergeSelected = null; // transient UI-only selection — never survives leaving the panel
   panelsearch.forget();
   audio.close();
+  tutorial.reposition?.();
 }
 
 /** Re-render whichever panel is currently open, with the same ctx it was opened with — the

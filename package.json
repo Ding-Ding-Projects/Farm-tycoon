@@ -29,7 +29,8 @@
       "index.html",
       "styles.css",
       "src/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "build/icon.ico"
     ],
     "win": {
       "target": "squirrel",

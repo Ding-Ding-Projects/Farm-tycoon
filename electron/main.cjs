@@ -6,11 +6,44 @@ const path = require('path');
 
 const ICON_PATH = path.join(__dirname, '..', 'build', 'icon.ico');
 
-// Squirrel fires the app with these on install/update/uninstall. electron-builder's stub creates
-// the shortcuts itself, so all we owe it is a quick, quiet exit — staying alive here flashes a
-// window during every install.
-if (process.platform === 'win32' && process.argv.some((a) => a.startsWith('--squirrel-'))) {
-  app.quit();
+// Squirrel fires the app with these on install/update/uninstall. We must create and remove the
+// shortcuts ourselves through Update.exe and then exit IMMEDIATELY -- a plain `app.quit()` is
+// asynchronous, so execution used to fall straight through to `app.whenReady()` and open a real
+// window in the middle of an install. Squirrel kills the process after 15 seconds of that and
+// reports the install as failed, with no Start Menu or desktop shortcut to show for it.
+function handleSquirrelEvent() {
+  if (process.platform !== 'win32' || process.argv.length < 2) return false;
+  const cmd = process.argv[1];
+  if (!cmd.startsWith('--squirrel-')) return false;
+
+  const { spawnSync } = require('child_process');
+  const exeName = path.basename(process.execPath);
+  const updateExe = path.resolve(path.dirname(process.execPath), '..', 'Update.exe');
+  const run = (args) => {
+    try { spawnSync(updateExe, args, { detached: false, windowsHide: true }); }
+    catch { /* an install must never fail because a shortcut could not be written */ }
+  };
+
+  switch (cmd) {
+    case '--squirrel-install':
+    case '--squirrel-updated':
+      run(['--createShortcut', exeName, '-l', 'Desktop,StartMenu']);
+      break;
+    case '--squirrel-uninstall':
+      run(['--removeShortcut', exeName, '-l', 'Desktop,StartMenu']);
+      break;
+    case '--squirrel-obsolete':
+      break;
+    default:
+      return false;
+  }
+  app.exit(0);
+  return true;
+}
+
+if (handleSquirrelEvent()) {
+  // CommonJS modules are function-wrapped, so this genuinely stops the rest of the file running.
+  return;
 }
 
 // One stable feed. GitHub redirects /releases/latest/download/<name> to the newest release's

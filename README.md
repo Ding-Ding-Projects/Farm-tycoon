@@ -381,6 +381,25 @@ project (standing policy, not a missing credential): the installer is unsigned, 
 will show an "unknown publisher" warning, which is expected rather than a sign the file is
 broken.
 
+The desktop window is frameless and paints its own title bar (`src/desktop.js`), with
+minimise, maximise/restore driven by the real window state, a drag region, and the running app
+version. It also checks a stable GitHub release feed at boot and every six hours through
+Squirrel.Windows's auto-updater, surfacing a ready update as a non-blocking banner with
+Restart/Later (the banner says plainly that the build is unsigned, because code signing is out
+of scope). Both are desktop-only; the browser build has neither. Both have now been verified
+against the real Electron artifact, launched headlessly on an off-screen Windows desktop: see
+`screenshots/11-desktop-title-bar.png` and `HANDOFF.md` for the full evidence. What remains
+open is an end-to-end upgrade (installing one build, then updating it to a newer one), since
+that has not yet been run.
+
+The front screen also shows a build stamp: the running version and, on a build the release
+workflow actually stamped, the exact UTC instant it was made, rendered in the local timezone
+down to the second. A source checkout deliberately shows "build date unavailable" instead of
+guessing from launch time or a file's modification time, because a wrong build time answers the
+reader's question confidently and incorrectly. `src/build-info.js` holds the provenance,
+`tools/stamp-build-info.mjs` writes it before packaging, and `tools/test-buildstamp.mjs` covers
+it with 7 assertions.
+
 </details>
 
 <details>

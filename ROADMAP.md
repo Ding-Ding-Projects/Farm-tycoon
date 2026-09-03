@@ -211,6 +211,45 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
       pointing at `social-preview.png` at the repository root. It cannot be scripted: the REST
       API does not expose it, so it stays open until the owner does it by hand.
 
+## Desktop shell pass (2026-09-02, `c1dd36e`)
+
+- [x] **Custom frameless title bar.** `electron/main.cjs` sets `frame: false`; `src/desktop.js`
+      builds minimise, maximise/restore (driven by the real window state, not assumed), a drag
+      region, and the running app version.
+- [x] **Squirrel.Windows auto-updater.** Checks a stable GitHub release feed at boot and every
+      six hours; a ready update surfaces as a non-blocking banner (Restart/Later) that states
+      plainly the build is unsigned.
+- [x] **The crop grow ring fills while the crop grows**, matching what the tutorial has always
+      told the player to watch for.
+- [x] **A modal no longer overlaps the tutorial coach card.**
+- [x] **Title bar and auto-updater verified against the real Electron artifact.** Launched
+      headlessly on an off-screen Windows desktop: a frameless window with our own title bar
+      (icon, "Farm Tycoon", "v0.1.0", three working window buttons, window class
+      `Chrome_WidgetWin_1`, 1280x800), canvas and HUD rendering below it with no clipping, no
+      console entries other than Electron's own dev-mode insecure-CSP advisory, and the update
+      banner correctly hidden on boot in an unpackaged run (updater reports `unsupported`).
+      Capture: `screenshots/11-desktop-title-bar.png`. The update feed was separately proven at
+      the network layer: the `RELEASES` manifest and its named `.nupkg` both resolve HTTP 200
+      from the stable feed URL.
+- [ ] **The one piece still open: an end-to-end upgrade.** No build has yet been installed and
+      then updated to a newer one. Tracked in `HANDOFF.md`.
+
+## Build stamp on the front screen (`c1dd36e`)
+
+- [x] **The running version and build provenance show on the front screen before any
+      navigation.** `index.html`'s `.build-stamp` element, painted by `src/main.js` from
+      `src/build-info.js`; `tools/stamp-build-info.mjs` rewrites the provenance with the real
+      version, UTC build instant and commit, run by the release workflow immediately before
+      packaging.
+- [x] **Missing provenance reads as missing, never as a guess.** A source checkout shows
+      "build date unavailable" rather than launch time or a file's mtime standing in for the
+      real build time.
+- [x] **A stamped build shows local date and time to the second, timezone named, commit in the
+      element's title.**
+- [x] **`tools/test-buildstamp.mjs`, 7 assertions, wired into `npm test`**, each proven by
+      breaking the thing it guards and watching it go red before restoring it. Full suite:
+      **806 passed, 0 failed**.
+
 ## Shared surface contracts this game does NOT implement
 
 Audited 2026-09-02 against the game and the documentation site, by grep and by reading, not from

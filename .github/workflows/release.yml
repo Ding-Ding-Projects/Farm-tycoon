@@ -58,6 +58,20 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
+      # The front screen shows the running version and when THAT build was made. The value
+      # has to come from this run's provenance, so it is stamped here, immediately before
+      # packaging, and never from a launch clock or a file timestamp at runtime.
+      - name: Stamp build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          VERSION="${{ steps.tagver.outputs.base_version }}"
+          COMMIT="$(git rev-parse HEAD)"
+          node tools/stamp-build-info.mjs "$VERSION" "$BUILT_AT" "$COMMIT"
+          grep -q "$BUILT_AT" src/build-info.js || { echo "::error::build-info.js was not stamped"; exit 1; }
+          echo "Stamped $VERSION built at $BUILT_AT from $COMMIT"
+
       - name: Build Squirrel.Windows installer
         shell: bash
         run: npm run dist

@@ -807,10 +807,73 @@ npm start          # electron .</pre>
 </p>
 <p>
   The renderer runs locked down: <code>contextIsolation: true</code>,
-  <code>nodeIntegration: false</code>, <code>sandbox: true</code>. The preload script is
-  deliberately empty and exposes nothing from Node: the game is pure web technology and does
-  not need it. If a future feature wants a native save dialog, that is the file it belongs in,
-  behind <code>contextBridge</code>.
+  <code>nodeIntegration: false</code>, <code>sandbox: true</code>. The preload script exposes a
+  narrow set of window and update controls through <code>contextBridge</code> — nothing from
+  Node itself reaches the page.
+</p>
+
+<h3>The title bar</h3>
+<p>
+  The desktop window is frameless (<code>frame: false</code> in <code>electron/main.cjs</code>).
+  A frameless window paints nothing of its own, so <code>src/desktop.js</code> builds the whole
+  bar: a drag region, minimise, and a maximise/restore button whose glyph tracks the window's
+  real state rather than assuming one. That distinction matters because a window snapped by the
+  operating system, or maximised by double-clicking the bar, never goes through the button that
+  set <code>frame: false</code> in the first place — so the main process pushes
+  <code>window:state</code> on every <code>maximize</code>/<code>unmaximize</code> event, and the
+  renderer only ever reflects what it is told. The bar also shows the running app version, read
+  from the main process over IPC rather than hard-coded into the page. None of this exists in the
+  browser build; a frame is only removed when there is somewhere to put a replacement one.
+</p>
+
+<h3>The auto-updater</h3>
+<p>
+  Squirrel.Windows only — there is no updater in the browser build or on any other platform.
+  <code>electron/main.cjs</code> points Electron's <code>autoUpdater</code> at a single stable
+  feed URL (GitHub's own <code>/releases/latest/download</code> redirect, so nothing pins a
+  specific tag), checks once at boot and again every six hours, and forwards
+  <code>checking</code>/<code>downloading</code>/<code>current</code>/<code>error</code>/
+  <code>ready</code> states to the renderer over IPC. A ready update surfaces as a non-blocking
+  banner with <strong>Restart to install</strong> and <strong>Later</strong> — never a dialog
+  that blocks the game.
+</p>
+<div class="callout callout-warn">
+  <p>
+    <strong>The banner says the build is unsigned, because it is.</strong> Code signing is
+    permanently out of scope for this project (see
+    <a href="#/architecture/release">Building and releasing</a>), and an update banner that
+    looked like a verified publisher would misrepresent the one thing being asked of the user:
+    trusting an unsigned binary. Restarting to install is the user's decision to make, not one
+    the banner nudges past.
+  </p>
+</div>
+
+<h3>The build stamp</h3>
+<p>
+  <code>index.html</code> carries a <code>.build-stamp</code> element on the front screen,
+  before any navigation, settings screen or the tutorial: the running version and when that
+  exact build was made. <code>src/build-info.js</code> is the provenance record (
+  <code>version</code>, <code>builtAt</code>, <code>commit</code>) and the function that formats
+  it for display; <code>src/main.js</code> paints it into the DOM.
+  <code>tools/stamp-build-info.mjs</code> rewrites that file with the real version, the UTC build
+  instant and the commit, and the release workflow runs it immediately before packaging, so a
+  shipped artifact always carries real values.
+</p>
+<div class="callout callout-info">
+  <p>
+    <strong>The honesty rule is the part worth remembering.</strong> A source checkout keeps the
+    committed placeholder (<code>builtAt: null</code>), and the stamp reads "build date
+    unavailable" rather than falling back to launch time or a file's modification time. Both of
+    those answer a different question than "when was this build made", and answering with either
+    would be a confident, wrong answer to the one thing the reader is checking. A stamped build
+    shows the local date and time down to the second with the timezone named, and the commit in
+    the element's <code>title</code> attribute.
+  </p>
+</div>
+<p>
+  <code>tools/test-buildstamp.mjs</code> covers it with 7 assertions, wired into <code>npm
+  test</code>. Each was proven by deliberately breaking the thing it guards and watching it go
+  red before restoring it, not merely written and trusted.
 </p>
 
 <h3>The debug hook</h3>

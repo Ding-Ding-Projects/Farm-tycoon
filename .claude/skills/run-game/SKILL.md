@@ -12,7 +12,12 @@ fail on `file://` in some contexts).
 
 ```bash
 cd /path/to/Farm-tycoon
-npm run serve    # python3 -m http.server 8123 under the hood
+npm run serve    # tools/serve.mjs on 8123, sending no-store on every response
+#                  The no-store header is load-bearing, not tidy: the old
+#                  python3 -m http.server let the browser heuristically cache ES
+#                  modules, producing a mixed module graph (new modules linked
+#                  against old ones). It shows up as a missing export that is
+#                  plainly in the file. Suspect the cache before the code.
 ```
 
 **Always browse to `http://127.0.0.1:8123`, never `http://localhost:8123`.** Verified trap: a

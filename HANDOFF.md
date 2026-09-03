@@ -1,7 +1,71 @@
 # Handoff
 
-State of the repository as of commit `17d205e` on `main` (the 2026-09-02 section is the newest; older sections are kept as written). Written to be read by whoever picks
+State of the repository as of commit `c1dd36e` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
+
+## Session of 2026-09-02 (latest) — desktop shell catches up: title bar, auto-updater, two visible fixes
+
+Commit `c1dd36e1e9764b370d00511248b6faf0b1ba1e36` added four things, all of them things the game
+already claimed to do and did not:
+
+1. **A custom frameless title bar for the Electron desktop build.** `electron/main.cjs` sets
+   `frame: false`; `src/desktop.js` builds the bar itself — minimise, maximise/restore with a
+   glyph driven by the real window state (pushed from the main process on every
+   `maximize`/`unmaximize`, so an OS snap or a double-click on the bar is reflected correctly
+   rather than assumed), a drag region, and the running app version.
+2. **A Squirrel.Windows auto-updater.** Checks a stable GitHub release feed
+   (`/releases/latest/download`, so nothing pins a tag) at boot and every six hours, and
+   surfaces a ready update as a non-blocking banner with Restart/Later. The banner states
+   plainly that the build is unsigned — code signing is permanently out of scope for this
+   project, and a banner implying a verified publisher would misrepresent the one thing being
+   asked of the user.
+3. **The crop grow ring fills while the crop grows.** `src/main.js` now passes `progress` for a
+   growing crop; previously the ring appeared only once the crop was already ready, directly
+   contradicting the tutorial line that tells the player to watch it fill.
+4. **A modal no longer shares the screen with the tutorial coach card.** `src/ui.js` adds
+   `body.modal-open`; `styles.css` hides `.tutorial-overlay` while it is set.
+
+**What this pass corrected in this document (previous claims that had gone stale):** the earlier
+top-of-file state line below claimed 783 assertions across 20 suites at commit `17d205e`. A fresh
+`npm test` run against this checkout at `c1dd36e` reports **799 passed, 0 failed** — summed from
+the per-suite `N passed, 0 failed` lines, not read off the tail of the output, which only shows
+the last suite. Nothing else in that older section needed correcting; the new total simply
+reflects the assertions this commit's own test changes added.
+
+**The installer verification gap above is now closed, with one exact piece left open.** A
+separate verification lane launched the real Electron artifact headlessly on an off-screen
+Windows desktop and confirmed, from captured images and a CDP session: the window is frameless
+with our own title bar showing the icon, "Farm Tycoon" and "v0.1.0" plus three working window
+buttons (window class `Chrome_WidgetWin_1`, 1280x800); the canvas and HUD render below the bar
+with no clipping; the only console entry was Electron's own dev-mode insecure-CSP advisory, no
+app errors and no exceptions; and the update banner correctly stays hidden on boot in an
+unpackaged run, where the updater reports `unsupported`. The capture is committed at
+`screenshots/11-desktop-title-bar.png`. The update feed itself was proven at the network layer
+separately: `https://github.com/Ding-Ding-Projects/Farm-tycoon/releases/latest/download/RELEASES`
+returns HTTP 200 with a real manifest naming `farm-tycoon-0.1.0-full.nupkg`, and that `.nupkg`
+resolves HTTP 200 from the same base, so the stable feed URL the app uses does resolve.
+
+**What remains genuinely unproven** is an end-to-end upgrade: no build has yet been installed
+and then updated to a newer one. That is the one piece of this feature still open.
+
+## Build stamp on the front screen
+
+`index.html` now carries a `.build-stamp` element on the front screen, before navigation,
+settings or the tutorial: the running version and when that exact build was made. `src/build-info.js`
+holds the provenance (`version`, `builtAt`, `commit`) and formats it for display; `src/main.js`
+paints it; `tools/stamp-build-info.mjs` rewrites `src/build-info.js` with the real version, the
+UTC build instant and the commit, and the release workflow runs the stamper immediately before
+packaging.
+
+The behaviour worth understanding is the honesty rule, not the wiring. A source checkout is not
+stamped, so it displays "build date unavailable" rather than falling back to launch time or a
+file's mtime, because a fabricated build time answers the reader's question confidently and
+wrongly. A stamped build shows the local date and time down to the second with the timezone
+named, and the commit in the element's `title` attribute.
+
+Covered by `tools/test-buildstamp.mjs`, 7 assertions wired into `npm test`, each proven by
+deliberately breaking the thing it guards and watching it go red before restoring it. The full
+suite now reports **806 passed, 0 failed**.
 
 ## Session of 2026-09-02 (later) — yum tong: five player-facing poke guys, then a release pass
 

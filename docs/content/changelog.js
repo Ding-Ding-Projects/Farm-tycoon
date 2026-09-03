@@ -295,6 +295,73 @@ because no test drove the surface either one lived on.</p>
   icons</strong>, from a single wrong assumption about a data shape. Also
   captured as-is, also since repaired.</li>
 </ul>
+
+<h3>The desktop shell catches up to its own claims</h3>
+
+<p>Four things the game already claimed to do and did not, all fixed in one
+commit rather than four separate ones because each was small and none depended
+on the others landing first.</p>
+
+<table>
+  <thead><tr><th>Commit</th><th>What landed</th></tr></thead>
+  <tbody>
+    <tr><td><code>c1dd36e</code></td><td>A frameless Electron window with its own
+    title bar — minimise, maximise/restore driven by the real window state, a
+    drag region, and the app version shown</td></tr>
+    <tr><td><code>c1dd36e</code></td><td>A Squirrel.Windows auto-updater checking
+    a stable GitHub feed at boot and every six hours, surfaced as a non-blocking
+    banner that says outright the build is unsigned</td></tr>
+    <tr><td><code>c1dd36e</code></td><td>The crop grow ring now fills while a
+    crop grows, instead of appearing only once the crop is already ready</td></tr>
+    <tr><td><code>c1dd36e</code></td><td>Opening a modal now hides the tutorial
+    coach card, so the two no longer sit on screen at once</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-ok">
+  <p><strong>Verified.</strong> The real Electron artifact was launched
+  headlessly on an off-screen Windows desktop, and captured images plus a CDP
+  session confirmed a frameless window with our own title bar showing the icon,
+  "Farm Tycoon" and "v0.1.0" plus three working window buttons (window class
+  <code>Chrome_WidgetWin_1</code>, 1280x800); the canvas and HUD rendering below
+  the bar with no clipping; no console entries other than Electron's own
+  dev-mode insecure-CSP advisory, no app errors and no exceptions; and the
+  update banner correctly hidden on boot in an unpackaged run, where the
+  updater reports <code>unsupported</code>. The capture is committed at
+  <code>screenshots/11-desktop-title-bar.png</code>.</p>
+  <p>The update feed itself was proven separately, at the network layer:
+  <code>https://github.com/Ding-Ding-Projects/Farm-tycoon/releases/latest/download/RELEASES</code>
+  returns HTTP 200 with a real manifest naming
+  <code>farm-tycoon-0.1.0-full.nupkg</code>, and that <code>.nupkg</code>
+  resolves HTTP 200 from the same base, so the stable feed URL the app uses does
+  resolve.</p>
+  <p>What remains genuinely unproven is an end-to-end upgrade: no build has yet
+  been installed and then updated to a newer one. That is the one piece of this
+  feature still open, tracked in <a href="#/changelog/open">what is still
+  open</a>.</p>
+</div>
+
+<h3>The front screen states its own build provenance</h3>
+
+<p>Commit <code>c1dd36e</code> added a <code>.build-stamp</code> element to
+<code>index.html</code>, shown before any navigation, settings or the tutorial:
+the running version and when that exact build was made. <code>src/build-info.js</code>
+holds the provenance and formats it for display; <code>src/main.js</code> paints
+it; <code>tools/stamp-build-info.mjs</code> rewrites the provenance file with
+the real version, the UTC build instant and the commit, and the release
+workflow runs the stamper immediately before packaging.</p>
+
+<p>The behaviour worth understanding is the honesty rule rather than the
+wiring. A source checkout is not stamped, so it shows "build date unavailable"
+instead of falling back to launch time or a file's mtime, because a fabricated
+build time answers the reader's question confidently and wrongly. A stamped
+build shows the local date and time down to the second with the timezone
+named, and the commit in the element's title.</p>
+
+<p><code>tools/test-buildstamp.mjs</code> covers it with 7 assertions wired
+into <code>npm test</code>, each proven by deliberately breaking the thing it
+guards and watching it go red before restoring it. The full suite now reports
+<strong>806 passed, 0 failed</strong>.</p>
 `,
     },
 
@@ -729,6 +796,17 @@ belongs here too and is not repeated: sixteen unwired modules, seventeen
 placeholder panels, the per-frame camera clamp that discards the wider domain the
 boot sequence computes, the hidden co-op button, and the absent dark theme. That
 section is the detailed version; this is the pointer to it.</p>
+
+<h3>Desktop shell</h3>
+
+<h4>The title bar and the auto-updater are verified; the upgrade path is not</h4>
+
+<p>Commit <code>c1dd36e</code> added a frameless window with its own title bar
+and a Squirrel.Windows auto-updater checking a stable GitHub feed, and both are
+now confirmed working: see <a href="#/changelog/shipped">what has shipped</a>
+for the headless capture and the network-layer proof of the feed. What is not
+proven is an end-to-end upgrade, because no build has yet been installed and
+then updated to a newer one. This entry stays open until that run happens.</p>
 
 <h3>Tooling</h3>
 

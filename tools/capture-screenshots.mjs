@@ -1256,50 +1256,18 @@ async function main() {
   // -------------------------------------------------------------------
   // Write manifest.json
   // -------------------------------------------------------------------
+  // Re-audited at HEAD before this run. Five entries that stood here for the 2026-08-31 pass
+  // (co-op panel, per-factory minigames, mine content, merge board, fishing, expeditions) are
+  // GONE, and deliberately so rather than by oversight: src/ui.js's panel switch now has a real
+  // case for fishing, mine, merge and expeditions, it imports minigames.js and renders a stage
+  // chain from it, and the co-op dock button is un-hidden by level rather than never. Leaving
+  // them listed would have published a manifest describing a build that no longer exists.
   const NOT_REACHABLE = [
     {
-      surface: 'Co-op & Regatta dock panel', tag: 'coop-panel',
-      reason: 'The dock button (data-panel="coop") carries a `hidden` attribute in index.html ' +
-        'and nothing in src/ ever clears it — grepped every src/*.js file for code that would ' +
-        'un-hide it and found none. It is not reachable through any real interaction in this build.',
-    },
-    {
-      surface: 'A per-factory minigame surface', tag: 'minigame',
-      reason: 'src/minigames.js (148 lines) is fully implemented and exercised by ' +
-        'tools/test-crafting.mjs directly, but grepping every src/*.js file for ' +
-        '"minigames.js" as an import specifier returns nothing outside the test tools — no ' +
-        'panel renderer in src/ui.js ever calls into it or opens a minigame UI. There is ' +
-        'currently no way to reach a minigame from the running app.',
-    },
-    {
-      surface: 'Mine panel real content (depths/digs)', tag: 'mine-panel-content',
-      reason: 'src/mine.js (153 lines) is fully implemented and exercised by ' +
-        'tools/test-crafting.mjs directly, but src/ui.js has no "mine" case in its panel ' +
-        'switch, so the Mine Entrance panel (captured above, panel-mine_entrance) shows only ' +
-        'the generic fallback text, never mine.js\'s real dig/depth content.',
-    },
-    {
-      surface: 'Merge board', tag: 'merge-board',
-      reason: 'src/merge.js (219 lines) is fully implemented and exercised by ' +
-        'tools/test-crafting.mjs directly, but src/ui.js has no "merge" case in its panel ' +
-        'switch — the Merge Meadow panel (captured above) shows only the generic fallback.',
-    },
-    {
-      surface: 'Fishing minigame', tag: 'fishing',
-      reason: 'src/fishing.js (138 lines) is implemented, but src/ui.js has no "fishing" case ' +
-        'in its panel switch — the Fishing Lake panel (captured above) shows only the generic fallback.',
-    },
-    {
-      surface: 'Expedition launch/results', tag: 'expedition',
-      reason: 'src/expeditions.js (171 lines) is implemented, but src/ui.js has no ' +
-        '"expeditions" case in its panel switch — the Expedition Camp panel (captured above) ' +
-        'shows only the generic fallback.',
-    },
-    {
       surface: 'Dark theme', tag: 'dark-theme',
-      reason: 'Grepped styles.css and every settings render function for a theme toggle or a ' +
-        'prefers-color-scheme rule; none exists. The app currently ships exactly one visual ' +
-        'theme (the wood/parchment palette), so there is no dark variant to capture.',
+      reason: 'Grepped styles.css for prefers-color-scheme and every settings render function '
+        + 'for a theme toggle; neither exists at this commit. The app ships exactly one visual '
+        + 'theme (the wood and parchment palette), so there is no dark variant to capture.',
     },
   ];
 
@@ -1332,18 +1300,11 @@ async function main() {
       'behind its toast/panel, not leftover terrain. (Panel-opening itself was never affected by ' +
       'any of this: the tap always resolved synchronously against the live camera, before the ' +
       'next clamp ran — only the world-background scenery around a tap was ever wrong.)',
-    secondaryDefectFoundThisPass: 'Not one of the four fixes this pass recaptured, and not ' +
-      'fixed here — flagged because it is visible in a large fraction of this run\'s own ' +
-      'captures and a caption claiming a real item icon would otherwise be misleading. ' +
-      'src/ui.js\'s itemIcon(id) (line ~28) falls back to the literal string \'❔\' whenever ' +
-      'CROPS/GOODS/ANIMALS/MATERIALS[id].icon is undefined. Grepping the entirety of ' +
-      'src/data.js for the literal text "icon:" returns zero matches: no crop, good, animal, ' +
-      'building or raw material in this build defines an icon field, so itemIcon() ALWAYS ' +
-      'falls through to \'❔\' for every call, everywhere. Every DOM panel that lists items by ' +
-      'name (barn, silo, orders, the Feed Mill/Workshop queues, the Workshop\'s craft and build ' +
-      'grids) shows a "❔" glyph beside every item name as a direct result. The world-canvas ' +
-      'radial menus (planting/harvesting/feeding — see 04-plant-radial-menu.png) are unaffected ' +
-      'because they resolve their icon a different way, not through itemIcon().',
+    secondaryDefectResolved: 'The prior pass recorded that src/data.js defined no icon field on '
+      + 'any entry, so src/ui.js itemIcon() always fell through to a placeholder glyph and every '
+      + 'DOM list showed it beside every item name. Re-checked at this commit: all 303 crop and '
+      + 'good entries define an icon, and itemIcon() resolves a real one. The defect is fixed, '
+      + 'and captions naming a real item icon are accurate again.',
     notReachable: NOT_REACHABLE,
     captures: manifest,
   }, null, 2));

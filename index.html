@@ -14,6 +14,14 @@
   <!-- The farm world: full-window canvas. All menus/HUD are DOM below. -->
   <canvas id="world"></canvas>
 
+  <!-- Build stamp: the running version and when THAT build was made, on the front screen
+       before any navigation. Values come from src/build-info.js, which the release workflow
+       stamps; an unstamped checkout says so rather than showing a made-up time. -->
+  <div class="build-stamp" id="build-stamp">
+    <span id="build-stamp-version">v0.1.0</span>
+    <span id="build-stamp-when">build date unavailable</span>
+  </div>
+
   <!-- HUD top bar -->
   <div class="hud-top">
     <div class="level-badge" id="level-badge">

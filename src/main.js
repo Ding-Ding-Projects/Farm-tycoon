@@ -34,6 +34,7 @@ import * as regatta from './regatta.js';
 import * as farm from './farm.js';
 import * as drag from './drag.js';
 import * as desktop from './desktop.js';
+import { BUILD_INFO, buildStamp } from './build-info.js';
 import { prand, tileHash } from './render/sprites.js';
 import {
   CROPS, GOODS, MATERIALS, STRUCTURES, FARM, FORAGING, HELICOPTER, ANIMALS, BUILDINGS, LEVELS,
@@ -516,6 +517,10 @@ function boot() {
   // Doing it after the canvas sized itself would leave the world 34px too tall for one resize.
   safeCall(desktop.init);
 
+  // Front screen, before any navigation: which build this is and when it was made.
+  paintBuildStamp();
+
+
   motion.init();   // must run before the first frame, so nothing animates once and then stops
   ui.init();
   input.init(canvas);
@@ -578,3 +583,17 @@ function boot() {
 }
 
 window.addEventListener('DOMContentLoaded', boot);
+
+/**
+ * Write the running version and its build time into the front-screen stamp. Missing provenance
+ * renders as an honest unavailable state; it never falls back to the current time.
+ */
+function paintBuildStamp() {
+  const stamp = buildStamp(BUILD_INFO);
+  const v = document.getElementById('build-stamp-version');
+  const w = document.getElementById('build-stamp-when');
+  if (v) v.textContent = stamp.version;
+  if (w) w.textContent = stamp.when;
+  const box = document.getElementById('build-stamp');
+  if (box && stamp.title) box.title = stamp.title;
+}

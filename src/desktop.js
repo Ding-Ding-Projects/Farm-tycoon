@@ -86,7 +86,7 @@ function initUpdates(api) {
     const state = s && s.state;
     if (state === 'ready') {
       title.textContent = s.version ? `Update ${s.version} ready` : 'Update ready';
-      // Say plainly that the build is unsigned — Windows will warn, and a banner that implies a
+      // Say plainly that the build is unsigned - Windows will warn, and a banner that implies a
       // verified publisher would be lying about the one thing the user is about to trust.
       note.textContent = 'Downloaded and staged. These builds are unsigned, so Windows may show an unknown-publisher warning.';
       restart.hidden = false;

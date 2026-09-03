@@ -167,6 +167,15 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
       bundles are cargo now: a full load sets off on the same road as the order board and the
       whole payment, bundle payouts plus the completion bonus, arrives with it. An uncollected
       load never blocks the next truck.
+- [x] **The boat sails with her cargo.** Claiming a full boat used to pay the bonus, the XP and
+      the vouchers in the instant the last crate went in, and then the boat "sailed" with
+      nothing left to wait for. She now casts off carrying the whole payout and pays when she
+      docks - a fixed 15-minute route, because a boat sails the same way whatever is in her
+      six crates. The vouchers are rolled at departure and carried aboard, so the number the
+      player was told is the number that arrives.
+- [x] **One road for every vessel.** `orders.addDelivery()` is the single door onto it, so the
+      order board, the truck bay and the boat dock share one list, one arrival clock and one
+      collection path instead of three that drift apart.
 
 - [x] **The tutorial can be moved through.** Ten of its twelve steps waited on a game event with
       no way past, and the other two advanced only if you clicked the bubble, with nothing saying

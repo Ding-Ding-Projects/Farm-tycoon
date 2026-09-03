@@ -211,6 +211,28 @@ function ensureDeliveries() {
   return state.orders.deliveries;
 }
 
+/**
+ * Put a load on the road. The order board fills this in directly; the truck bay and the boat
+ * dock call it, so every vessel in the game shares one list, one arrival clock and one
+ * collection path rather than growing three that drift apart.
+ *
+ * `seconds` is the journey. Payout multipliers are NOT applied here - collectDelivery() applies
+ * them on arrival, so a bonus that lands mid-journey still counts.
+ */
+export function addDelivery({ id, orderId, kind, items, rewardCoins, rewardXp, rewardVouchers = 0, seconds }) {
+  const now = Date.now();
+  const record = {
+    id: id || `del_${kind || 'order'}_${now}`,
+    orderId, kind, items,
+    rewardCoins, rewardXp, rewardVouchers,
+    dispatchedAt: now,
+    arrivesAt: now + Math.max(0, seconds) * 1000,
+    arrived: false,
+  };
+  ensureDeliveries().push(record);
+  return record;
+}
+
 /** Every delivery currently on the road or waiting to be collected, newest dispatch last. */
 export function deliveries() {
   return ensureDeliveries();
@@ -240,9 +262,17 @@ export function collectDelivery(deliveryId) {
   const coins = Math.round(delivery.rewardCoins * economy.multiplier('orderPayoutMult', delivery.orderId));
   economy.addCoins(coins);
   economy.addXp(delivery.rewardXp);
-  economy.trackStat('ordersFulfilled', 1);
+  // Vouchers ride along only for the loads that carry them (the boat). They are already rolled
+  // at dispatch, so a boat sent off with eight vouchers pays eight when it docks - the number
+  // the player was told, not a fresh roll that could come back smaller.
+  const vouchers = delivery.rewardVouchers || 0;
+  if (vouchers > 0) state.vouchers = (state.vouchers || 0) + vouchers;
+  // Count what actually completed. The truck already scored trucksCompleted when it set off,
+  // so counting it again here as a board order would inflate two stats for one job.
+  if (delivery.kind === 'boat') economy.trackStat('boatsCompleted', 1);
+  else if (delivery.kind !== 'truck') economy.trackStat('ordersFulfilled', 1);
   list.splice(index, 1);
-  return { coins, xp: delivery.rewardXp };
+  return { coins, xp: delivery.rewardXp, vouchers };
 }
 
 /** Discard an order (replacement arrives after refreshCooldown). */

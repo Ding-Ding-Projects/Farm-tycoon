@@ -268,7 +268,7 @@ test('orders: fillTruckBundle refuses without stock and never double-fills a bun
 // boat.js — crates, bonus, and a multi-day offline gap
 // -------------------------------------------------------------------------------------------
 
-test('boat: filling every crate and claiming pays coins + XP + vouchers', () => {
+test('boat: a full boat casts off with coins, XP and vouchers aboard, paid when she docks', () => {
   setState(freshState(ORDERS.boat.unlockLevel + 5));
   const now = Date.now();
   boat.tick(now);
@@ -278,13 +278,31 @@ test('boat: filling every crate and claiming pays coins + XP + vouchers', () => 
     if (CROPS[crate.itemId]) fillSilo(crate.itemId, crate.qty); else fillBarn(crate.itemId, crate.qty);
   }
   const coinsBefore = state.coins;
+  const xpBefore = state.xp;
   const vouchersBefore = state.vouchers;
   b.crates.forEach((_, i) => assert.ok(boat.fillCrate(i)));
+
   const result = boat.claimBonus();
-  assert.ok(result, 'claimBonus should succeed once every crate is filled');
-  assert.ok(state.coins > coinsBefore);
-  assert.ok(state.vouchers > vouchersBefore);
+  assert.ok(result && result.dispatched, 'claiming should cast off once every crate is filled');
+  assert.equal(state.coins, coinsBefore, 'casting off must not pay on the spot');
+  assert.equal(state.xp, xpBefore, 'casting off must not award XP on the spot');
+  assert.equal(state.vouchers, vouchersBefore, 'casting off must not hand over vouchers on the spot');
   assert.equal(boat.claimBonus(), false, 'claiming twice must fail');
+
+  const voyage = orders.deliveries().find((d) => d.kind === 'boat');
+  assert.ok(voyage, 'the full boat must be at sea as a delivery');
+  assert.equal(Math.round((voyage.arrivesAt - voyage.dispatchedAt) / 1000), ORDERS.boat.voyageTime,
+    'the boat sails its fixed route, not a cargo-scaled one');
+  assert.equal(voyage.rewardVouchers, result.vouchers,
+    'the vouchers the player was told about must be the ones aboard - never a fresh roll on arrival');
+
+  orders.tickDeliveries(voyage.arrivesAt);
+  const paid = orders.collectDelivery(voyage.id);
+  assert.ok(paid, 'a docked boat must pay');
+  assert.equal(state.coins, coinsBefore + paid.coins);
+  assert.equal(state.vouchers, vouchersBefore + result.vouchers,
+    'exactly the vouchers that sailed must arrive');
+  assert.ok(state.xp > xpBefore, 'XP arrives with her too');
 });
 
 test('boat: claimBonus refuses when crates are incomplete, refunds nothing', () => {

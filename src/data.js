@@ -1769,7 +1769,11 @@ export const ORDERS = {
     deliveryBase: 45, deliveryPerItem: 12, deliveryMax: 600,
   },
   truck: { unlockLevel: 8, interval: 900, bundles: 3, bonusMultiplier: 1.6 },
-  boat:  { unlockLevel: 17, interval: 7200, crates: 6, departureWindow: 3600, bonusMultiplier: 2.0, vouchersPerBoat: [4, 10] },
+  // voyageTime is the sail itself, once a full boat has been sent off. Deliberately a FIXED
+  // run rather than scaled by cargo the way a truck delivery is: the boat sails the same route
+  // whatever you packed into its six crates, and 15 minutes against a two-hour interval leaves
+  // most of the cycle as waiting for the next boat rather than waiting for this one.
+  boat:  { unlockLevel: 17, interval: 7200, crates: 6, departureWindow: 3600, bonusMultiplier: 2.0, vouchersPerBoat: [4, 10], voyageTime: 900 },
 };
 
 /** Roadside shop stand. */

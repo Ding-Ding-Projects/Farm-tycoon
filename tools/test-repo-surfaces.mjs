@@ -202,5 +202,35 @@ test('loading a truck bundle does not pay for it either', () => {
     'the completion bonus is no longer carried by the departing truck');
 });
 
+test('a full boat casts off instead of paying at the dock', () => {
+  const src = readFileSync(abs('src/boat.js'), 'utf8');
+  const fn = src.slice(src.indexOf('export function claimBonus('));
+  assert(fn.length > 100, 'could not isolate claimBonus - the guard needs updating');
+  const body = fn.slice(0, fn.indexOf('\n}'));
+  assert(!body.includes('addCoins'),
+    'claimBonus pays at the dock; the payout must sail with the boat instead');
+  assert(!body.includes('addXp'),
+    'claimBonus awards XP at the dock; the payout must sail with the boat instead');
+  assert(!body.includes('state.vouchers ='),
+    'claimBonus hands vouchers over at the dock; they must sail with the boat instead');
+  assert(body.includes('orders.addDelivery'), 'claimBonus does not put the boat to sea');
+  assert(body.includes('rewardVouchers'),
+    'the vouchers are not carried on the voyage record, so they would be re-rolled on arrival');
+});
+
+test('every vessel shares one delivery list, one clock and one collection path', () => {
+  const orders = readFileSync(abs('src/orders.js'), 'utf8');
+  const boat = readFileSync(abs('src/boat.js'), 'utf8');
+  assert(orders.includes('export function addDelivery'),
+    'orders.js does not expose addDelivery, so another module would need its own delivery list');
+  // A second list is the failure this guards: three vessels, three arrival clocks, three
+  // collection paths, and only one of them maintained.
+  assert(!boat.includes('state.orders.deliveries'),
+    'boat.js reaches into the delivery list directly instead of going through addDelivery');
+  const collect = orders.slice(orders.indexOf('export function collectDelivery('));
+  assert(collect.includes('rewardVouchers'),
+    'collectDelivery ignores vouchers, so a docked boat would pay nothing for them');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -45,6 +45,7 @@ import {
   CROPS, ANIMALS, BUILDINGS, GOODS, STRUCTURES, MATERIALS, LEVELS, FARM, QUALITY,
   ISLANDS, MERGE, TOWN, ZOO, HELICOPTER, LAB, MUSEUM, ARTIFACTS, EXPEDITIONS,
   COOP, REGATTA, PHOTO, PETS, ACHIEVEMENTS, SHOP, COLLECTIONS, DECORATIONS, EVENTS, STORAGE,
+  ORDERS,
 } from './data.js';
 
 // ---------------------------------------------------------------------------
@@ -626,33 +627,45 @@ function renderOrders(container) {
 }
 
 /**
- * Loads already on the road, and the ones that have arrived and are waiting to be collected.
+ * Loads already travelling, and the ones that have arrived and are waiting to be collected.
  * `filter` narrows it to the loads a particular bay sent; the order board shows everything.
  */
 function renderDeliveries(container, filter = null) {
   const list = filter ? orders.deliveries().filter(filter) : orders.deliveries();
   if (!list.length) return;
-  container.appendChild(hintEl(`On the road (${list.length}):`));
+  // Each vessel keeps its own word, because "on the road" is wrong for a boat and a player
+  // should be able to tell at a glance which of their loads is which.
+  const VESSEL = {
+    truck: { icon: '🚚', noun: 'Truck load', verb: 'Arrives' },
+    boat:  { icon: '⛵', noun: 'Boat',       verb: 'Docks' },
+  };
+  const anyBoat = list.some((d) => d.kind === 'boat');
+  const anyRoad = list.some((d) => d.kind !== 'boat');
+  const heading = anyBoat && !anyRoad ? 'At sea' : (anyRoad && !anyBoat ? 'On the road' : 'On their way');
+  container.appendChild(hintEl(`${heading} (${list.length}):`));
   for (const d of list) {
+    const vessel = VESSEL[d.kind] || { icon: '🚚', noun: 'Delivery', verb: 'Arrives' };
     const card = document.createElement('div');
     card.className = 'order-card';
     const load = (d.items || []).map((it) => `${itemIcon(it.itemId)} ${itemName(it.itemId)} x${it.qty}`).join(', ');
-    card.innerHTML = `<strong>🚚 Delivery</strong><div>${load}</div>`;
+    card.innerHTML = `<strong>${vessel.icon} ${vessel.noun}</strong><div>${load}</div>`;
     if (d.arrived) {
-      card.appendChild(button(`Collect 🪙${d.rewardCoins} · ✨${d.rewardXp} XP`, () => {
+      const voucherPart = d.rewardVouchers ? ` · 🎟️${d.rewardVouchers}` : '';
+      card.appendChild(button(`Collect 🪙${d.rewardCoins} · ✨${d.rewardXp} XP${voucherPart}`, () => {
         const paid = orders.collectDelivery(d.id);
         if (paid) {
           audio.coin();
           // 'order_fulfilled' is the tutorial's gate, and it belongs where the money lands -
           // the same rule the roadside stand follows.
           tutorial.emit('order_fulfilled');
-          toast(`Delivered! 🪙${paid.coins} · ✨${paid.xp} XP`, 'success');
+          const gotVouchers = paid.vouchers ? ` · 🎟️${paid.vouchers} vouchers` : '';
+          toast(`Delivered! 🪙${paid.coins} · ✨${paid.xp} XP${gotVouchers}`, 'success');
           save();
           refreshPanel();
         } else { audio.error(); toast('That one has not arrived yet.', 'error'); }
       }));
     } else {
-      card.appendChild(hintEl(`Arrives in ${fmtDuration(d.arrivesAt - Date.now())}…`));
+      card.appendChild(hintEl(`${vessel.verb} in ${fmtDuration(d.arrivesAt - Date.now())}…`));
     }
     container.appendChild(card);
   }
@@ -788,7 +801,11 @@ function renderMarket(container) {
 // ---------------------------------------------------------------------------
 function renderBoat(container) {
   boat.tick(Date.now());
+  orders.tickDeliveries(Date.now());
   container.appendChild(hintEl('Boat Orders'));
+  // Boats this dock sent are on the shared delivery list; show them here so a player who
+  // loaded one and came back is not left wondering where the payout went.
+  renderDeliveries(container, (d) => d.kind === 'boat');
   const b = state.orders.boat;
   if (!b) {
     container.appendChild(hintEl('The next boat has not docked yet.'));
@@ -815,11 +832,12 @@ function renderBoat(container) {
     container.appendChild(grid);
     if (b.crates.length && b.crates.every((c) => c.filled) && !b.claimed) {
       const claimRow = row('');
-      claimRow.appendChild(button('Claim full-boat bonus!', () => {
+      claimRow.appendChild(button(`Cast off (about ${fmtDuration(ORDERS.boat.voyageTime * 1000)} at sea)`, () => {
         const result = boat.claimBonus();
         if (result) {
           audio.depart();
-          toast(`Bonus: 🪙${result.coins} · ✨${result.xp} XP · 🎟️${result.vouchers} vouchers!`, 'success');
+          toast(`Away she goes — 🪙${result.coins} · ✨${result.xp} XP · 🎟️${result.vouchers} vouchers when she docks.`, 'success');
+          save();
           refreshPanel();
         } else { audio.error(); toast('Too late — the boat has left.', 'error'); }
       }));

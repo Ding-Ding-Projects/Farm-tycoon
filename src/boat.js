@@ -6,14 +6,14 @@ import { state } from './state.js';
 import { ORDERS, CROPS, GOODS } from './data.js';
 import * as economy from './economy.js';
 import * as extras from './extras.js';
-import { eligibleItemIds } from './orders.js';
+import * as orders from './orders.js';   // item pool, and the shared delivery road every vessel sails on
 
 function randomInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function baseSellValue(itemId) { return CROPS[itemId]?.sellPrice ?? GOODS[itemId]?.sellPrice ?? 0; }
 
 function spawnBoat(now) {
-  const pool = eligibleItemIds(state.level);
+  const pool = orders.eligibleItemIds(state.level);
   const crates = [];
   const usedIds = new Set();
   for (let i = 0; i < ORDERS.boat.crates; i++) {
@@ -65,7 +65,17 @@ export function fillCrate(index) {
   return true;
 }
 
-/** Claim the full-boat bonus (coins + XP + vouchers) once every crate is filled. */
+/**
+ * Send the loaded boat off with its whole payout aboard.
+ *
+ * The bonus used to land the instant the last crate went in, and the boat "sailed" with nothing
+ * left to wait for - the same defect the order board and the truck bay each had. Now claiming
+ * casts off: the coins, the XP and the vouchers sail with the boat and are collected when it
+ * docks, through the same delivery list the truck and the order board use.
+ *
+ * The vouchers are ROLLED HERE, at departure, and carried on the record. A boat that told the
+ * player it was carrying eight vouchers must pay eight when it arrives, not re-roll into four.
+ */
 export function claimBonus() {
   const boat = state.orders.boat;
   if (!boat || boat.claimed || boat.departed) return false;
@@ -81,15 +91,21 @@ export function claimBonus() {
   try { bonusVouchers = Math.max(0, Math.round(extras.activeEventEffect()?.boatVoucherBonus || 0)); } catch { bonusVouchers = 0; }
   const vouchers = randomInt(voucherMin, voucherMax) + bonusVouchers;   // Boat Race weekend bonus
 
-  economy.addCoins(coins);
-  economy.addXp(xp);
-  state.vouchers = (state.vouchers || 0) + vouchers;
-  economy.trackStat('boatsCompleted', 1);
+  const seconds = ORDERS.boat.voyageTime;
+  orders.addDelivery({
+    orderId: 'boat',
+    kind: 'boat',
+    items: boat.crates.map((c) => ({ itemId: c.itemId, qty: c.qty })),
+    rewardCoins: coins,
+    rewardXp: xp,
+    rewardVouchers: vouchers,
+    seconds,
+  });
 
   boat.claimed = true;
   boat.departed = true;
   boat.nextSpawnAt = now + ORDERS.boat.interval * 1000;
-  return { coins, xp, vouchers };
+  return { dispatched: true, seconds, coins, xp, vouchers };
 }
 
 // ---- Island voyages moved out ----

@@ -18,6 +18,8 @@ import * as renderer from './render/renderer.js';
 
 let overlay, spotlight, arrow, bubble;
 let currentIndex = -1;
+// Which step's markup is currently inside the bubble, so a reposition never rebuilds it.
+let paintedIndex = -1;
 let active = false;
 const listeners = [];
 
@@ -140,18 +142,8 @@ function keepClearOfSheet() {
   bubble.style.top = `${Math.max(12, wanted)}px`;
 }
 
-function render() {
-  if (!overlay) return;
-  if (!active || currentIndex < 0 || currentIndex >= TUTORIAL.steps.length) {
-    overlay.hidden = true;
-    return;
-  }
-  const step = TUTORIAL.steps[currentIndex];
-  overlay.hidden = false;
-  // Every step gets a real Next button and a Skip, ALWAYS - including the steps that are
-  // waiting on a game event. The tutorial is guidance, never a gate: if a player cannot find
-  // the thing being pointed at, or simply wants to get on with it, the bubble must never be
-  // the reason they are stuck staring at the same sentence.
+/** Build the bubble's markup and wire its two buttons. Called only when the step changes. */
+function paintBubble(step) {
   bubble.innerHTML = `<div class="speaker"><span class="avatar" aria-hidden="true"></span><span>Farmhand Ellie</span>`
     + `<span class="tutorial-step-count">${currentIndex + 1}/${TUTORIAL.steps.length}</span></div>`
     + `<p>${step.text}</p>`
@@ -161,7 +153,30 @@ function render() {
     + `</div>`;
   bubble.querySelector('#tutorial-next').addEventListener('click', (e) => { e.stopPropagation(); advance(); });
   bubble.querySelector('#tutorial-skip').addEventListener('click', (e) => { e.stopPropagation(); skip(); });
+  paintedIndex = currentIndex;
+}
 
+function render() {
+  if (!overlay) return;
+  if (!active || currentIndex < 0 || currentIndex >= TUTORIAL.steps.length) {
+    overlay.hidden = true;
+    paintedIndex = -1;
+    return;
+  }
+  const step = TUTORIAL.steps[currentIndex];
+  overlay.hidden = false;
+  // Every step gets a real Next button and a Skip, ALWAYS - including the steps that are
+  // waiting on a game event. The tutorial is guidance, never a gate: if a player cannot find
+  // the thing being pointed at, or simply wants to get on with it, the bubble must never be
+  // the reason they are stuck staring at the same sentence.
+  //
+  // The markup is rebuilt ONLY when the step actually changes. checkAutoEvents() calls render()
+  // on every animation frame for any step anchored to a world object, and rewriting innerHTML
+  // there replaced both buttons about sixty times a second. A pointerdown and the pointerup
+  // that follows it then landed on two different nodes, so the browser generated no click event
+  // at all and the button silently did nothing - which is exactly how Next and Skip tutorial
+  // came to be unclickable on the steps that point at the shop, the silo and the fields.
+  if (paintedIndex !== currentIndex) paintBubble(step);
   const el = step.target ? domAnchor(step.target) : null;
   if (el && typeof el.getBoundingClientRect === 'function') {
     const r = el.getBoundingClientRect();

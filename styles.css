@@ -230,7 +230,11 @@ button.pill-counter:focus-visible { outline: 3px solid #fff; outline-offset: 2px
 
 /* ---------- Sheet panels ---------- */
 .sheet-panel {
-  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
+  /* Above the tutorial overlay (z-index 50). The spotlight paints a 9999px dark ring around its
+     hole, so a sheet below it is dimmed by the very tutorial step that told the player to open
+     it - the panel in the screenshot was washed out and looked disabled. It is a decision
+     surface, so it goes above, exactly as the stacking note by .modal-backdrop says. */
+  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 55;
   width: min(800px, calc(100vw - 32px)); max-height: 72vh; overflow-y: auto;
   background: var(--panel-bg);
   border: var(--panel-border); border-bottom: none;

@@ -67,3 +67,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `c1dd36e1e976` | Black Sesame Bao · 芝麻包 | `black-sesame-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0059-black-sesame-bao.png |
 | 0.1.0 | `5f7a2003ce51` | Hazelnut Chocolate Bao · 榛子朱古力包 | `hazelnut-chocolate-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0060-hazelnut-chocolate-bao.png |
 | 0.1.0 | `2dee0092de89` | Purple Sweet Potato Bao · 紫薯包 | `purple-sweet-potato-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0061-purple-sweet-potato-bao.png |
+| 0.1.0 | `2f501f49b710` | Taro Paste Bao · 芋蓉包 | `taro-paste-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0062-taro-paste-bao.png |

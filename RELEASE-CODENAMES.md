@@ -70,3 +70,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `2f501f49b710` | Taro Paste Bao · 芋蓉包 | `taro-paste-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0062-taro-paste-bao.png |
 | 0.1.0 | `8e9c190b980a` | Brown Sugar Mantou · 黑糖饅頭 | `brown-sugar-mantou` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0063-brown-sugar-mantou.png |
 | 0.1.0 | `65b6ec09f903` | Plain Mantou · 白饅頭 | `plain-mantou` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0064-plain-mantou.png |
+| 0.1.0 | `b15911f81a1e` | Silver Thread Roll · 銀絲卷 | `silver-thread-roll` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0065-silver-thread-roll.png |

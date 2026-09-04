@@ -45,18 +45,39 @@ jobs:
       # publish and attach evidence only. Local `npm test` runs before a push,
       # never as a release gate.
 
-      - name: Determine unique release tag
+      # Every release must carry a HIGHER version than the last, or the Squirrel updater cannot
+      # see it. Until this step existed the packaged version was package.json's 0.1.0 for every
+      # single build, so RELEASES advertised farm-tycoon-0.1.0-full.nupkg forever, an installed
+      # copy compared 0.1.0 against 0.1.0 and answered update-not-available every time. The
+      # updater, its feed, its banner and its Restart button were all wired correctly and none of
+      # them could ever fire. The run number is monotonic, so it becomes the patch component.
+      - name: Determine unique release version and tag
         id: tagver
         shell: bash
         run: |
           set -euo pipefail
           BASE_VERSION="$(node -p "require('./package.json').version")"
-          SHA_SHORT="$(git rev-parse --short=12 HEAD)"
+          MAJOR_MINOR="${BASE_VERSION%.*}"
           RUN_NUMBER="${GITHUB_RUN_NUMBER}"
-          TAG="v${BASE_VERSION}-build${RUN_NUMBER}+${SHA_SHORT}"
-          echo "Chosen tag: $TAG"
+          PKG_VERSION="${MAJOR_MINOR}.${RUN_NUMBER}"
+          SHA_SHORT="$(git rev-parse --short=12 HEAD)"
+          TAG="v${PKG_VERSION}+${SHA_SHORT}"
+          # Write it into the manifest electron-builder actually reads. This edit is transient:
+          # the repository keeps 0.1.0 and this commit is never pushed back.
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            p.version = process.argv[1];
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+          " "$PKG_VERSION"
+          ACTUAL="$(node -p "require('./package.json').version")"
+          if [ "$ACTUAL" != "$PKG_VERSION" ]; then
+            echo "::error::package.json version is '$ACTUAL', expected '$PKG_VERSION'. Packaging would ship a version the updater cannot compare."
+            exit 1
+          fi
+          echo "Packaging as $PKG_VERSION, tag $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "base_version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
 
       # The front screen shows the running version and when THAT build was made. The value
       # has to come from this run's provenance, so it is stamped here, immediately before
@@ -167,6 +188,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The version step rewrote package.json in place for packaging. That edit is transient
+          # and must never be committed, and it would also break the rebase retry below, which
+          # refuses to run with unstaged changes present. Put it back before touching git.
+          git checkout -- package.json || true
           if [ -f "RELEASE-CODENAMES.md" ] && [ -n "$(git status --porcelain RELEASE-CODENAMES.md)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"

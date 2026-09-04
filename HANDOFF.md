@@ -84,6 +84,49 @@ lifts when the two genuinely overlap horizontally, so a narrow layout that alrea
 does not gain a pointless gap. `tools/test-tutorial-clicks.mjs` is now eleven assertions; the
 three new ones were each watched failing before being trusted.
 
+### The auto-updater has never been able to fire, and could not have
+
+Every release since the first published `farm-tycoon-0.1.0-full.nupkg` and a `RELEASES` line
+advertising version **0.1.0**, because the packaged version came straight from `package.json` and
+`package.json` never changes. Squirrel compares the remote version against the installed one, found
+them identical, and answered `update-not-available` every time. The feed URL, the `autoUpdater`
+wiring, the ready banner, its Restart button and its unsigned-artifact warning were all correct,
+and not one of them could ever run, across 88 releases.
+
+Nothing failed. No job went red, no log said anything, and the only symptom was an update that
+never arrived, which is indistinguishable from there being no update. The banner overlap fixed
+directly above this was a defect in a surface that had never once appeared.
+
+The release workflow now derives the packaged version from `GITHUB_RUN_NUMBER`, the only monotonic
+counter available to it: `PKG_VERSION="${MAJOR_MINOR}.${RUN_NUMBER}"`, so build 89 packages 0.1.89
+and build 90 packages 0.1.90. It writes that into `package.json` before packaging, reads it back and
+fails the job if the write did not land, and reverts the edit before the code-name ledger commit,
+which would otherwise both commit the bump and break its own rebase retry. The repository keeps
+0.1.0; only the workflow bumps the patch. The tag becomes `v<version>+<sha>`.
+
+Proved at the artifact level by running the step's own logic locally and packaging three times:
+
+| packaged as | produced | RELEASES advertises |
+| --- | --- | --- |
+| 0.1.89 | `Farm Tycoon-Setup-0.1.89.exe`, `farm-tycoon-0.1.89-full.nupkg` | 0.1.89 |
+| 0.1.90 | `Farm Tycoon-Setup-0.1.90.exe`, `farm-tycoon-0.1.90-full.nupkg` | 0.1.90 |
+| 0.1.91 | `Farm Tycoon-Setup-0.1.91.exe`, `farm-tycoon-0.1.91-full.nupkg` | 0.1.91 |
+
+`tools/test-release-version.mjs` guards it, six assertions, each watched failing first: reverting to
+a constant version, computing it without writing it, dropping the read-back guard, leaving the
+manifest edit in the tree, and pinning the feed to a tag all turn it red.
+
+**A recorded dead end, so nobody rebuilds it.** The obvious way to prove the upgrade end to end is
+a throwaway local feed: install 0.1.90, serve a `RELEASES` naming 0.1.90 and 0.1.91 over
+`http://127.0.0.1:8199`, and point the app at it. It does not work, and the reason is not the feed.
+Electron's Windows auto-updater does not hand the URL to Squirrel directly; it stands up its own
+local proxy and hands Squirrel *that*. The run reached `checking` and then failed with
+`Unable to connect to the remote server ... 127.0.0.1:16438` - a port nobody chose and nothing was
+listening on, while the real feed on 8199 served every request correctly when curled. Do not spend
+attempts pointing the app at a local directory; the honest end-to-end needs two real published
+releases with different versions and the live GitHub feed, which is now possible for the first time
+and is the remaining step on this item.
+
 ## Session of 2026-09-03: the Squirrel installer actually installs, and the game opens after it
 
 Commit `5f7a200` (the merge carrying the fix) repaired three lines in `electron/main.cjs` that

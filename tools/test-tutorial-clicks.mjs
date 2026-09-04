@@ -127,5 +127,19 @@ test('the update banner is lifted clear of the dock instead of covering it', () 
     'a resize moves the dock, so the banner has to follow');
 });
 
+test('a later update state cancels the error auto-hide timer', () => {
+  // Squirrel emits a noisy error from the check subprocess and then succeeds, so the real order is
+  // error -> ready. Without this, the error's eight-second timer wiped the ready banner: title
+  // said "Update 0.1.89 ready", Restart was visible, hidden was true. Measured on a real upgrade.
+  const body = bodyOf(desktop, 'function initUpdates(');
+  assert.ok(body.includes('const clearHide ='), 'the timer must be cancellable');
+  assert.match(body, /^\s*const state = s && s\.state;\s*\n\s*clearHide\(\);/m,
+    'every incoming state must cancel the previous state\'s timer, before anything else');
+  assert.ok(body.includes('hideTimer = setTimeout('),
+    'the auto-hide must be stored in the handle it is cancelled through');
+  assert.ok(!/(?<!hideTimer = )setTimeout\(\(\) => \{ banner\.hidden = true; \}/.test(body),
+    'no un-cancellable auto-hide may remain');
+});
+
 console.log(`\n${passed} passed, ${failures.length} failed\n`);
 if (failures.length) process.exit(1);

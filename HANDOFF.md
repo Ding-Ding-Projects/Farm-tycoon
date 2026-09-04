@@ -127,6 +127,34 @@ attempts pointing the app at a local directory; the honest end-to-end needs two 
 releases with different versions and the live GitHub feed, which is now possible for the first time
 and is the remaining step on this item.
 
+### The upgrade, done end to end for the first time, and the last link that was broken
+
+With `v0.1.89+670efda` published, an installed build could finally see a higher version, and the
+whole path was walked against the live GitHub feed rather than a contrived one:
+
+1. Installed `Farm.Tycoon-Setup-0.1.0.exe` from release `v0.1.0-build88`. Title bar read `v0.1.0`.
+2. Launched it on an off-screen desktop and called `checkForUpdates()`.
+3. States arrived in order: `checking`, then a noisy `error` from Squirrel's check subprocess,
+   then **`ready 0.1.89`**. The banner title read `Update 0.1.89 ready` and Restart was visible.
+4. Called `restartToUpdate()`. `%LOCALAPPDATA%\farm-tycoon` then held **`app-0.1.89` beside
+   `app-0.1.0`**, and the upgraded tree's `build-info.js` reads `version: '0.1.89'`,
+   `builtAt: '2026-09-04T17:02:45Z'` - real provenance from the workflow's stamping step.
+
+**And the last link was broken, which the same run caught.** The error branch auto-hides the banner
+after eight seconds. Squirrel emits that noisy error and *then* succeeds, so the real sequence is
+error then ready, and the error's timer was still live when the ready banner appeared. Measured
+directly: `title` said `Update 0.1.89 ready`, `restartHidden` was `false`, and `bannerHidden` was
+**`true`**. The one prompt the entire updater exists to show was the one thing a player would never
+see. Every incoming state now cancels the previous state's timer before doing anything else.
+
+That is worth naming as a shape rather than an incident: a timer set by one state and never
+cancelled belongs to whatever state happens to be on screen when it fires, not the one that set it.
+
+**Also closed by this run:** the front screen's provenance. The released build's stamp reads
+`v0.1.0 built 2026-09-04 12:48:41 America/Toronto` - version, date, local time to the second and a
+named timezone, before any navigation. The `build date unavailable` seen on a local build is the
+honest unstamped state, not a defect.
+
 ## Session of 2026-09-03: the Squirrel installer actually installs, and the game opens after it
 
 Commit `5f7a200` (the merge carrying the fix) repaired three lines in `electron/main.cjs` that

@@ -112,8 +112,19 @@ function initUpdates(api) {
   banner.querySelector('#update-later').addEventListener('click', () => { banner.hidden = true; });
   restart.addEventListener('click', () => api.restartToUpdate());
 
+  // The error branch below auto-hides the banner after eight seconds. That timer has to be
+  // cancelled by whatever state arrives next, or it hides a banner it was never about. Squirrel
+  // emits a noisy error from the check subprocess and then succeeds, so the real sequence is
+  // error -> ready: the ready banner appeared correctly and was then wiped eight seconds later by
+  // the previous state's timer. Measured on a real 0.1.0 -> 0.1.89 upgrade against the live feed:
+  // the title said "Update 0.1.89 ready", Restart was visible, and hidden was true - so the one
+  // prompt the whole updater exists to show was the one thing the user never saw.
+  let hideTimer = null;
+  const clearHide = () => { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } };
+
   api.onUpdateState?.((s) => {
     const state = s && s.state;
+    clearHide();
     if (state === 'ready') {
       title.textContent = s.version ? `Update ${s.version} ready` : 'Update ready';
       // Say plainly that the build is unsigned - Windows will warn, and a banner that implies a
@@ -128,7 +139,7 @@ function initUpdates(api) {
       restart.hidden = true;
       banner.hidden = false;
       placeBanner();
-      setTimeout(() => { banner.hidden = true; }, 8000);
+      hideTimer = setTimeout(() => { banner.hidden = true; hideTimer = null; }, 8000);
     }
     // 'checking', 'downloading', 'current' and 'unsupported' stay silent: an update nobody asked
     // about should not put a bar on screen until there is something to act on.

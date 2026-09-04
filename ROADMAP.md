@@ -231,8 +231,14 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
       Capture: `screenshots/11-desktop-title-bar.png`. The update feed was separately proven at
       the network layer: the `RELEASES` manifest and its named `.nupkg` both resolve HTTP 200
       from the stable feed URL.
-- [ ] **The one piece still open: an end-to-end upgrade.** No build has yet been installed and
-      then updated to a newer one. Tracked in `HANDOFF.md`.
+- [x] **An end-to-end upgrade, done.** Installed the 0.1.0 build from release `v0.1.0-build88`,
+      called `checkForUpdates()` against the live GitHub feed, watched it reach `ready 0.1.89`,
+      pressed Restart, and confirmed `app-0.1.89` beside `app-0.1.0` on disk with real stamped
+      provenance in the upgraded tree. Until build 88 this was impossible: every release packaged
+      0.1.0, so the updater compared 0.1.0 against 0.1.0 and answered `update-not-available` for
+      ever. The same run caught the last broken link, the error branch auto-hide timer wiping the
+      ready banner eight seconds after it appeared. A local feed remains a dead end; see
+      `HANDOFF.md`.
 
 ## Build stamp on the front screen (`c1dd36e`)
 
@@ -286,7 +292,11 @@ record rather than an oversight the next person rediscovers:
 - [ ] The local Ollama suite manager
 - [ ] Status Hub registration and reporting
 - [ ] The browser-extension download-capture dialogs
-- [ ] Version and updated-at, with seconds and timezone, on the first screen before navigation
+- [x] Version and updated-at, with seconds and timezone, on the first screen before navigation.
+      Verified on the released build installed from `v0.1.0-build88`: the stamp reads
+      `v0.1.0 built 2026-09-04 12:48:41 America/Toronto`. A local `npm run dist` shows
+      `build date unavailable`, which is the honest unstamped state rather than a defect - only
+      the release workflow stamps provenance.
 
 ## Open items
 

@@ -282,6 +282,16 @@ export function openRadial(screenX, screenY, options, ctx = null) {
   radial.hidden = false;
   const n = options.length;
   const radius = n <= 1 ? 0 : 74;
+  // Clamp the ring's centre so the whole ring, its 52px buttons and the label strip beneath it
+  // stay inside the viewport. Placed at the raw tap point, a structure near an edge threw half
+  // its options off-screen, and one near the bottom-right corner dropped the ring straight onto
+  // the dock - where the ring's own buttons take the clicks meant for the dock's. The ring is a
+  // menu the player just opened, so it belongs on top; it simply must not be put there.
+  const margin = radius + 26 + 8;
+  const vw = window.innerWidth || 1280;
+  const vh = window.innerHeight || 800;
+  screenX = Math.max(margin, Math.min(vw - margin, screenX));
+  screenY = Math.max(margin, Math.min(vh - margin - 40, screenY));
   // The strip under the ring names the option under the pointer (or keyboard focus); it used to
   // name options[0] whatever you hovered.
   const label = document.createElement('div');

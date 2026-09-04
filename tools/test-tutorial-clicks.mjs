@@ -24,6 +24,7 @@ function test(name, fn) {
 
 const tutorial = readFileSync(new URL('../src/tutorial.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+const ui = readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
 
 console.log('\nTutorial card clickability\n');
 
@@ -85,6 +86,31 @@ test('a modal still outranks the sheet, so a decision is never covered', () => {
   const sheet = Number(css.match(/\.sheet-panel\s*\{[^}]*z-index:\s*(\d+)/)[1]);
   const modal = Number(css.match(/\.modal-backdrop\s*\{[^}]*z-index:\s*(\d+)/)[1]);
   assert.ok(modal > sheet, `modal ${modal} must outrank sheet ${sheet}`);
+});
+
+test('the desktop title bar does not sit on top of the HUD', () => {
+  // body.is-desktop adds 34px of padding, which moves normal flow and NOT position:fixed. Only
+  // #world was compensated, so the bar covered 28px of the level badge and 21px of every pill in
+  // the built app - and the badge's top is a drag region, so a click there moved the window.
+  assert.match(css, /^body[.]is-desktop [.]hud-top \{ top: 34px; \}/m,
+    'the HUD strip must be shifted below the title bar in the Electron build');
+  assert.match(css, /^body[.]is-desktop [.]event-banner \{ top: 130px;/m,
+    'and the event banner must clear the shifted HUD');
+});
+
+test('the radial ring is clamped into the viewport', () => {
+  const body = bodyOf(ui, 'export function openRadial(');
+  assert.ok(body.includes('screenX = Math.max(margin, Math.min(vw - margin, screenX));'),
+    'an unclamped ring throws options off-screen and drops onto the dock');
+  assert.ok(body.includes('screenY = Math.max(margin, Math.min(vh - margin - 40, screenY));'),
+    'the vertical clamp must also leave room for the label strip');
+});
+
+test('the radial ring declares its own z-index rather than relying on DOM order', () => {
+  const radial = css.match(/[.]radial-menu \{[^}]*z-index:\s*(\d+)/);
+  assert.ok(radial, '.radial-menu must declare a z-index');
+  const modal = Number(css.match(/[.]modal-backdrop\s*\{[^}]*z-index:\s*(\d+)/)[1]);
+  assert.ok(Number(radial[1]) < modal, `ring ${radial[1]} must stay below a modal ${modal}`);
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed\n`);

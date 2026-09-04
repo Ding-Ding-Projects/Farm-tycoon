@@ -1,9 +1,72 @@
 # Handoff
 
-State of the repository as of commit `5f7a200` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
+State of the repository as of commit `8e9c190` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
 
-## Session of 2026-09-03 (latest): the Squirrel installer actually installs, and the game opens after it
+## Session of 2026-09-03 (latest): the coach card, the shop panel, the HUD under the title bar
+
+Three player-facing poke guys, all found by driving the real built application rather than by
+reading the source, and all of the same family: something that looked entirely correct and was not.
+
+**1. Next and Skip tutorial did nothing.** `checkAutoEvents()` runs on every animation frame and,
+for any step anchored to a world object, called `render()`, which rewrote `bubble.innerHTML`. Both
+buttons were destroyed and recreated roughly sixty times a second, so a `pointerdown` and the
+`pointerup` after it landed on two different DOM nodes and the browser generated no `click` event
+at all. Step 1 is not world-anchored, which is exactly why the first Next worked and nothing after
+it did. `render()` now repositions freely and repaints only when the step actually changed, behind
+`paintedIndex !== currentIndex`.
+
+Measured with real dispatched clicks through the Chrome DevTools protocol, same script both sides:
+
+| build | clicks that advanced the step |
+| --- | --- |
+| shipped build `v0.1.0-build84` | 1 of 6 (dead from step 2 onward) |
+| after the fix, dev shell | 6 of 6 |
+| after the fix, installed artifact | 6 of 6 |
+
+Nothing else could see this. The hit test reported the button as the topmost element at those
+coordinates on every frame, and a unit test that calls `advance()` directly passes either way.
+
+**2. The Roadside Shop panel looked disabled.** `.sheet-panel` declared no `z-index` at all, so it
+rendered below `.tutorial-overlay` (50) and the spotlight's `box-shadow: 0 0 0 9999px` dark ring
+painted over the whole panel the tutorial had just told the player to open. It is now `z-index: 55`:
+above the spotlight, still below `.modal-backdrop` (60). Its Sell button was mechanically fine and
+opens the sell modal on a real dispatched click.
+
+**3. The Electron title bar sat on top of the HUD.** `body.is-desktop { padding-top: 34px }` moves
+normal flow and does not move a `position: fixed` element, and only `#world` had been compensated.
+Measured in the built app before the fix: the bar covered **28px of the 62px level badge** and
+**21px of every HUD pill**, and `document.elementFromPoint` at the top of the badge returned
+`.title-bar-name`, which is a `-webkit-app-region: drag` region, so a click there moved the window
+instead of doing anything. After adding `body.is-desktop .hud-top { top: 34px }` (and shifting
+`.event-banner` to 130px so it still clears the HUD), the same measurement reports **0px covered**
+on both and the hit test returns `.level-badge`.
+
+**Also fixed, from the same audit:** `openRadial()` placed the ring at the raw tap point with no
+clamping, so a structure near an edge threw half its options off-screen and one near the
+bottom-right corner dropped the ring onto the dock, where the ring's own buttons take the clicks
+meant for the dock's. The centre is now clamped into the viewport with room for the ring, its 52px
+buttons and the label strip. `.radial-menu` also declares `z-index: 58` rather than winning only
+by being later in `index.html` than the dock, which was nobody's decision.
+
+**Guarded, and each guard was watched failing first.** `tools/test-tutorial-clicks.mjs` holds ten
+assertions covering all of the above. Nine deliberate breakages were applied one at a time
+(unconditional repaint, dropped `paintedIndex` assignment, removed reset-on-hide, removed sheet
+z-index, removed HUD shift, removed event-banner shift, removed each radial clamp, removed the
+radial z-index); every one turned the suite red and every restore turned it green.
+
+**What the audit cleared.** A separate lane traced every function reachable from the
+`requestAnimationFrame` loop looking for more instances of the rebuild-during-click defect and
+found none: `updateHud` writes `ring.innerHTML` but behind a change guard and with no interactive
+children, the minigame verbs build their controls once behind a `built` flag and afterwards only
+mutate `classList`/`style`/`textContent`, and there is no `setInterval` anywhere in `src/`.
+
+**Still open, deliberately.** The update banner (`z-index: 9100`, bottom-right) and the dock
+(bottom-right) can overlap in the desktop build while an update is ready. It is real, it is rare,
+and it is left as recorded rather than quietly patched, because the banner is the more urgent
+surface and moving either one is a design call rather than a defect fix.
+
+## Session of 2026-09-03: the Squirrel installer actually installs, and the game opens after it
 
 Commit `5f7a200` (the merge carrying the fix) repaired three lines in `electron/main.cjs` that
 made the Windows installer fail in two ways at once, and this pass then verified the repair

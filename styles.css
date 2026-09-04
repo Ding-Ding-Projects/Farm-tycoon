@@ -309,7 +309,9 @@ button.pill-counter:focus-visible { outline: 3px solid #fff; outline-offset: 2px
 .note-strip.ok { background: rgba(108, 194, 44, 0.14); border-color: rgba(108, 194, 44, 0.45); color: #3e7a19; }
 
 /* ---------- Radial menu ---------- */
-.radial-menu { position: fixed; pointer-events: none; }
+/* Explicit z-index: the ring used to win only by being later in index.html than the dock, which
+   is not a decision anybody made. Above the sheet, below a modal. */
+.radial-menu { position: fixed; pointer-events: none; z-index: 58; }
 .radial-menu button {
   pointer-events: auto; position: absolute; width: 58px; height: 58px;
   border-radius: 50%; cursor: pointer; display: grid; place-items: center;
@@ -1010,7 +1012,15 @@ button.pill-counter:focus-visible { outline: 3px solid #fff; outline-offset: 2px
 .title-bar-btn.danger:hover { background: var(--color-danger); }
 /* Push everything below the bar rather than letting it overlap the HUD. */
 body.is-desktop { padding-top: 34px; box-sizing: border-box; }
+/* A position:fixed element is laid out against the VIEWPORT, so the body's 34px padding does not
+   move it. Every fixed surface anchored to the top therefore has to be shifted by hand, and each
+   one that is missed sits under the title bar. Measured in the built Electron app before this
+   rule existed: the bar covered 28px of the 62px level badge and 21px of every HUD pill, and a
+   click on the top of the badge landed on .title-bar-name - which is a drag region, so it moved
+   the window instead. */
 body.is-desktop #world { top: 34px; height: calc(100% - 34px); }
+body.is-desktop .hud-top { top: 34px; }
+body.is-desktop .event-banner { top: 130px; }   /* 96 + 34, so it clears the shifted HUD too */
 
 .update-banner {
   position: fixed; right: 16px; bottom: 16px; z-index: 9100;

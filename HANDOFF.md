@@ -1,6 +1,6 @@
 # Handoff
 
-State of the repository as of commit `8e9c190` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
+State of the repository as of commit `65b6ec0` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
 
 ## Session of 2026-09-03 (latest): the coach card, the shop panel, the HUD under the title bar
@@ -61,10 +61,28 @@ found none: `updateHud` writes `ring.innerHTML` but behind a change guard and wi
 children, the minigame verbs build their controls once behind a `built` flag and afterwards only
 mutate `classList`/`style`/`textContent`, and there is no `setInterval` anywhere in `src/`.
 
-**Still open, deliberately.** The update banner (`z-index: 9100`, bottom-right) and the dock
-(bottom-right) can overlap in the desktop build while an update is ready. It is real, it is rare,
-and it is left as recorded rather than quietly patched, because the banner is the more urgent
-surface and moving either one is a design call rather than a defect fix.
+**Was left open here, and is closed in the subsection below.** The update banner and the dock
+both anchor bottom-right and did overlap while an update was ready.
+
+### Closed after the fact: the update banner covered the dock
+
+The previous entry left this one recorded rather than fixed. It is fixed now, and it was worse
+than "cosmetic overlap": the banner's `z-index: 9100` puts it above everything, so while an update
+was ready it took the dock's clicks as well as covering them.
+
+Measured in the built Electron app, forcing the ready state:
+
+| | overlap with the dock | what a click on a dock button hit |
+| --- | --- | --- |
+| banner shown at its CSS position | **17,157 px²** | `DIV.update-banner` |
+| after `placeBanner()` runs | **0 px²** | `BUTTON.dock-btn` |
+
+`placeBanner()` in `src/desktop.js` measures the real dock and lifts the banner above it, rather
+than hard-coding an offset: the dock's height moves with the safe-area inset and with how many
+buttons are unlocked. It runs on every path that reveals the banner and on `resize`, and it only
+lifts when the two genuinely overlap horizontally, so a narrow layout that already stacks them
+does not gain a pointless gap. `tools/test-tutorial-clicks.mjs` is now eleven assertions; the
+three new ones were each watched failing before being trusted.
 
 ## Session of 2026-09-03: the Squirrel installer actually installs, and the game opens after it
 

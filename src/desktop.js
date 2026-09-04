@@ -75,6 +75,36 @@ function initUpdates(api) {
     <button type="button" class="btn-ghost" id="update-later">Later</button>`;
   document.body.appendChild(banner);
 
+  /**
+   * Keep the banner clear of the dock.
+   *
+   * Both are anchored bottom-right, and the banner's z-index (9100) is above everything, so while
+   * an update was ready it sat directly on the dock's buttons and took their clicks. The banner is
+   * the more urgent surface, so it stays where it is and the dock is what it must not cover:
+   * measure the dock and lift the banner above it. Measured rather than hard-coded, because the
+   * dock's height changes with the safe-area inset and with how many buttons are unlocked.
+   */
+  function placeBanner() {
+    if (banner.hidden) return;
+    const dock = document.querySelector('.dock');
+    const gap = 16;
+    if (!dock || dock.hidden || typeof dock.getBoundingClientRect !== 'function') {
+      banner.style.bottom = `${gap}px`;
+      return;
+    }
+    const r = dock.getBoundingClientRect();
+    if (!r.height) { banner.style.bottom = `${gap}px`; return; }
+    // Only lift it if the two would actually overlap horizontally; a narrow layout stacks them
+    // anyway and the extra gap would just waste space.
+    const b = banner.getBoundingClientRect();
+    const overlaps = b.right > r.left && b.left < r.right;
+    banner.style.bottom = overlaps
+      ? `${Math.round(window.innerHeight - r.top) + gap}px`
+      : `${gap}px`;
+  }
+
+  window.addEventListener('resize', placeBanner);
+
   const title = banner.querySelector('#update-title');
   const note = banner.querySelector('#update-note');
   const restart = banner.querySelector('#update-restart');
@@ -91,11 +121,13 @@ function initUpdates(api) {
       note.textContent = 'Downloaded and staged. These builds are unsigned, so Windows may show an unknown-publisher warning.';
       restart.hidden = false;
       banner.hidden = false;
+      placeBanner();
     } else if (state === 'error') {
       title.textContent = 'Update check failed';
       note.textContent = s.message || 'Could not reach the update feed.';
       restart.hidden = true;
       banner.hidden = false;
+      placeBanner();
       setTimeout(() => { banner.hidden = true; }, 8000);
     }
     // 'checking', 'downloading', 'current' and 'unsupported' stay silent: an update nobody asked

@@ -25,6 +25,7 @@ function test(name, fn) {
 const tutorial = readFileSync(new URL('../src/tutorial.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const ui = readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
+const desktop = readFileSync(new URL('../src/desktop.js', import.meta.url), 'utf8');
 
 console.log('\nTutorial card clickability\n');
 
@@ -111,6 +112,19 @@ test('the radial ring declares its own z-index rather than relying on DOM order'
   assert.ok(radial, '.radial-menu must declare a z-index');
   const modal = Number(css.match(/[.]modal-backdrop\s*\{[^}]*z-index:\s*(\d+)/)[1]);
   assert.ok(Number(radial[1]) < modal, `ring ${radial[1]} must stay below a modal ${modal}`);
+});
+
+test('the update banner is lifted clear of the dock instead of covering it', () => {
+  // Both are anchored bottom-right and the banner's z-index (9100) is above everything, so while
+  // an update was ready it sat on the dock's buttons and took their clicks.
+  const body = bodyOf(desktop, 'function initUpdates(');
+  assert.ok(body.includes('function placeBanner()'), 'the banner must position itself against the dock');
+  assert.ok(body.includes("document.querySelector('.dock')"),
+    'it must measure the real dock: its height changes with the safe-area inset and unlocked buttons');
+  assert.match(body, /^\s*banner\.hidden = false;\s*\n\s*placeBanner\(\);/m,
+    'every path that reveals the banner must place it, or it shows at the old position first');
+  assert.ok(body.includes("window.addEventListener('resize', placeBanner)"),
+    'a resize moves the dock, so the banner has to follow');
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed\n`);

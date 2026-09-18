@@ -5,6 +5,17 @@ A checklist view of what has shipped and what has not. Ticked items are verified
 implemented-and-assumed-working. See `HANDOFF.md` for the full evidence behind each tick and
 `ROADMAP.md`'s own "Open items" section below for what remains.
 
+## Current closeout status, 2026-09-18
+
+- [x] Primary checkout is clean at `d727e52cfdeaee23d6d0cea7317d89e0607e9b9d`, and
+      `origin/main` resolves to the same commit.
+- [x] The latest product verification recorded in `HANDOFF.md` is `npm test`: **824 passed,
+      0 failed**.
+- [x] The latest published release is `v0.1.90+4547dff2368c`, built from the updater repair
+      commit `4547dff`.
+- [ ] Owner-dependent and intentionally deferred work remains listed in **Open items** below;
+      this closeout did not start unrelated release, Pages, or product work.
+
 ## Phase A — Scaffold
 
 - [x] Full repo skeleton: `index.html`, `styles.css`, all `src/` module files with public API
@@ -152,7 +163,7 @@ Eight commits, each pushed to `main` as it landed; `HANDOFF.md` carries the evid
 - [x] `npm test`: validator + economy audit + 19 suites, **771 passed, 0 failed**;
       `tools/test-render.mjs` is new.
 
-## Yum tong pass (2026-09-02)
+## Full release pass (2026-09-02)
 
 - [x] **Selling waits for a buyer.** There was no selling mechanic, only a payout: a `Sell for
       🪙4` button in the silo and barn made the roadside stand - which already listed at a chosen

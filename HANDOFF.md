@@ -1,11 +1,30 @@
 # Handoff
 
-State of the repository as of commit `65b6ec0` on `main` (this section is the newest; older sections are kept as written). Written to be read by whoever picks
+## Closeout of the primary checkout, 2026-09-18
+
+The primary checkout is clean at commit `d727e52cfdeaee23d6d0cea7317d89e0607e9b9d` on `main`,
+and `origin/main` resolves to the same commit. The hui was fetched before this closeout. There are
+no linked checkouts, additional local or remote branches, stashes, unmerged index entries, conflict
+markers, or uncommitted paths. No preservation commit was needed because the checkout contained no
+recoverable uncommitted work.
+
+The latest product change remains the end-to-end updater repair at `4547dff`, and the latest
+published release remains `v0.1.90+4547dff2368c`. The current `d727e52` commit records its release
+code name only; it does not change the product files or verification result. The latest recorded
+local verification is `npm test`: **824 passed, 0 failed**, as documented in the existing handoff
+section and the matching GitHub issue comment.
+
+Open issue `#1` remains a historical handoff thread. Its remaining work is owner-dependent or
+outside this closeout: the social-preview image upload, the Android release keystore, the GitHub
+Pages media update, and the documented design and source-data follow-ups. No unrelated release,
+Pages, or product work was started here.
+
+This section is the newest; older sections are kept as written. Written to be read by whoever picks
 this up next, so it records what is *not* done as carefully as what is.
 
 ## Session of 2026-09-03 (latest): the coach card, the shop panel, the HUD under the title bar
 
-Three player-facing poke guys, all found by driving the real built application rather than by
+Three player-facing bugs, all found by driving the real built application rather than by
 reading the source, and all of the same family: something that looked entirely correct and was not.
 
 **1. Next and Skip tutorial did nothing.** `checkAutoEvents()` runs on every animation frame and,
@@ -288,7 +307,7 @@ Covered by `tools/test-buildstamp.mjs`, 7 assertions wired into `npm test`, each
 deliberately breaking the thing it guards and watching it go red before restoring it. The full
 suite now reports **806 passed, 0 failed**.
 
-## Session of 2026-09-02 (later) — yum tong: five player-facing poke guys, then a release pass
+## Session of 2026-09-02 (later) — full release pass: five player-facing bugs, then a release pass
 
 Started from five complaints about the running game and the documentation site, then ran the
 repository through a full close-out. Every figure below was read out of a real run, not recalled.
@@ -303,7 +322,7 @@ CI verdict · the local Squirrel installer rebuilds to 119,464,960 bytes and rep
    steps waited on a game event with no manual way past, and the other two advanced only if the
    player happened to click the bubble itself, with nothing on screen saying so. Every step now
    carries a 44px Next, a Skip and an `n/12` counter, and Next works on every step.
-2. **"Poke guys preventing it from progressing."** Same cause as (1) - the steps that looked
+2. **"Bugs preventing it from progressing."** Same cause as (1) - the steps that looked
    broken were the ones whose event the player could not find a way to fire.
 3. **"Can't drag the map."** `clampCamera` clamped the eased camera and never the pan target
    that `input.js` writes. A drag into an edge kept pushing the target outside the legal box
@@ -508,7 +527,7 @@ every push rather than trusting the local ref.
 
 ## Session of 2026-09-01 — content completion, then an accessibility sweep
 
-Twelve commits on `input-families`, all dewed. Every figure below was read out of a real run at
+Twelve commits on `input-families`, all pushed. Every figure below was read out of a real run at
 `683e95d`, not carried over from the previous handoff.
 
 **State: 49 buildings · 215 recipes · 279 goods · 46 verbs · 44/151 playable (1 in 3.4) ·

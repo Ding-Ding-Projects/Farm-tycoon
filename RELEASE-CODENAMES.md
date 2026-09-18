@@ -73,3 +73,4 @@ A dish is used once per project so a code name never becomes ambiguous between b
 | 0.1.0 | `b15911f81a1e` | Silver Thread Roll · 銀絲卷 | `silver-thread-roll` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0065-silver-thread-roll.png |
 | 0.1.89 | `670efdae6ea5` | Steamed Sausage Roll · 腸仔包 | `steamed-sausage-roll` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0066-steamed-sausage-roll.png |
 | 0.1.90 | `4547dff2368c` | Scallion Flower Roll · 蔥花卷 | `scallion-flower-roll` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0067-scallion-flower-roll.png |
+| 0.1.91 | `a43eb6d137b2` | Mushroom-Shaped Custard Bao · 蘑菇奶黃包 | `mushroom-custard-bao` | https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0068-mushroom-custard-bao.png |
